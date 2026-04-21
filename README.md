@@ -361,7 +361,7 @@ Special thanks to all contributors in the open-source community, especially:
 ## 📧 联系方式 / Contact
 
 - **Maintainer**: Eric
-- **Email**: [your-email@example.com]
+- **Email**: [yudongeric@gmail.com]
 - **GitHub**: [@ericyudong](https://github.com/ericyudong)
 - **Project Repository**: [https://github.com/ericyudong/AI-Coding](https://github.com/ericyudong/AI-Coding)
 
