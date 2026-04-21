@@ -223,7 +223,7 @@ Eric's AI Project Collection
 
 ## 🚀 快速开始 / Quick Start
 
-### 环 对于开发者 / For Developers
+### 🖥️ 对于开发者 / For Developers
 
 ```bash
 # Clone the repository
