@@ -1,0 +1,4 @@
+# 示例：忽略 Python 缓存和虚拟环境
+__pycache__/
+*.py[cod]
+.venv/

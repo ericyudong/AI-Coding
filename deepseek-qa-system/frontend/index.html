@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek 问答系统 - AI助手</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>🤖 DeepSeek Q&A</h1>
+                    <p>智能问答助手</p>
+                </div>
+                <button class="new-session-btn" id="newSessionBtn">
+                    <span>➕</span> 新建会话
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sessions-header">
+                    <h3>对话历史</h3>
+                </div>
+                <div class="sessions-list" id="sessionsList">
+                    <!-- Sessions will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-container">
+                <!-- Messages Area -->
+                <div class="messages-area" id="messagesArea">
+                    <div class="welcome-message">
+                        <h2>👋 欢迎使用 DeepSeek 问答系统</h2>
+                        <p>开始提问，与 AI 助手进行对话</p>
+                        <div class="example-prompts">
+                            <p style="font-size: 0.9em; color: #999; margin-top: 20px;">示例问题：</p>
+                            <button class="example-btn" onclick="askQuestion('请解释一下什么是人工智能？')">什么是人工智能？</button>
+                            <button class="example-btn" onclick="askQuestion('如何学习编程？')">如何学习编程？</button>
+                            <button class="example-btn" onclick="askQuestion('请介绍一下DeepSeek模型的特点')">DeepSeek模型特点</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-area">
+                    <div class="input-container">
+                        <textarea 
+                            id="messageInput" 
+                            class="message-input" 
+                            placeholder="请输入你的问题... (Shift+Enter 发送，或点击发送按钮)"
+                            rows="3"
+                        ></textarea>
+                        <button class="send-btn" id="sendBtn" title="点击发送或按 Shift+Enter">
+                            <span>➤ 发送</span>
+                        </button>
+                    </div>
+                    <div class="input-status" id="inputStatus"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>AI 正在思考中...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

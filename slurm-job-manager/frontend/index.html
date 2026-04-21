@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slurm作业管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        
+        .stat-value.pending { color: #ffc107; }
+        .stat-value.running { color: #00d4ff; }
+        .stat-value.completed { color: #2ed573; }
+        .stat-value.failed { color: #ff4757; }
+        .stat-value.cancelled { color: #a4a4a4; }
+        .stat-value.total { background: linear-gradient(90deg, #00d4ff, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .stat-label {
+            color: #888;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1100px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card h2 {
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #00d4ff, #7c3aed);
+            border-radius: 2px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,212,255,0.3);
+        }
+        
+        .btn-danger {
+            background: #ff4757;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #ff6b7a;
+        }
+        
+        .btn-success {
+            background: #2ed573;
+            color: #fff;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .job-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .job-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+        
+        .job-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .job-name {
+            font-weight: 600;
+            color: #7c3aed;
+            font-size: 16px;
+        }
+        
+        .job-id {
+            color: #666;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .job-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: rgba(255,193,7,0.2);
+            color: #ffc107;
+        }
+        
+        .status-running {
+            background: rgba(0,212,255,0.2);
+            color: #00d4ff;
+        }
+        
+        .status-completed {
+            background: rgba(46,213,115,0.2);
+            color: #2ed573;
+        }
+        
+        .status-failed {
+            background: rgba(255,71,87,0.2);
+            color: #ff4757;
+        }
+        
+        .status-cancelled {
+            background: rgba(164,164,164,0.2);
+            color: #a4a4a4;
+        }
+        
+        .status-unknown {
+            background: rgba(128,128,128,0.2);
+            color: #888;
+        }
+        
+        .job-info {
+            font-size: 13px;
+            color: #888;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        @media (max-width: 600px) {
+            .job-info {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .job-info div {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .job-info span:first-child {
+            color: #666;
+        }
+        
+        .job-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .node-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .node-name {
+            font-weight: 600;
+            color: #00d4ff;
+        }
+        
+        .node-state {
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 11px;
+        }
+        
+        .node-info {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .node-info div {
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .partition-badge {
+            display: inline-block;
+            background: rgba(124,58,237,0.2);
+            color: #7c3aed;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .toast-success {
+            background: #2ed573;
+        }
+        
+        .toast-error {
+            background: #ff4757;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            border-color: transparent;
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 25px;
+            min-width: 400px;
+            max-width: 500px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            font-size: 1.3em;
+            color: #00d4ff;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+        
+        .close:hover {
+            color: #fff;
+        }
+        
+        .node-delete-btn {
+            margin-top: 10px;
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Slurm作业管理系统</h1>
+            <p class="subtitle">分布式HPC作业提交与监控平台</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value pending" id="statPending">0</div>
+                <div class="stat-label">等待中</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value running" id="statRunning">0</div>
+                <div class="stat-label">运行中</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value completed" id="statCompleted">0</div>
+                <div class="stat-label">已完成</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value failed" id="statFailed">0</div>
+                <div class="stat-label">失败</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value cancelled" id="statCancelled">0</div>
+                <div class="stat-label">已取消</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value total" id="statTotal">0</div>
+                <div class="stat-label">总计</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('jobs')">作业列表</div>
+            <div class="tab" onclick="switchTab('submit')">提交作业</div>
+            <div class="tab" onclick="switchTab('nodes')">节点状态</div>
+        </div>
+        
+        <div class="grid" id="jobsPanel">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2>作业列表</h2>
+                    <button class="btn-primary" onclick="loadJobs()">刷新</button>
+                </div>
+                <div class="job-list" id="jobList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid hidden" id="submitPanel">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2>提交新作业</h2>
+                </div>
+                <div class="form-group">
+                    <label>作业名称 *</label>
+                    <input type="text" id="jobName" placeholder="例如: my_training_job">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>脚本路径</label>
+                        <input type="text" id="jobScript" placeholder="/path/to/script.sh">
+                    </div>
+                    <div class="form-group">
+                        <label>分区</label>
+                        <input type="text" id="jobPartition" value="default" placeholder="default">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>脚本内容 (如果未提供脚本路径)</label>
+                    <textarea id="jobScriptContent" placeholder="#!/bin/bash&#10;echo 'Hello Slurm'&#10;srun ./my_program"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>节点数</label>
+                        <input type="number" id="jobNodes" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>每节点任务数</label>
+                        <input type="number" id="jobTasks" value="1" min="1">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>每任务CPU数</label>
+                        <input type="number" id="jobCpus" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>每节点内存</label>
+                        <input type="text" id="jobMem" value="1G" placeholder="1G">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>GPU数量</label>
+                        <input type="number" id="jobGpus" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>时间限制</label>
+                        <input type="text" id="jobTimeLimit" value="01:00:00" placeholder="HH:MM:SS">
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="submitJob()">提交作业</button>
+            </div>
+        </div>
+        
+        <div class="grid hidden" id="nodesPanel">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2>节点状态</h2>
+                    <button class="btn-primary" onclick="loadNodes()">刷新</button>
+                    <button class="btn-success" onclick="showAddNodeModal()" style="margin-left: 10px;">+ 添加节点</button>
+                </div>
+                <div class="node-grid" id="nodeList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 添加节点模态框 -->
+        <div id="addNodeModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;">
+            <div style="background:#1a1a2e;margin:100px auto;padding:25px;border-radius:15px;max-width:500px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+                    <h3 style="color:#00d4ff;margin:0;">添加新节点</h3>
+                    <a href="javascript:document.getElementById('addNodeModal').style.display='none'" style="font-size:24px;color:#888;text-decoration:none;">&times;</a>
+                </div>
+                <div class="form-group">
+                    <label>节点名称 *</label>
+                    <input type="text" id="nodeName" placeholder="例如: gpu-node-3">
+                </div>
+                <div class="form-group">
+                    <label>CPU核心数</label>
+                    <input type="number" id="nodeCpus" value="32" min="1">
+                </div>
+                <div class="form-group">
+                    <label>内存 (MB)</label>
+                    <input type="number" id="nodeMem" value="128000" min="1">
+                </div>
+                <div class="form-group">
+                    <label>GPU数量</label>
+                    <input type="number" id="nodeGpus" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>分区 (逗号分隔)</label>
+                    <input type="text" id="nodePartitions" value="default,gpu" placeholder="default,gpu">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button class="btn-primary" onclick="addNode()">添加</button>
+                    <button class="btn-danger" onclick="document.getElementById('addNodeModal').style.display='none'">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8002/api';
+        let jobs = [];
+        let nodes = [];
+        
+        // 切换标签页
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('jobsPanel').classList.add('hidden');
+            document.getElementById('submitPanel').classList.add('hidden');
+            document.getElementById('nodesPanel').classList.add('hidden');
+            
+            if (tab === 'jobs') {
+                document.getElementById('jobsPanel').classList.remove('hidden');
+                loadJobs();
+            } else if (tab === 'submit') {
+                document.getElementById('submitPanel').classList.remove('hidden');
+            } else if (tab === 'nodes') {
+                document.getElementById('nodesPanel').classList.remove('hidden');
+                loadNodes();
+            }
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // 获取状态显示文本
+        function getStateText(state) {
+            const stateMap = {
+                'PENDING': '等待中',
+                'RUNNING': '运行中',
+                'COMPLETED': '已完成',
+                'FAILED': '失败',
+                'CANCELLED': '已取消',
+                'TIMEOUT': '超时',
+                'NODE_OFFLINE': '节点离线',
+                'UNKNOWN': '未知'
+            };
+            return stateMap[state] || state;
+        }
+        
+        // 获取状态CSS类
+        function getStateClass(state) {
+            const stateMap = {
+                'PENDING': 'status-pending',
+                'RUNNING': 'status-running',
+                'COMPLETED': 'status-completed',
+                'FAILED': 'status-failed',
+                'CANCELLED': 'status-cancelled',
+                'TIMEOUT': 'status-failed',
+                'NODE_OFFLINE': 'status-failed',
+                'UNKNOWN': 'status-unknown'
+            };
+            return stateMap[state] || 'status-unknown';
+        }
+        
+        // 加载作业列表
+        async function loadJobs() {
+            try {
+                const res = await fetch(`${API_BASE}/jobs`);
+                jobs = await res.json();
+                renderJobs();
+                updateStats();
+            } catch (e) {
+                console.error('加载作业失败:', e);
+                document.getElementById('jobList').innerHTML = 
+                    '<div class="empty-state">无法连接到服务器，请确保后端正在运行</div>';
+            }
+        }
+        
+        // 渲染作业列表
+        function renderJobs() {
+            const list = document.getElementById('jobList');
+            
+            if (jobs.length === 0) {
+                list.innerHTML = '<div class="empty-state">暂无作业</div>';
+                return;
+            }
+            
+            list.innerHTML = jobs.map(job => `
+                <div class="job-item">
+                    <div class="job-header">
+                        <div>
+                            <span class="job-name">${job.name}</span>
+                            <span class="job-id">ID: ${job.job_id}</span>
+                        </div>
+                        <span class="job-status ${getStateClass(job.state)}">${getStateText(job.state)}</span>
+                    </div>
+                    <div class="job-info">
+                        <div><span>分区:</span><span>${job.partition}</span></div>
+                        <div><span>节点:</span><span>${job.num_nodes}</span></div>
+                        <div><span>CPU:</span><span>${job.cpus_per_task}</span></div>
+                        <div><span>内存:</span><span>${job.mem_per_node}</span></div>
+                        <div><span>GPU:</span><span>${job.gpus}</span></div>
+                        <div><span>时间限制:</span><span>${job.time_limit}</span></div>
+                        <div><span>提交时间:</span><span>${new Date(job.submit_time).toLocaleString()}</span></div>
+                        <div><span>节点:</span><span>${job.node_list || '-'}</span></div>
+                    </div>
+                    ${job.state === 'PENDING' || job.state === 'RUNNING' ? `
+                        <div class="job-actions">
+                            <button class="btn-danger btn-small" onclick="cancelJob('${job.job_id}')">取消作业</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // 更新统计信息
+        function updateStats() {
+            const stats = {
+                pending: 0,
+                running: 0,
+                completed: 0,
+                failed: 0,
+                cancelled: 0,
+                total: jobs.length
+            };
+            
+            jobs.forEach(job => {
+                if (job.state === 'PENDING') stats.pending++;
+                else if (job.state === 'RUNNING') stats.running++;
+                else if (job.state === 'COMPLETED') stats.completed++;
+                else if (job.state === 'FAILED') stats.failed++;
+                else if (job.state === 'CANCELLED') stats.cancelled++;
+            });
+            
+            document.getElementById('statPending').textContent = stats.pending;
+            document.getElementById('statRunning').textContent = stats.running;
+            document.getElementById('statCompleted').textContent = stats.completed;
+            document.getElementById('statFailed').textContent = stats.failed;
+            document.getElementById('statCancelled').textContent = stats.cancelled;
+            document.getElementById('statTotal').textContent = stats.total;
+        }
+        
+        // 加载节点列表
+        async function loadNodes() {
+            try {
+                const res = await fetch(`${API_BASE}/nodes`);
+                console.log('节点响应状态:', res.status);
+                nodes = await res.json();
+                console.log('节点数据:', nodes);
+                renderNodes();
+            } catch (e) {
+                console.error('加载节点失败:', e);
+                document.getElementById('nodeList').innerHTML = 
+                    '<div class="empty-state">无法连接到服务器: ' + e.message + '</div>';
+            }
+        }
+        
+        // 渲染节点列表
+        function renderNodes() {
+            const list = document.getElementById('nodeList');
+            
+            if (nodes.length === 0) {
+                list.innerHTML = '<div class="empty-state">暂无节点数据</div>';
+                return;
+            }
+            
+            list.innerHTML = nodes.map(node => `
+                <div class="node-card">
+                    <div class="node-header">
+                        <span class="node-name">${node.name}</span>
+                        <span class="node-state" style="background: ${node.available ? 'rgba(46,213,115,0.2)' : 'rgba(255,71,87,0.2)'}; color: ${node.available ? '#2ed573' : '#ff4757'}">
+                            ${node.state}
+                        </span>
+                    </div>
+                    <div class="node-info">
+                        <div><span>CPU:</span><span>${node.cpus}</span></div>
+                        <div><span>内存:</span><span>${(node.mem_total / 1024).toFixed(1)}G</span></div>
+                        <div><span>可用内存:</span><span>${(node.mem_free / 1024).toFixed(1)}G</span></div>
+                        <div><span>GPU:</span><span>${node.gpus} / ${node.gpus + node.gpus_free}</span></div>
+                    </div>
+                    ${node.partitions.length > 0 ? `
+                        <div style="margin-top: 10px;">
+                            ${node.partitions.map(p => `<span class="partition-badge">${p}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // 提交作业
+        async function submitJob() {
+            const name = document.getElementById('jobName').value;
+            const script = document.getElementById('jobScript').value;
+            const scriptContent = document.getElementById('jobScriptContent').value;
+            const partition = document.getElementById('jobPartition').value;
+            const numNodes = parseInt(document.getElementById('jobNodes').value);
+            const numTasks = parseInt(document.getElementById('jobTasks').value);
+            const cpusPerTask = parseInt(document.getElementById('jobCpus').value);
+            const mem = document.getElementById('jobMem').value;
+            const gpus = parseInt(document.getElementById('jobGpus').value);
+            const timeLimit = document.getElementById('jobTimeLimit').value;
+            
+            if (!name) {
+                showToast('请输入作业名称', 'error');
+                return;
+            }
+            
+            if (!script && !scriptContent) {
+                showToast('请提供脚本路径或脚本内容', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/jobs`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        script: script,
+                        script_content: scriptContent,
+                        num_nodes: numNodes,
+                        num_tasks: numTasks,
+                        cpus_per_task: cpusPerTask,
+                        mem_per_node: mem,
+                        gpus: gpus,
+                        partition: partition,
+                        time_limit: timeLimit
+                    })
+                });
+                
+                if (res.ok) {
+                    showToast('作业提交成功');
+                    // 重置表单
+                    document.getElementById('jobName').value = '';
+                    document.getElementById('jobScript').value = '';
+                    document.getElementById('jobScriptContent').value = '';
+                    // 切换到作业列表
+                    switchTab('jobs');
+                    loadJobs();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '提交失败', 'error');
+                }
+            } catch (e) {
+                showToast('提交失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 取消作业
+        async function cancelJob(jobId) {
+            if (!confirm('确定要取消这个作业吗？')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/jobs/${jobId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    showToast('作业已取消');
+                    loadJobs();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '取消失败', 'error');
+                }
+            } catch (e) {
+                showToast('取消失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 初始化
+        async function init() {
+            await loadJobs();
+            
+            // 每10秒刷新一次
+            setInterval(() => {
+                loadJobs();
+            }, 10000);
+        }
+        
+        init();
+        
+        // ======== 节点管理 ========
+        
+        // 显示添加节点模态框
+        function showAddNodeModal() {
+            document.getElementById('addNodeModal').style.display = 'block';
+            // 重置表单
+            document.getElementById('nodeName').value = '';
+            document.getElementById('nodeCpus').value = '32';
+            document.getElementById('nodeMem').value = '128000';
+            document.getElementById('nodeGpus').value = '0';
+            document.getElementById('nodePartitions').value = 'default,gpu';
+        }
+        
+        // 隐藏添加节点模态框
+        function hideAddNodeModal() {
+            document.getElementById('addNodeModal').style.display = 'none';
+        }
+        
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideAddNodeModal();
+            }
+        });
+        
+        // 添加节点
+        async function addNode() {
+            const name = document.getElementById('nodeName').value.trim();
+            const cpus = parseInt(document.getElementById('nodeCpus').value);
+            const mem = parseInt(document.getElementById('nodeMem').value);
+            const gpus = parseInt(document.getElementById('nodeGpus').value);
+            const partitionsStr = document.getElementById('nodePartitions').value;
+            const partitions = partitionsStr.split(',').map(p => p.trim()).filter(p => p);
+            
+            if (!name) {
+                showToast('请输入节点名称', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/nodes`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        cpus: cpus,
+                        mem_total: mem,
+                        gpus: gpus,
+                        partitions: partitions
+                    })
+                });
+                
+                if (res.ok) {
+                    showToast('节点添加成功');
+                    hideAddNodeModal();
+                    loadNodes(); // 刷新节点列表
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '添加失败', 'error');
+                }
+            } catch (e) {
+                showToast('添加失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 删除节点
+        async function deleteNode(nodeName) {
+            if (!confirm(`确定要删除节点 ${nodeName} 吗？`)) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/nodes/${nodeName}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    showToast('节点已删除');
+                    loadNodes(); // 刷新节点列表
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('删除失败: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

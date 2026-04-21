@@ -1,0 +1,6 @@
+2026-04-09 10:28:58 | common | default_trace_id | INFO | Registered connector pool type: default
+2026-04-09 10:28:58 | common | default_trace_id | INFO | Registered connector pool type: default
+2026-04-09 10:29:04 | common | default_trace_id | INFO | Registered connector pool type: httpx
+2026-04-09 10:29:04 | common | default_trace_id | INFO | Registered connector pool type: httpx
+2026-04-09 10:29:04 | common | default_trace_id | WARNING | Client type 'llm_OpenAI' already registered
+2026-04-09 10:29:05 | common | default_trace_id | WARNING | Client type 'llm_OpenAI' already registered

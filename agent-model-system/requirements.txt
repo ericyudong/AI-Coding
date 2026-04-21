@@ -1,0 +1,37 @@
+# AI Agent 模型管理系统 - 依赖包
+
+# 核心依赖
+torch>=2.0.0
+transformers>=4.35.0
+huggingface-hub>=0.17.0
+
+# 数据处理
+datasets>=2.14.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# 微调框架
+llamafactory>=0.3.0
+
+# API和Web框架
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.0.0
+
+# 日志和监控
+python-dotenv>=1.0.0
+tensorboard>=2.14.0
+
+# 工具库
+click>=8.1.0
+tqdm>=4.66.0
+pyyaml>=6.0
+
+# 开发工具
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
+
+# 量化和优化（可选）
+bitsandbytes>=0.38.0
+peft>=0.4.0

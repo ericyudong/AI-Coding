@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU资源分配系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .card h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #00d4ff, #7c3aed);
+            border-radius: 2px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,212,255,0.3);
+        }
+        
+        .btn-danger {
+            background: #ff4757;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #ff6b7a;
+        }
+        
+        .btn-success {
+            background: #2ed573;
+            color: #fff;
+        }
+        
+        .btn-success:hover {
+            background: #7bed9f;
+        }
+        
+        .gpu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .gpu-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+        
+        .gpu-card:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .gpu-card.allocated {
+            border-color: #2ed573;
+        }
+        
+        .gpu-card.error {
+            border-color: #ff4757;
+        }
+        
+        .gpu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .gpu-name {
+            font-weight: 600;
+            color: #00d4ff;
+        }
+        
+        .gpu-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .status-available {
+            background: rgba(46,213,115,0.2);
+            color: #2ed573;
+        }
+        
+        .status-allocated {
+            background: rgba(0,212,255,0.2);
+            color: #00d4ff;
+        }
+        
+        .status-error {
+            background: rgba(255,71,87,0.2);
+            color: #ff4757;
+        }
+        
+        .gpu-info {
+            font-size: 13px;
+            color: #888;
+        }
+        
+        .gpu-info div {
+            margin: 5px 0;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        .app-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .app-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .app-name {
+            font-weight: 600;
+            color: #7c3aed;
+        }
+        
+        .app-status {
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 11px;
+        }
+        
+        .app-status-pending {
+            background: rgba(255,193,7,0.2);
+            color: #ffc107;
+        }
+        
+        .app-status-running {
+            background: rgba(46,213,115,0.2);
+            color: #2ed573;
+        }
+        
+        .app-status-stopped {
+            background: rgba(255,71,87,0.2);
+            color: #ff4757;
+        }
+        
+        .app-info {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .app-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .app-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .toast-success {
+            background: #2ed573;
+        }
+        
+        .toast-error {
+            background: #ff4757;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖥️ GPU资源分配系统</h1>
+            <p class="subtitle">NVIDIA GPU按卡分配给应用管理系统</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalGpus">0</div>
+                <div class="stat-label">总GPU数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="availableGpus">0</div>
+                <div class="stat-label">可用GPU</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalApps">0</div>
+                <div class="stat-label">运行应用</div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>GPU资源池</h2>
+                <div class="gpu-grid" id="gpuGrid">
+                    <div class="empty-state">加载中...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>应用管理</h2>
+                
+                <div class="form-group">
+                    <label>创建新应用</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="appName" placeholder="应用名称" style="flex: 2;">
+                        <input type="number" id="appMemory" placeholder="所需内存(MB)" style="flex: 1;">
+                        <button class="btn-primary" onclick="createApp()">创建</button>
+                    </div>
+                </div>
+                
+                <div class="app-list" id="appList">
+                    <div class="empty-state">暂无应用</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let gpus = [];
+        let apps = [];
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // 加载GPU数据
+        async function loadGpus() {
+            try {
+                const res = await fetch(`${API_BASE}/gpus`);
+                gpus = await res.json();
+                renderGpus();
+                updateStats();
+            } catch (e) {
+                console.error('加载GPU失败:', e);
+            }
+        }
+        
+        // 加载应用数据
+        async function loadApps() {
+            try {
+                const res = await fetch(`${API_BASE}/applications`);
+                apps = await res.json();
+                renderApps();
+                updateStats();
+            } catch (e) {
+                console.error('加载应用失败:', e);
+            }
+        }
+        
+        // 渲染GPU列表
+        function renderGpus() {
+            const grid = document.getElementById('gpuGrid');
+            if (gpus.length === 0) {
+                grid.innerHTML = '<div class="empty-state">暂无GPU数据</div>';
+                return;
+            }
+            
+            grid.innerHTML = gpus.map(gpu => {
+                const usedPercent = (gpu.used_memory / gpu.total_memory * 100).toFixed(1);
+                const statusClass = gpu.status === 'available' ? 'status-available' : 
+                                   gpu.status === 'allocated' ? 'status-allocated' : 'status-error';
+                const cardClass = gpu.status === 'allocated' ? 'allocated' : 
+                                 gpu.status === 'error' ? 'error' : '';
+                
+                return `
+                    <div class="gpu-card ${cardClass}">
+                        <div class="gpu-header">
+                            <span class="gpu-name">${gpu.name}</span>
+                            <span class="gpu-status ${statusClass}">${gpu.status === 'available' ? '空闲' : gpu.status === 'allocated' ? '已分配' : '错误'}</span>
+                        </div>
+                        <div class="gpu-info">
+                            <div>ID: ${gpu.id}</div>
+                            <div>总内存: ${gpu.total_memory} MB</div>
+                            <div>已用: ${gpu.used_memory} MB</div>
+                            ${gpu.assigned_app ? `<div>分配给: ${gpu.assigned_app}</div>` : ''}
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${usedPercent}%"></div>
+                        </div>
+                        ${gpu.status === 'available' ? `
+                            <div style="margin-top: 10px;">
+                                <select id="allocate-app-${gpu.id}">
+                                    <option value="">选择应用...</option>
+                                    ${apps.filter(a => a.status === 'pending').map(a => 
+                                        `<option value="${a.id}">${a.name} (需要${a.required_memory}MB)</option>`
+                                    ).join('')}
+                                </select>
+                                <button class="btn-success" style="width: 100%; margin-top: 8px;" 
+                                    onclick="allocateGpu('${gpu.id}')">分配给应用</button>
+                            </div>
+                        ` : gpu.status === 'allocated' ? `
+                            <button class="btn-danger" style="width: 100%; margin-top: 10px;" 
+                                onclick="releaseGpu('${gpu.id}')">释放GPU</button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 渲染应用列表
+        function renderApps() {
+            const list = document.getElementById('appList');
+            if (apps.length === 0) {
+                list.innerHTML = '<div class="empty-state">暂无应用</div>';
+                return;
+            }
+            
+            list.innerHTML = apps.map(app => {
+                const statusClass = app.status === 'pending' ? 'app-status-pending' :
+                                   app.status === 'running' ? 'app-status-running' : 'app-status-stopped';
+                const statusText = app.status === 'pending' ? '等待中' : 
+                                  app.status === 'running' ? '运行中' : '已停止';
+                
+                return `
+                    <div class="app-item">
+                        <div class="app-header">
+                            <span class="app-name">${app.name}</span>
+                            <span class="app-status ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="app-info">
+                            <div>ID: ${app.id}</div>
+                            <div>需要内存: ${app.required_memory} MB</div>
+                            <div>分配GPU: ${app.assigned_gpu || '未分配'}</div>
+                            <div>创建时间: ${app.created_at}</div>
+                        </div>
+                        <div class="app-actions">
+                            ${app.status === 'pending' ? `
+                                <button class="btn-danger" onclick="deleteApp('${app.id}')">删除</button>
+                            ` : app.status === 'running' ? `
+                                <button class="btn-danger" onclick="releaseGpu('${app.assigned_gpu}')">释放GPU</button>
+                            ` : `
+                                <button class="btn-danger" onclick="deleteApp('${app.id}')">删除</button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 更新统计
+        function updateStats() {
+            document.getElementById('totalGpus').textContent = gpus.length;
+            document.getElementById('availableGpus').textContent = gpus.filter(g => g.status === 'available').length;
+            document.getElementById('totalApps').textContent = apps.filter(a => a.status === 'running').length;
+        }
+        
+        // 创建应用
+        async function createApp() {
+            const name = document.getElementById('appName').value;
+            const memory = parseInt(document.getElementById('appMemory').value);
+            
+            if (!name || !memory) {
+                showToast('请填写应用名称和所需内存', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/applications`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        required_memory: memory,
+                        status: 'pending'
+                    })
+                });
+                
+                if (res.ok) {
+                    showToast('应用创建成功');
+                    document.getElementById('appName').value = '';
+                    document.getElementById('appMemory').value = '';
+                    await loadApps();
+                    await loadGpus();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '创建失败', 'error');
+                }
+            } catch (e) {
+                showToast('创建失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 分配GPU
+        async function allocateGpu(gpuId) {
+            const select = document.getElementById(`allocate-app-${gpuId}`);
+            const appId = select.value;
+            
+            if (!appId) {
+                showToast('请选择应用', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/allocate`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({gpu_id: gpuId, app_id: appId})
+                });
+                
+                if (res.ok) {
+                    showToast('GPU分配成功');
+                    await loadGpus();
+                    await loadApps();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '分配失败', 'error');
+                }
+            } catch (e) {
+                showToast('分配失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 释放GPU
+        async function releaseGpu(gpuId) {
+            try {
+                const res = await fetch(`${API_BASE}/release`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({gpu_id: gpuId})
+                });
+                
+                if (res.ok) {
+                    showToast('GPU释放成功');
+                    await loadGpus();
+                    await loadApps();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '释放失败', 'error');
+                }
+            } catch (e) {
+                showToast('释放失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 删除应用
+        async function deleteApp(appId) {
+            try {
+                const res = await fetch(`${API_BASE}/applications/${appId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    showToast('应用删除成功');
+                    await loadGpus();
+                    await loadApps();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('删除失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 初始化
+        async function init() {
+            await loadGpus();
+            await loadApps();
+            
+            // 每5秒刷新一次
+            setInterval(() => {
+                loadGpus();
+                loadApps();
+            }, 5000);
+        }
+        
+        init();
+    </script>
+</body>
+</html>

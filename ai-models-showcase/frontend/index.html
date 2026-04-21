@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Models Showcase</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>AI Models Showcase</h1>
+    </header>
+    <nav>
+        <a href="#models">Models</a>
+        <a href="#datasets">Datasets</a>
+        <a href="#about">About</a>
+        <a href="#blogs">Blogs</a>
+        <a href="#docs">Docs</a>
+    </nav>
+    <div class="container">
+        <div class="filters">
+            <button id="trending-btn">Trending</button>
+            <button id="all-btn" class="active">All Models</button>
+            <select id="category-select">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+        <div id="models-container" class="models">
+            <!-- Models will be loaded here -->
+        </div>
+        <div class="pagination">
+            <button id="prev-btn">Previous</button>
+            <span id="page-info">Page 1</span>
+            <button id="next-btn">Next</button>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2026 AI Models Showcase. <a href="#">Privacy Policy</a> | <a href="#">Contact</a></p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>

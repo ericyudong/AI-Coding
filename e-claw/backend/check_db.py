@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('c:/eswin/emaas/e-claw/backend/eclaw.db')
+cursor = conn.cursor()
+cursor.execute('SELECT name FROM sqlite_master WHERE type="table"')
+print('Tables:', cursor.fetchall())
+cursor.execute('SELECT * FROM tenants')
+print('Tenants:', cursor.fetchall())
+cursor.execute('SELECT * FROM users')
+print('Users:', cursor.fetchall())
+conn.close()

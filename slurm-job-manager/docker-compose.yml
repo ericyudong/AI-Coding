@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Slurm控制器
+  slurmctld:
+    image: ghcr.io/sylabs/slurm:latest
+    hostname: slurm-controller
+    container_name: slurmctld
+    privileged: true
+    ports:
+      - "6817:6817"
+      - "6818:6818"
+    volumes:
+      - slurm-etc:/etc/slurm
+      - slurm-var:/var/log/slurm
+      - slurm-spool:/var/spool/slurm/ctld
+    environment:
+      - SLURM_CLUSTER_NAME=localcluster
+      - SLURM_MUNGE_KEY=/etc/munge/munge.key
+    networks:
+      - slurm-network
+    command: slurmctld -D -c
+
+  # Slurm计算节点
+  slurmd:
+    image: ghcr.io/sylabs/slurm:latest
+    hostname: slurm-node
+    container_name: slurmd
+    privileged: true
+    ports:
+      - "6818:6818"
+    volumes:
+      - slurm-etc:/etc/slurm
+      - slurm-var:/var/log/slurm
+      - slurm-spool-d:/var/spool/slurm/d
+    environment:
+      - SLURM_CLUSTER_NAME=localcluster
+      - SLURM_MUNGE_KEY=/etc/munge/munge.key
+      - SLURM_CONTROLLER=slurmctld
+    networks:
+      - slurm-network
+    depends_on:
+      - slurmctld
+    command: slurmd -D
+
+  # Munge服务 (用于认证)
+  munge:
+    image: ghcr.io/sylabs/slurm:latest
+    container_name: munge
+    privileged: true
+    volumes:
+      - munge-key:/etc/munge
+    networks:
+      - slurm-network
+    command: tail -f /dev/null
+
+networks:
+  slurm-network:
+    driver: bridge
+
+volumes:
+  slurm-etc:
+  slurm-var:
+  slurm-spool:
+  slurm-spool-d:
+  munge-key:

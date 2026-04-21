@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  deepseek-qa:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-False}
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    networks:
+      - deepseek-network
+
+networks:
+  deepseek-network:
+    driver: bridge
