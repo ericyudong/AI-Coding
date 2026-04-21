@@ -20,7 +20,7 @@
 #### Hermes Agent ⚡
 - **简介**: 由Nous Research构建的自我改进型AI代理，具有内置学习循环。支持多平台通信、自动化任务、技能创建和记忆管理。
 - **English**: Self-improving AI agent built by Nous Research with built-in learning loop. Supports multi-platform communication, automation, skill creation, and memory management.
-- **核心特性**: 
+- **核心特性**:
   - 终端界面 (Terminal UI)
   - 多平台支持 (Telegram, Discord, Slack等)
   - 技能自动创建和改进 (Automatic skill creation and improvement)
@@ -36,6 +36,11 @@
 - **简介**: 基于OpenClaw的中文AI代理系统，针对中文环境优化。
 - **English**: Chinese AI agent system based on OpenClaw, optimized for Chinese environments.
 - **核心特性**: 中文语言模型集成、本地知识库、搜索引擎集成
+
+#### Agent Model System 🤖
+- **简介**: 强大的三Agent协作系统，从HuggingFace自动下载Deepseek模型，进行微调并部署到本地。
+- **English**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
+- **核心特性**: InteractionAgent（交互协调）、ModelDownloadAgent（自动下载）、ModelFinetuneAgent（自动微调与部署）
 
 ---
 
@@ -66,14 +71,19 @@
 ### 🎨 3. 开发工具与基础设施 / Development Tools & Infrastructure
 
 #### CSGHub 🏢
-- **简介**: 专为企业设计的LLM资产管理平台，作为私有化的Huggingface替代方案。
-- **English**: LLM asset management platform designed for enterprise, as a private Huggingface alternative.
+- **简介**: 专为企业设计的LLM资产管理平台前端，作为私有化的Huggingface替代方案。
+- **English**: LLM asset management platform frontend designed for enterprise, as a private Huggingface alternative.
 - **核心特性**:
   - 统一模型管理 (Unified model management)
   - 数据集管理 (Dataset management)
   - Space应用部署 (Space deployment)
   - 企业级安全控制 (Enterprise-level security)
   - 本地化部署支持 (On-premises deployment)
+
+#### CSGHub Server 🏢
+- **简介**: CSGHub开源大模型资产管理平台的服务端，提供基于REST API的模型、数据集等资产管理功能。
+- **English**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
+- **核心特性**: 用户和组织管理、模型/数据集托管、Git LFS支持、内容审核、活跃度跟踪
 
 #### GPUStack 🖥️
 - **简介**: GPU资源管理和调度平台，优化GPU集群使用效率。
@@ -102,23 +112,24 @@
   - 审计日志记录 (Audit logging)
 - **技术栈**: FastAPI, Vue 3, PostgreSQL, Redis, Docker, Kubernetes
 
----
-
-### 🧠 5. 专用AI系统 / Specialized AI Systems
-
 #### AI QA System
 - **简介**: 基于LangChain的智能问答系统，支持文档理解和上下文问答。
 - **English**: Intelligent Q&A system based on LangChain, supporting document understanding and context-based question answering.
 - **核心特性**: RAG检索、文档向量索引、多语言支持
 
-#### AI Models Showcase
-- **简介**: AI模型展示平台，用于演示和测试各种AI模型能力。
-- **English**: AI model showcase platform for demonstrating and testing various AI model capabilities.
-- **核心特性**: 模型对比、交互式演示、性能评估
+#### DeepSeek QA System 💬
+- **简介**: 基于FastAPI + DeepSeek大模型的智能问答系统，支持多轮对话和对话历史管理。
+- **English**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
+- **核心特性**: DeepSeek大模型集成、多轮对话、现代化Web界面、异步处理、对话记录管理
+
+#### JIRA System 👔
+- **简介**: 项目管理与问题跟踪系统（类JIRA），支持用户管理、项目管理、问题追踪和评论功能。
+- **English**: Project management and issue tracking system (JIRA-like), supporting user management, project management, issue tracking, and commenting.
+- **技术栈**: FastAPI, Vue 3, PrimeVue, SQLite
 
 ---
 
-### 📦 6. 数据处理与资源管理 / Data Processing & Resources
+### 📦 5. 数据处理与资源管理 / Data Processing & Resources
 
 #### Data-Juicer-main
 - **简介**: Data-Juicer的主要版本，包含完整的数据处理流水线。
@@ -127,15 +138,6 @@
 #### Wanwu
 - **简介**: 万物数据平台，专注于AI数据的收集、处理和分析。
 - **English**: Wanwu data platform focusing on AI data collection, processing, and analysis.
-
-#### CSGHub Server 🏢
-- **简介**: CSGHub开源大模型资产管理平台的服务端，提供基于REST API的模型、数据集等资产管理功能。
-- **English**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
-- **核心特性**: 用户和组织管理、模型/数据集托管、Git LFS支持、内容审核、活跃度跟踪
-
----
-
-### 🖥️ 7. 资源与作业管理 / Resource & Job Management
 
 #### GPU Allocator 🖥️
 - **简介**: NVIDIA GPU按卡分配的Web管理系统。
@@ -149,7 +151,12 @@
 
 ---
 
-### 🔧 8. 实用工具与脚本 / Utilities & Scripts
+### 💬 6. 工具与演示系统 / Tools & Showcase Systems
+
+#### AI Models Showcase
+- **简介**: AI模型展示平台，用于演示和测试各种AI模型能力。
+- **English**: AI model showcase platform for demonstrating and testing various AI model capabilities.
+- **核心特性**: 模型对比、交互式演示、性能评估
 
 #### Easy Learn AI
 - **简介**: AI学习和评估网站，提供交互式学习体验。
@@ -158,10 +165,6 @@
 #### ClawManager
 - **简介**: AI代理管理工具，用于监控和管理多个AI代理实例。
 - **English**: AI agent management tool for monitoring and managing multiple AI agent instances.
-
-#### Agent Model System 🤖
-- **简介**: 强大的三Agent协作系统，从HuggingFace自动下载Deepseek模型，进行微调并部署到本地。
-- **English**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
 - **核心特性**: InteractionAgent（交互协调）、ModelDownloadAgent（自动下载）、ModelFinetuneAgent（自动微调与部署）
 
 ---
