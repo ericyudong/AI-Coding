@@ -128,9 +128,28 @@
 - **简介**: 万物数据平台，专注于AI数据的收集、处理和分析。
 - **English**: Wanwu data platform focusing on AI data collection, processing, and analysis.
 
+#### CSGHub Server 🏢
+- **简介**: CSGHub开源大模型资产管理平台的服务端，提供基于REST API的模型、数据集等资产管理功能。
+- **English**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
+- **核心特性**: 用户和组织管理、模型/数据集托管、Git LFS支持、内容审核、活跃度跟踪
+
 ---
 
-### 🔧 7. 实用工具与脚本 / Utilities & Scripts
+### 🖥️ 7. 资源与作业管理 / Resource & Job Management
+
+#### GPU Allocator 🖥️
+- **简介**: NVIDIA GPU按卡分配的Web管理系统。
+- **English**: Web management system for allocating NVIDIA GPUs by card.
+- **核心特性**: GPU资源池管理、应用管理、按卡分配、实时状态刷新、内存使用可视化
+
+#### Slurm Job Manager 👔
+- **简介**: 基于Slurm的分布式HPC作业管理与监控Web前端系统。
+- **English**: Distributed HPC job management and monitoring web frontend system based on Slurm.
+- **核心特性**: 作业提交与取消、实时监控（每10秒刷新）、节点状态查看、作业统计分析、深色主题UI
+
+---
+
+### 🔧 8. 实用工具与脚本 / Utilities & Scripts
 
 #### Easy Learn AI
 - **简介**: AI学习和评估网站，提供交互式学习体验。
@@ -139,6 +158,25 @@
 #### ClawManager
 - **简介**: AI代理管理工具，用于监控和管理多个AI代理实例。
 - **English**: AI agent management tool for monitoring and managing multiple AI agent instances.
+
+#### Agent Model System 🤖
+- **简介**: 强大的三Agent协作系统，从HuggingFace自动下载Deepseek模型，进行微调并部署到本地。
+- **English**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
+- **核心特性**: InteractionAgent（交互协调）、ModelDownloadAgent（自动下载）、ModelFinetuneAgent（自动微调与部署）
+
+---
+
+### 💬 9. 问答与协作系统 / Q&A & Collaboration Systems
+
+#### DeepSeek QA System 💬
+- **简介**: 基于FastAPI + DeepSeek大模型的智能问答系统，支持多轮对话和对话历史管理。
+- **English**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
+- **核心特性**: DeepSeek大模型集成、多轮对话、现代化Web界面、异步处理、对话记录管理
+
+#### JIRA System 👔
+- **简介**: 项目管理与问题跟踪系统（类JIRA），支持用户管理、项目管理、问题追踪和评论功能。
+- **English**: Project management and issue tracking system (JIRA-like), supporting user management, project management, issue tracking, and commenting.
+- **技术栈**: FastAPI, Vue 3, PrimeVue, SQLite
 
 ---
 
@@ -149,32 +187,36 @@ Eric's AI Project Collection
 ├── 🤖 Intelligent Agent Systems (智能代理系统)
 │   ├── hermes-agent/      # Self-improving agent platform
 │   ├── openclaw-main/    # AI agent framework
-│   └── jiuwenclaw/       # Chinese AI agent system
+│   ├── jiuwenclaw/       # Chinese AI agent system
+│   └── agent-model-system/ # Three-agent collaboration system
 │
 ├── 🎯 Model Training (模型训练)
 │   ├── LlamaFactory/      # LLM fine-tuning platform
 │   └── data-juicer/      # Data processing OS
 │
 ├── 🎨 Development Tools (开发工具)
-│   ├── csghub/           # LLM asset management platform
+│   ├── csghub/           # LLM asset management frontend
+│   ├── csghub-server/    # LLM asset management server
 │   ├── gpustack-main/    # GPU resource management
 │   └── mlflow/           # ML experiment tracking
 │
 ├── 🏢 Enterprise Apps (企业应用)
-│   ├── AI-Coding/
-│   │   ├── e-claw/       # Enterprise AI agent platform
-│   │   ├── ai-qa-system/ # Intelligent Q&A system
-│   │   └── ai-models-showcase/ # AI model showcase
+│   ├── e-claw/           # Enterprise AI agent platform
+│   ├── ai-qa-system/     # Intelligent Q&A system
+│   ├── deepseek-qa-system/ # DeepSeek Q&A system
+│   ├── ai-models-showcase/ # AI model showcase
 │   └── ClawManager-main/ # AI agent manager
 │
 ├── 📦 Data Processing (数据处理)
 │   ├── wanwu/           # Wanwu data platform
 │   └── easy-learn-ai/    # AI learning website
 │
-└── 🔧 Utilities (实用工具)
-    ├── Testing scripts
-    ├── Configuration files
-    └── Documentation
+├── 🖥️ Resource Management (资源管理)
+│   ├── gpu-allocator/   # GPU allocation system
+│   └── slurm-job-manager/ # Slurm job management
+│
+└── 💬 Collaboration Systems (协作系统)
+    └── jira-system/      # Project management system
 ```
 
 ---
@@ -236,8 +278,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 | **LlamaFactory** | [https://github.com/hiyouga/LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) |
 | **Data-Juicer** | [https://datajuicer.github.io/data-juicer/](https://datajuicer.github.io/data-juicer/) |
 | **CSGHub** | [https://github.com/OpenCSGs/csghub](https://github.com/OpenCSGs/csghub) |
-| **E-Claw** | [AI-Coding/e-claw/README.md](./AI-Coding/e-claw/README.md) |
+| **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
 | **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
+| **GPU Allocator** | [gpu-allocator/README.md](./gpu-allocator/README.md) |
+| **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
+| **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
+| **Slurm Job Manager** | [slurm-job-manager/README.md](./slurm-job-manager/README.md) |
 
 ---
 
@@ -267,6 +313,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - ** document processing and analysis** (文档处理分析)
 - ** knowledge management** (知识管理)
 - ** workflow automation** (工作流自动化)
+- ** issue tracking and management** (问题追踪与管理)
+- ** GPU resource allocation** (GPU资源分配)
+- ** HPC job scheduling** (HPC作业调度)
 
 ### 🎓 教育研究 / Education & Research
 - ** personalized learning assistants** (个性化学习助手)
@@ -332,7 +381,7 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 项目统计 / Project Statistics
 
-- **总项目数 / Total Projects**: 15+
+- **总项目数 / Total Projects**: 20+
 - **语言支持 / Language Support**: Python, TypeScript, JavaScript
 - **总代码行数 / Total Lines of Code**: 100,000+
 - **开源协议 / Open Source Licenses**: MIT, Apache 2.0
