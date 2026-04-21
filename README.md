@@ -169,19 +169,6 @@
 
 ---
 
-### 💬 9. 问答与协作系统 / Q&A & Collaboration Systems
-
-#### DeepSeek QA System 💬
-- **简介**: 基于FastAPI + DeepSeek大模型的智能问答系统，支持多轮对话和对话历史管理。
-- **English**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
-- **核心特性**: DeepSeek大模型集成、多轮对话、现代化Web界面、异步处理、对话记录管理
-
-#### JIRA System 👔
-- **简介**: 项目管理与问题跟踪系统（类JIRA），支持用户管理、项目管理、问题追踪和评论功能。
-- **English**: Project management and issue tracking system (JIRA-like), supporting user management, project management, issue tracking, and commenting.
-- **技术栈**: FastAPI, Vue 3, PrimeVue, SQLite
-
----
 
 ## 🗂️ 项目架构总览 / Project Architecture Overview
 
@@ -208,18 +195,16 @@ Eric's AI Project Collection
 │   ├── ai-qa-system/     # Intelligent Q&A system
 │   ├── deepseek-qa-system/ # DeepSeek Q&A system
 │   ├── ai-models-showcase/ # AI model showcase
+│   ├── jira-system/      # Project management system
 │   └── ClawManager-main/ # AI agent manager
 │
 ├── 📦 Data Processing (数据处理)
 │   ├── wanwu/           # Wanwu data platform
 │   └── easy-learn-ai/    # AI learning website
 │
-├── 🖥️ Resource Management (资源管理)
-│   ├── gpu-allocator/   # GPU allocation system
-│   └── slurm-job-manager/ # Slurm job management
-│
-└── 💬 Collaboration Systems (协作系统)
-    └── jira-system/      # Project management system
+└── 🖥️ Resource Management (资源管理)
+    ├── gpu-allocator/   # GPU allocation system
+    └── slurm-job-manager/ # Slurm job management
 ```
 
 ---
