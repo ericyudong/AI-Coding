@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGENT HARNESS // Control Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Ambient background layers -->
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow--a" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow--b" aria-hidden="true"></div>
+    <div class="scanline" aria-hidden="true"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-mark">
+                    <span class="logo-core"></span>
+                    <span class="logo-ring"></span>
+                </div>
+                <div class="brand">
+                    <h1>AGENT&nbsp;HARNESS</h1>
+                    <span class="brand-sub">RUNTIME CONTROL CONSOLE</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="pulse-viz" id="pulse-viz" title="系统活动脉冲">
+                    <span class="pulse-bar"></span><span class="pulse-bar"></span><span class="pulse-bar"></span>
+                    <span class="pulse-bar"></span><span class="pulse-bar"></span><span class="pulse-bar"></span>
+                    <span class="pulse-bar"></span><span class="pulse-bar"></span><span class="pulse-bar"></span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="clock" id="clock">--:--:--</div>
+                <span id="connection-status" class="status-badge">
+                    <span class="badge-dot"></span>连接中
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="side-label">MODULES</div>
+                <nav class="nav-menu">
+                    <a href="#" class="nav-item active" data-tab="dashboard">
+                        <span class="nav-index">01</span>
+                        <span class="nav-text">仪表盘</span>
+                        <span class="nav-glow"></span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="agent">
+                        <span class="nav-index">02</span>
+                        <span class="nav-text">Agent 管理</span>
+                        <span class="nav-glow"></span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="memory">
+                        <span class="nav-index">03</span>
+                        <span class="nav-text">内存管理</span>
+                        <span class="nav-glow"></span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="telemetry">
+                        <span class="nav-index">04</span>
+                        <span class="nav-text">遥测数据</span>
+                        <span class="nav-glow"></span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="evolution">
+                        <span class="nav-index">05</span>
+                        <span class="nav-text">自进化</span>
+                        <span class="nav-glow"></span>
+                    </a>
+                </nav>
+                <div class="side-footer">
+                    <div class="side-footer-row"><span>CORE</span><span class="mono">v1.0.0</span></div>
+                    <div class="side-footer-row"><span>UPTIME</span><span class="mono" id="uptime">0s</span></div>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Dashboard Tab -->
+                <section id="dashboard" class="tab-content active">
+                    <div class="page-head">
+                        <h2>系统概览<span class="head-cursor">_</span></h2>
+                        <p class="page-sub">SYSTEM OVERVIEW · 实时监控Agent运行时状态</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card stat-card--agent reveal">
+                            <div class="stat-top">
+                                <span class="stat-tag">AGENT</span>
+                                <span class="stat-led led--idle" id="agent-led"></span>
+                            </div>
+                            <div class="stat-value" id="agent-state">--</div>
+                            <div class="stat-label">Agent 运行状态</div>
+                            <div class="stat-spark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                        </div>
+                        <div class="stat-card stat-card--memory reveal" style="--d:.08s">
+                            <div class="stat-top">
+                                <span class="stat-tag">MEMORY</span>
+                                <span class="stat-led led--mem"></span>
+                            </div>
+                            <div class="stat-value" id="memory-count">0</div>
+                            <div class="stat-label">记忆条目总数</div>
+                            <div class="stat-spark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                        </div>
+                        <div class="stat-card stat-card--session reveal" style="--d:.16s">
+                            <div class="stat-top">
+                                <span class="stat-tag">TELEMETRY</span>
+                                <span class="stat-led led--tel"></span>
+                            </div>
+                            <div class="stat-value" id="session-count">0</div>
+                            <div class="stat-label">遥测会话数</div>
+                            <div class="stat-spark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                        </div>
+                        <div class="stat-card stat-card--evo reveal" style="--d:.24s">
+                            <div class="stat-top">
+                                <span class="stat-tag">EVOLUTION</span>
+                                <span class="stat-led led--evo"></span>
+                            </div>
+                            <div class="stat-value" id="evolution-count">0</div>
+                            <div class="stat-label">进化分析次数</div>
+                            <div class="stat-spark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="panel reveal" style="--d:.3s">
+                            <div class="panel-head">
+                                <h3>快速操作</h3><span class="panel-tag">QUICK</span>
+                            </div>
+                            <div class="quick-actions">
+                                <button class="btn btn-primary" onclick="showTab('agent')">
+                                    <span class="btn-ico">▶</span> 运行任务
+                                </button>
+                                <button class="btn btn-ghost" onclick="refreshStatus()">
+                                    <span class="btn-ico">⟳</span> 刷新状态
+                                </button>
+                                <button class="btn btn-ghost" onclick="showTab('evolution')">
+                                    <span class="btn-ico">◈</span> 进化分析
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="panel panel--log reveal" style="--d:.38s">
+                            <div class="panel-head">
+                                <h3>实时日志</h3>
+                                <span class="live-tag"><span class="live-dot"></span>LIVE</span>
+                            </div>
+                            <div id="log-container" class="log-container">
+                                <div class="log-entry"><span class="log-time">[--:--:--]</span> 等待连接...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Agent Tab -->
+                <section id="agent" class="tab-content">
+                    <div class="page-head">
+                        <h2>Agent 管理<span class="head-cursor">_</span></h2>
+                        <p class="page-sub">AGENT CONTROL · 任务提交与生命周期控制</p>
+                    </div>
+
+                    <div class="panel reveal">
+                        <div class="panel-head"><h3>任务提交</h3><span class="panel-tag">DISPATCH</span></div>
+                        <div class="form-group">
+                            <label for="task-input">任务描述 <span class="label-hint">// 输入后将由当前Agent执行</span></label>
+                            <textarea id="task-input" rows="3" placeholder="例如：分析最近一次会话的性能数据..."></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="runTask()"><span class="btn-ico">▶</span> 运行</button>
+                            <button class="btn btn-warn" onclick="pauseAgent()"><span class="btn-ico">‖</span> 暂停</button>
+                            <button class="btn btn-ok" onclick="resumeAgent()"><span class="btn-ico">▷</span> 恢复</button>
+                            <button class="btn btn-danger" onclick="stopAgent()"><span class="btn-ico">■</span> 停止</button>
+                        </div>
+                    </div>
+
+                    <div class="panel reveal" style="--d:.1s">
+                        <div class="panel-head"><h3>执行结果</h3><span class="panel-tag">OUTPUT</span></div>
+                        <div id="result-container" class="result-container">
+                            <p class="placeholder">▍ 暂无结果 — 提交任务后在此查看输出</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Memory Tab -->
+                <section id="memory" class="tab-content">
+                    <div class="page-head">
+                        <h2>内存管理<span class="head-cursor">_</span></h2>
+                        <p class="page-sub">MEMORY BANKS · 短期 / 工作 / 长期记忆监控</p>
+                    </div>
+
+                    <div class="mem-grid">
+                        <div class="mem-card reveal">
+                            <div class="mem-head"><span class="mem-dot dot--stm"></span>短期记忆</div>
+                            <div class="mem-value" id="stm-count">0</div>
+                            <div class="mem-bar"><span class="mem-fill fill--stm" id="stm-bar"></span></div>
+                            <div class="mem-sub">SHORT-TERM · LRU淘汰</div>
+                        </div>
+                        <div class="mem-card reveal" style="--d:.08s">
+                            <div class="mem-head"><span class="mem-dot dot--wm"></span>工作记忆</div>
+                            <div class="mem-value" id="wm-count">0</div>
+                            <div class="mem-bar"><span class="mem-fill fill--wm" id="wm-bar"></span></div>
+                            <div class="mem-sub">WORKING · 活跃槽位</div>
+                        </div>
+                        <div class="mem-card reveal" style="--d:.16s">
+                            <div class="mem-head"><span class="mem-dot dot--ltm"></span>长期记忆</div>
+                            <div class="mem-value" id="ltm-count">0</div>
+                            <div class="mem-bar"><span class="mem-fill fill--ltm" id="ltm-bar"></span></div>
+                            <div class="mem-sub">LONG-TERM · 持久化存储</div>
+                        </div>
+                    </div>
+
+                    <div class="panel reveal" style="--d:.24s">
+                        <div class="panel-head"><h3>记忆检索</h3><span class="panel-tag">RETRIEVE</span></div>
+                        <div class="search-bar">
+                            <input type="text" id="memory-search" placeholder="输入关键词检索记忆库..." onkeydown="if(event.key==='Enter')searchMemory()">
+                            <button class="btn btn-primary" onclick="searchMemory()">检索</button>
+                        </div>
+                        <div id="memory-results" class="memory-results"></div>
+                    </div>
+
+                    <div class="panel reveal" style="--d:.3s">
+                        <div class="panel-head"><h3>维护操作</h3><span class="panel-tag">OPS</span></div>
+                        <button class="btn btn-ghost" onclick="consolidateMemory()"><span class="btn-ico">◈</span> 整合记忆 (Consolidate)</button>
+                    </div>
+                </section>
+
+                <!-- Telemetry Tab -->
+                <section id="telemetry" class="tab-content">
+                    <div class="page-head">
+                        <h2>遥测数据<span class="head-cursor">_</span></h2>
+                        <p class="page-sub">TELEMETRY STREAM · 运行时行为与性能追踪</p>
+                    </div>
+                    <div class="panel reveal">
+                        <div class="panel-head">
+                            <h3>会话历史</h3>
+                            <button class="btn btn-ghost btn-sm" onclick="loadSessions()"><span class="btn-ico">⟳</span> 刷新</button>
+                        </div>
+                        <div id="sessions-list" class="sessions-list">
+                            <p class="placeholder">▍ 点击刷新加载会话记录</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Evolution Tab -->
+                <section id="evolution" class="tab-content">
+                    <div class="page-head">
+                        <h2>自进化中心<span class="head-cursor">_</span></h2>
+                        <p class="page-sub">SELF-EVOLUTION · 基于运行时数据的策略优化</p>
+                    </div>
+
+                    <div class="panel panel--evo reveal">
+                        <div class="evo-hero">
+                            <div class="evo-helix" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                            <div class="evo-copy">
+                                <h3>进化分析引擎</h3>
+                                <p>对已收集的遥测数据执行分析，生成性能洞察与优化建议，驱动Agent策略迭代。</p>
+                                <button class="btn btn-primary" onclick="triggerEvolution()">
+                                    <span class="btn-ico">◈</span> 触发分析
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel reveal" style="--d:.1s">
+                        <div class="panel-head"><h3>分析结果</h3><span class="panel-tag">INSIGHTS</span></div>
+                        <div id="evolution-results" class="evolution-results">
+                            <p class="placeholder">▍ 暂无分析结果</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

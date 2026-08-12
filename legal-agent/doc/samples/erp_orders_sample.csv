@@ -1,0 +1,3 @@
+order_no,customer_name,contract_code,product_name,qty,unit_price,amount,order_date,status
+SO-2026-001,示例客户A,,智能合同套餐,2,50000,100000,2026-08-01,open
+SO-2026-002,示例客户B,,履约助手模块,1,80000,80000,2026-08-05,open

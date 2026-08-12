@@ -1,0 +1,713 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    Organization?  @relation("OrgTree", fields: [parentId], references: [id])
+  children  Organization[] @relation("OrgTree")
+  users     User[]
+  requests  RecruitRequest[]
+  jobs      Job[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  passwordHash   String
+  name           String
+  email          String?
+  phone          String?
+  role           String   // ADMIN | RECRUIT_LEAD | HR | DEPT_HEAD | INTERVIEWER | OFFER_APPROVER | HR_OPS | DATA_VIEWER
+  orgId          String?
+  org            Organization? @relation(fields: [orgId], references: [id])
+  active         Boolean  @default(true)
+  dataScope      String   @default("SELF") // ALL | DEPT | SELF
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ownedRequests       RecruitRequest[] @relation("RequestOwner")
+  hrRequests          RecruitRequest[] @relation("RequestHR")
+  deptHeadRequests    RecruitRequest[] @relation("RequestDeptHead")
+  ownedJobs           Job[]            @relation("JobOwner")
+  interviews          InterviewInterviewer[]
+  evaluations         InterviewEvaluation[]
+  todos               Todo[]
+  auditLogs           AuditLog[]
+  remarks             CandidateRemark[]
+}
+
+model Dictionary {
+  id        String   @id @default(cuid())
+  type      String
+  code      String
+  label     String
+  sort      Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([type, code])
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  type      String   // EVAL | INTERVIEW_NOTICE | OFFER | ONBOARDING_MATERIALS
+  name      String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RecruitRequest {
+  id              String   @id @default(cuid())
+  name            String
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  positionTitle   String
+  headcount       Int
+  hiredCount      Int      @default(0)
+  reason          String
+  expectDate      DateTime
+  workLocation    String
+  salaryMin       Float?
+  salaryMax       Float?
+  deptHeadId      String?
+  deptHead        User?    @relation("RequestDeptHead", fields: [deptHeadId], references: [id])
+  hrOwnerId       String?
+  hrOwner         User?    @relation("RequestHR", fields: [hrOwnerId], references: [id])
+  ownerId         String?
+  owner           User?    @relation("RequestOwner", fields: [ownerId], references: [id])
+  description     String?
+  status          String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED | RECRUITING | COMPLETED | CLOSED
+  rejectReason    String?
+  closeReason     String?
+  approvalComment String?
+  approvedAt      DateTime?
+  approvedBy      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  jobs            Job[]
+}
+
+model Job {
+  id              String   @id @default(cuid())
+  requestId       String
+  request         RecruitRequest @relation(fields: [requestId], references: [id])
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  title           String
+  headcount       Int
+  hiredCount      Int      @default(0)
+  workLocation    String
+  salaryMin       Float?
+  salaryMax       Float?
+  responsibilities String?
+  requirements    String?
+  bonuses         String?
+  hrOwnerId       String?
+  hrOwner         User?    @relation("JobOwner", fields: [hrOwnerId], references: [id])
+  flowConfig      String   @default("HR_SCREEN,DEPT_SCREEN,FIRST_INTERVIEW,SECOND_INTERVIEW,OFFER")
+  evalTemplateId  String?
+  standardId      String?
+  standardVersion Int?
+  flowTemplateId  String?
+  evalModelId     String?
+  status          String   @default("DRAFT") // DRAFT | OPEN | PAUSED | CLOSED
+  publishCopy     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  applications    Application[]
+  channelPubs     JobChannelPublish[]
+}
+
+model Candidate {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  gender        String?
+  education     String?
+  school        String?
+  currentCompany String?
+  currentTitle  String?
+  yearsOfExp    Float?
+  city          String?
+  expectSalary  String?
+  source        String
+  sourceRemark  String?
+  tags          String?  // comma separated
+  resumePath    String?
+  parsedResume  String?  // JSON structured parse result
+  parseConfidence Float?
+  inTalentPool  Boolean  @default(false)
+  poolCategory  String?
+  poolRemark    String?
+  poolSuitable  String?
+  poolRisk      String?
+  poolContactAt String?
+  poolTier      String?  // KEY | PROFESSIONAL | GENERAL
+  poolLevel     String?
+  poolActiveScore Int    @default(50)
+  retainUntil   DateTime?
+  privacyConsent Boolean @default(false)
+  anonymized    Boolean  @default(false)
+  deleted       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  applications  Application[]
+  remarks       CandidateRemark[]
+  secureLinks   SecureLink[]
+  feedbacks     CandidateFeedback[]
+}
+
+model CandidateRemark {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+  content     String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Application {
+  id            String   @id @default(cuid())
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id])
+  jobId         String
+  job           Job      @relation(fields: [jobId], references: [id])
+  status        String   @default("NEW") // NEW | HR_SCREEN | DEPT_SCREEN | INTERVIEW | OFFER | ONBOARDING | HIRED | REJECTED | WITHDRAWN | TALENT_POOL
+  stage         String   @default("HR_SCREEN")
+  screenResult  String?
+  screenReason  String?
+  deptResult    String?
+  deptComment   String?
+  rejectReason  String?
+  rejectToPool  Boolean  @default(false)
+  focusPoints   String?
+  assignedToId  String?
+  flowTemplateId String?
+  currentNodeKey String?
+  slaDueAt      DateTime?
+  slaWarned     Boolean  @default(false)
+  standardVersionId String?
+  enteredAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  events        ProcessEvent[]
+  interviews    Interview[]
+  offers        Offer[]
+  onboarding    Onboarding?
+  secureLinks   SecureLink[]
+}
+
+model ProcessEvent {
+  id            String   @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  type          String
+  fromStatus    String?
+  toStatus      String?
+  fromStage     String?
+  toStage       String?
+  operatorId    String?
+  operatorName  String?
+  reason        String?
+  detail        String?
+  createdAt     DateTime @default(now())
+}
+
+model Interview {
+  id            String   @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  round         String   // FIRST | SECOND | FINAL | CUSTOM
+  roundName     String?
+  startTime     DateTime
+  endTime       DateTime
+  method        String   // ONSITE | VIDEO | PHONE
+  location      String?
+  meetingLink   String?
+  contactInfo   String?
+  remark        String?
+  status        String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED | NO_SHOW_CANDIDATE | NO_SHOW_INTERVIEWER
+  cancelReason  String?
+  attendanceNote String?
+  noticeContent String?
+  noticeSentAt  DateTime?
+  previousStart DateTime?
+  previousEnd   DateTime?
+  rescheduleReason String?
+  roundResult   String?  // PASS | ADDITIONAL | PENDING | REJECT
+  roundResultBy String?
+  roundResultAt DateTime?
+  calendarSynced Boolean @default(false)
+  slotOptions   String?  // JSON candidate self-select slots
+  selectedSlot  String?
+  packContent   String?  // interview materials pack
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  interviewers  InterviewInterviewer[]
+  evaluations   InterviewEvaluation[]
+  secureLinks   SecureLink[]
+}
+
+model InterviewInterviewer {
+  id           String @id @default(cuid())
+  interviewId  String
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@unique([interviewId, userId])
+}
+
+model InterviewEvaluation {
+  id            String   @id @default(cuid())
+  interviewId   String
+  interview     Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interviewerId String
+  interviewer   User      @relation(fields: [interviewerId], references: [id])
+  scores        String   // JSON: {professional, experience, problemSolving, communication, motivation, values}
+  strengths     String
+  risks         String
+  overall       String
+  conclusion    String   // STRONG_YES | YES | PENDING | NO
+  nextRound     String   // YES | NO | ADDITIONAL
+  status        String   @default("DRAFT") // DRAFT | SUBMITTED | CORRECTED
+  correctReason String?
+  previousContent String?
+  submittedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([interviewId, interviewerId])
+}
+
+model Offer {
+  id            String   @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  version       Int      @default(1)
+  isActive      Boolean  @default(true)
+  reportTo      String?
+  level         String?
+  workLocation  String
+  baseSalary    Float
+  performance   Float?
+  bonus         Float?
+  probationMonths Int    @default(3)
+  probationSalary Float?
+  expectedHireDate DateTime
+  validUntil    DateTime?
+  otherTerms    String?
+  approvalNote  String?
+  status        String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED | SENT | ACCEPTED | DECLINED | EXPIRED | WITHDRAWN
+  rejectReason  String?
+  declineReason String?
+  withdrawReason String?
+  sentAt        DateTime?
+  sentBy        String?
+  resultAt      DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
+  attachmentPath String?
+  onlineConfirmAt DateTime?
+  confirmDevice String?
+  confirmIp     String?
+  eSignStatus   String?  // NONE | PENDING | SIGNED | WITHDRAWN
+  eSignRef      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  onboarding    Onboarding?
+  secureLinks   SecureLink[]
+  warmTasks     WarmTask[]
+}
+
+model Onboarding {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  offerId       String?  @unique
+  offer         Offer?   @relation(fields: [offerId], references: [id])
+  expectedDate  DateTime
+  confirmedDate DateTime?
+  actualDate    DateTime?
+  employeeNo    String?
+  contactPerson String?
+  followRemark  String?
+  materials     String?  // JSON checklist
+  status        String   @default("PENDING_CONFIRM") // PENDING_CONFIRM | CONFIRMED | DELAYED | HIRED | ABANDONED
+  delayReason   String?
+  abandonReason String?
+  employeeArchive String? // JSON archived employee record
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  collabTasks   OnboardCollabTask[]
+}
+
+model Todo {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // APPROVE_REQUEST | SCREEN | ARRANGE_INTERVIEW | EVALUATE | APPROVE_OFFER | ONBOARDING
+  title       String
+  refType     String?
+  refId       String?
+  dueAt       DateTime?
+  done        Boolean  @default(false)
+  doneAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  userName    String?
+  action      String
+  objectType  String
+  objectId    String?
+  oldValue    String?
+  newValue    String?
+  reason      String?
+  ip          String?
+  createdAt   DateTime @default(now())
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  detail      String?
+  jobId       String?
+  relatedId   String?
+  actorId     String?
+  actorName   String?
+  createdAt   DateTime @default(now())
+}
+
+// ========== Phase 2 models ==========
+
+model JobStandard {
+  id            String   @id @default(cuid())
+  code          String
+  name          String
+  family        String?
+  version       Int      @default(1)
+  isLatest      Boolean  @default(true)
+  parentCode    String?
+  jd            String?
+  requirements  String?
+  hardCriteria  String?  // JSON
+  experienceReq String?
+  skills        String?  // JSON
+  softSkills    String?  // JSON
+  motivationItems String? // JSON
+  riskItems     String?  // JSON
+  flowTemplateId String?
+  evalModelId   String?
+  defaultOwnerId String?
+  interviewRounds String? // JSON
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([code, version])
+}
+
+model EvalModel {
+  id            String   @id @default(cuid())
+  name          String
+  jobFamily     String?
+  version       Int      @default(1)
+  isLatest      Boolean  @default(true)
+  dimensions    String   // JSON [{key,label,weight,anchors,veto}]
+  passScore     Float    @default(3)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FlowTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  nodes         FlowNode[]
+}
+
+model FlowNode {
+  id            String   @id @default(cuid())
+  templateId    String
+  template      FlowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  key           String
+  name          String
+  type          String   // SCREEN | ASSESS | INTERVIEW | APPROVAL | OFFER | CUSTOM
+  sort          Int      @default(0)
+  required      Boolean  @default(true)
+  skippable     Boolean  @default(false)
+  parallel      Boolean  @default(false)
+  condition     String?
+  role          String?
+  slaHours      Int?
+  escalateRole  String?
+  passCondition String?
+  requiredFields String?
+}
+
+model Channel {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  type          String   // SITE | REFERRAL | HUNTER | CAMPUS | OTHER
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  accounts      ChannelAccount[]
+  publishes     JobChannelPublish[]
+}
+
+model ChannelAccount {
+  id            String   @id @default(cuid())
+  channelId     String
+  channel       Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  accountName   String
+  externalId    String?
+  mappingJson   String?
+  active        Boolean  @default(true)
+}
+
+model JobChannelPublish {
+  id            String   @id @default(cuid())
+  jobId         String
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  channelId     String
+  channel       Channel  @relation(fields: [channelId], references: [id])
+  status        String   @default("DRAFT") // DRAFT | PUBLISHED | PAUSED | CLOSED | FAILED
+  externalRef   String?
+  resultMsg     String?
+  publishedAt   DateTime?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+}
+
+model SecureLink {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  type          String   // INTERVIEW_CONFIRM | OFFER_CONFIRM | SUPPLEMENT | SLOT_PICK
+  candidateId   String?
+  candidate     Candidate? @relation(fields: [candidateId], references: [id])
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+  interviewId   String?
+  interview     Interview? @relation(fields: [interviewId], references: [id])
+  offerId       String?
+  offer         Offer?   @relation(fields: [offerId], references: [id])
+  expiresAt     DateTime
+  usedAt        DateTime?
+  payload       String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model MessageLog {
+  id            String   @id @default(cuid())
+  channel       String   // INAPP | EMAIL | SMS | IM
+  templateKey   String?
+  toAddr        String
+  subject       String?
+  content       String
+  status        String   @default("PENDING") // PENDING | SENT | FAILED | RETRY
+  retryCount    Int      @default(0)
+  errorMsg      String?
+  refType       String?
+  refId         String?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model CandidateFeedback {
+  id            String   @id @default(cuid())
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id])
+  jobId         String?
+  stage         String?
+  score         Int?
+  comment       String?
+  createdAt     DateTime @default(now())
+}
+
+model SlaRule {
+  id            String   @id @default(cuid())
+  name          String
+  scope         String   // JOB | NODE | GLOBAL
+  scopeRef      String?
+  nodeKey       String?
+  hours         Int
+  warnHours     Int?
+  escalateRole  String?
+  active        Boolean  @default(true)
+}
+
+model AlertSubscription {
+  id            String   @id @default(cuid())
+  userId        String
+  alertType     String   // REQUEST_OVERDUE | STALL | EVAL_TIMEOUT | OFFER_EXPIRE | ONBOARD_RISK
+  channel       String   @default("INAPP")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model AlertEvent {
+  id            String   @id @default(cuid())
+  type          String
+  title         String
+  detail        String?
+  refType       String?
+  refId         String?
+  level         String   @default("WARN")
+  resolved      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model WarmTask {
+  id            String   @id @default(cuid())
+  offerId       String?
+  offer         Offer?   @relation(fields: [offerId], references: [id])
+  candidateId   String?
+  stage         String   // PENDING_CONFIRM | ONBOARDING
+  title         String
+  content       String?
+  dueAt         DateTime?
+  status        String   @default("OPEN") // OPEN | DONE | SKIPPED
+  result        String?
+  createdAt     DateTime @default(now())
+  doneAt        DateTime?
+}
+
+model OnboardCollabTask {
+  id            String   @id @default(cuid())
+  onboardingId  String
+  onboarding    Onboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  dept          String   // HR | ADMIN | IT | HIRING_DEPT
+  title         String
+  assigneeId    String?
+  status        String   @default("OPEN") // OPEN | DONE
+  doneAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model TalentActivation {
+  id            String   @id @default(cuid())
+  name          String
+  tagFilter     String?
+  jobId         String?
+  status        String   @default("OPEN")
+  createdAt     DateTime @default(now())
+  items         TalentActivationItem[]
+}
+
+model TalentActivationItem {
+  id            String   @id @default(cuid())
+  activationId  String
+  activation    TalentActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  candidateId   String
+  status        String   @default("PENDING") // PENDING | CONTACTED | INTERESTED | DECLINED
+  result        String?
+  contactedAt   DateTime?
+}
+
+model CalendarBusy {
+  id            String   @id @default(cuid())
+  userId        String
+  startTime     DateTime
+  endTime       DateTime
+  title         String?
+  source        String   @default("MANUAL") // MANUAL | SYNC
+  externalId    String?
+  createdAt     DateTime @default(now())
+}
+
+model AgentDraft {
+  id            String   @id @default(cuid())
+  type          String   // JD | SCREEN | INTERVIEW_Q | EVAL_SUMMARY | NOTICE | OFFER
+  content       String
+  refType       String?
+  refId         String?
+  agentId       String?
+  initiatorId   String?
+  sourceTag     String   @default("AI_GENERATED")
+  status        String   @default("DRAFT") // DRAFT | ACCEPTED | DISCARDED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AgentAction {
+  id            String   @id @default(cuid())
+  actionKey     String
+  riskLevel     String   // READ | DRAFT | LOW | HIGH
+  payload       String
+  agentId       String?
+  initiatorId   String?
+  status        String   @default("PENDING") // PENDING | CONFIRMED | EXECUTED | REJECTED | FAILED
+  result        String?
+  idempotencyKey String? @unique
+  confirmUserId String?
+  confirmedAt   DateTime?
+  executedAt    DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model BusinessEvent {
+  id            String   @id @default(cuid())
+  eventType     String
+  objectType    String
+  objectId      String
+  payload       String?
+  createdAt     DateTime @default(now())
+}
+
+model EventSubscription {
+  id            String   @id @default(cuid())
+  name          String
+  eventTypes    String   // comma separated
+  callbackUrl   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model SemanticDict {
+  id            String   @id @default(cuid())
+  category      String   // FIELD | ENUM | METRIC | RULE | ACTION | PERMISSION
+  key           String
+  label         String
+  definition    String
+  meta          String?
+  createdAt     DateTime @default(now())
+
+  @@unique([category, key])
+}
+
+model HireQualityRecord {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  employeeNo    String?
+  probationResult String? // PASS | FAIL | PENDING
+  firstYearPerf String?
+  resigned      Boolean  @default(false)
+  resignAt      DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

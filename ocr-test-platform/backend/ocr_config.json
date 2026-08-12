@@ -1,0 +1,32 @@
+{
+  "current_engine": "ovisocr",
+  "tesseract": {
+    "path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+    "lang": "chi_sim+eng",
+    "psm": 3,
+    "oem": 3
+  },
+  "paddleocr": {
+    "use_gpu": false,
+    "lang": "ch",
+    "use_angle_cls": true
+  },
+  "easyocr": {
+    "lang_list": [
+      "ch_sim",
+      "en"
+    ],
+    "gpu": false
+  },
+  "ovisocr": {
+    "model_id": "OvisOCR",
+    "api_url": "https://maas.ehuidata.com/openai/v1",
+    "api_key": "3c232be97e25f5d0fd3166002b4b41c331ae217_2049043995380019201"
+  },
+  "general": {
+    "max_file_size": 52428800,
+    "preprocess": true,
+    "denoise": true,
+    "threshold": true
+  }
+}

@@ -1,0 +1,135 @@
+# Agent Harness Framework Configuration
+
+# Agent Configuration
+agent:
+  name: "default-agent"
+  max_iterations: 100
+  timeout: 300  # seconds
+  retry_policy:
+    max_retries: 3
+    backoff_factor: 2.0
+    initial_delay: 1.0
+
+# Memory Configuration
+memory:
+  # Short-term memory (conversation buffer)
+  short_term:
+    enabled: true
+    max_size: 100
+    ttl: 3600  # seconds, 0 = no expiry
+    eviction_policy: "lru"  # lru, fifo, priority
+
+  # Working memory (active context)
+  working:
+    enabled: true
+    max_slots: 7
+    compression_threshold: 0.8
+
+  # Long-term memory (persistent storage)
+  long_term:
+    enabled: true
+    backend: "sqlite"  # sqlite, postgres, redis
+    path: "data/memory/long_term.db"
+    vector_store:
+      enabled: true
+      dimension: 1536
+      index_path: "data/memory/vectors"
+    consolidation:
+      enabled: true
+      interval: 300  # seconds
+      min_importance: 0.5
+
+# Telemetry Configuration
+telemetry:
+  enabled: true
+  storage:
+    backend: "sqlite"
+    path: "data/telemetry/metrics.db"
+  collection:
+    track_actions: true
+    track_thoughts: true
+    track_errors: true
+    track_performance: true
+    track_memory_usage: true
+  export:
+    format: "json"
+    interval: 60  # seconds
+    path: "data/telemetry/exports"
+
+# Evolution Configuration
+evolution:
+  enabled: true
+  storage_path: "data/evolution"
+  
+  # Analysis settings
+  analysis:
+    min_samples: 10
+    analysis_interval: 3600  # seconds
+    patterns:
+      - "success_rate"
+      - "error_patterns"
+      - "response_quality"
+      - "efficiency"
+  
+  # Optimization settings
+  optimization:
+    auto_apply: false
+    strategies:
+      - name: "prompt_tuning"
+        enabled: true
+        learning_rate: 0.1
+      - name: "strategy_adaptation"
+        enabled: true
+        exploration_rate: 0.2
+      - name: "memory_consolidation"
+        enabled: true
+        importance_threshold: 0.7
+  
+  # Versioning
+  versioning:
+    enabled: true
+    max_versions: 10
+    rollback_on_degradation: true
+
+# LLM Configuration
+llm:
+  provider: "openai"  # openai, anthropic, local
+  model: "gpt-4"
+  temperature: 0.7
+  max_tokens: 4096
+  api_key_env: "OPENAI_API_KEY"
+  
+  # Fallback configuration
+  fallback:
+    enabled: true
+    models:
+      - provider: "anthropic"
+        model: "claude-3-sonnet-20240229"
+      - provider: "openai"
+        model: "gpt-3.5-turbo"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file:
+    enabled: true
+    path: "data/logs/agent_harness.log"
+    max_size: 10485760  # 10MB
+    backup_count: 5
+  console:
+    enabled: true
+    colored: true
+
+# Plugin Configuration
+plugins:
+  directory: "plugins"
+  auto_load: true
+  enabled: []
+
+# Server Configuration (for API access)
+server:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins: ["*"]

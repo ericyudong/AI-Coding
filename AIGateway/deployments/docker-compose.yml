@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  litellm:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ai-gateway:local
+    ports:
+      - "4000:4000"
+    env_file:
+      - ../.env
+    environment:
+      PRESIDIO_ANALYZER_URL: http://presidio-analyzer:5001
+      PRESIDIO_ANONYMIZER_URL: http://presidio-anonymizer:5002
+      OLLAMA_FAST_BASE: ${OLLAMA_FAST_BASE:-http://host.docker.internal:11434}
+      OLLAMA_LOCAL_BASE: ${OLLAMA_LOCAL_BASE:-http://host.docker.internal:11434}
+      GUARDRAIL_POLICY_PATH: /app/guardrails/policy.yaml
+      AUDIT_LOG_PATH: /var/log/ai-gateway/audit.jsonl
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      DATABASE_URL: postgresql://litellm:litellm@db:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-local-admin-1234}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD:-sk-local-admin-1234}
+      STORE_MODEL_IN_DB: "True"
+      LITELLM_LOG: INFO
+    volumes:
+      - ../config:/app/config:ro
+      - ../guardrails:/app/guardrails:ro
+      - ../custom_guardrail.py:/app/custom_guardrail.py:ro
+      - ../custom_callbacks.py:/app/custom_callbacks.py:ro
+      - audit-logs:/var/log/ai-gateway
+    command:
+      - --config
+      - /app/config/config.dev.yaml
+      - --port
+      - "4000"
+      - --num_workers
+      - "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_started
+      presidio-anonymizer:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    ports:
+      - "5001:3000"
+    environment:
+      PORT: "3000"
+
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    ports:
+      - "5002:3000"
+    environment:
+      PORT: "3000"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+
+volumes:
+  audit-logs:
+  pgdata:

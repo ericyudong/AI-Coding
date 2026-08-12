@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户手册 - 益慧科技 AI+ · 法务</title>
+  <style>
+    :root {
+      --primary: #00838f;
+      --primary-dark: #006064;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.7;
+    }
+    .hero {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: #fff;
+      padding: 48px 24px 56px;
+      text-align: center;
+    }
+    .hero h1 { margin: 0 0 12px; font-size: 32px; }
+    .hero p { margin: 0; opacity: 0.92; font-size: 16px; }
+    .container {
+      max-width: 960px;
+      margin: -32px auto 48px;
+      padding: 0 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      color: var(--primary-dark);
+      border-left: 4px solid var(--primary);
+      padding-left: 12px;
+    }
+    p { margin: 0 0 12px; color: var(--text); }
+    .muted { color: var(--muted); font-size: 14px; }
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .module {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      background: #fafbfc;
+    }
+    .module h3 { margin: 0 0 8px; font-size: 16px; color: var(--primary); }
+    .module ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0 0; }
+    .steps li {
+      counter-increment: step;
+      padding: 12px 0 12px 40px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .back {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back:hover { text-decoration: underline; }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>益慧科技 AI+ · 法务</h1>
+    <p>智能法务 Agent 平台 — 用户手册</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>产品简介</h2>
+      <p>
+        益慧科技 AI+ · 法务是一套面向企业法务与合规团队的智能化工作平台，整合法律检索、合同管理、诉讼辅助与专业问答等能力，
+        帮助用户提升法务工作效率与决策质量。
+      </p>
+      <p class="muted">平台采用 AI 大模型与知识库相结合的技术路线，在保障数据安全的前提下提供智能分析与辅助决策。</p>
+    </section>
+
+    <section class="card">
+      <h2>四大核心模块</h2>
+      <div class="modules">
+        <div class="module">
+          <h3>检索AI</h3>
+          <ul>
+            <li>综合分析</li>
+            <li>法规查询</li>
+            <li>类案检索</li>
+            <li>行政处罚检索</li>
+          </ul>
+        </div>
+        <div class="module">
+          <h3>合同AI</h3>
+          <ul>
+            <li>合同台账管理</li>
+            <li>合同导入与检索</li>
+            <li>版本对比</li>
+            <li>合同审核与起草</li>
+          </ul>
+        </div>
+        <div class="module">
+          <h3>诉讼AI</h3>
+          <ul>
+            <li>诉讼策略分析</li>
+            <li>诉讼文书辅助</li>
+            <li>要素式文书生成</li>
+            <li>类案与法规支撑</li>
+          </ul>
+        </div>
+        <div class="module">
+          <h3>问答AI</h3>
+          <ul>
+            <li>劳动法专业问答</li>
+            <li>金融合规咨询</li>
+            <li>企业出海合规</li>
+            <li>多轮对话交互</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>快速上手</h2>
+      <ol class="steps">
+        <li>使用企业账号登录系统，进入首页后可浏览四大 AI 模块入口。</li>
+        <li>在首页搜索框输入法规或案例关键词，或通过「益慧AI+」进入智能检索。</li>
+        <li>点击「合同AI」进入合同管理系统，支持导入、台账、检索与版本对比。</li>
+        <li>在「问答AI」中选择劳动法、金融合规或企业出海等专题进行专业咨询。</li>
+        <li>通过顶部「帮助」菜单可随时查看本手册或联系益慧获取支持。</li>
+      </ol>
+      <a class="back" href="/">← 返回系统首页</a>
+    </section>
+
+    <section class="card">
+      <h2>常见问题</h2>
+      <p><strong>Q：AI 功能需要额外配置吗？</strong></p>
+      <p class="muted">管理员在服务端配置大模型 API 后即可启用完整 AI 能力；未配置时部分功能以演示模式运行。</p>
+      <p><strong>Q：合同数据存储在哪里？</strong></p>
+      <p class="muted">合同数据存储在企业部署的服务端数据库中，可按企业安全策略进行备份与权限管理。</p>
+      <p><strong>Q：如何获取技术支持？</strong></p>
+      <p class="muted">请通过系统内「帮助 → 联系益慧」获取官方联系方式。</p>
+    </section>
+  </main>
+
+  <footer>© 益慧科技有限公司 · 益慧科技 AI+ · 法务</footer>
+</body>
+</html>

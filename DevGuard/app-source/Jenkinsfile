@@ -1,0 +1,137 @@
+pipeline {
+    agent { label 'ai-ci' }
+
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        REGISTRY = 'registry.internal.example.com/ai'
+        IMAGE_TAG = "${env.GIT_COMMIT?.take(8) ?: 'local'}"
+        EVAL_MAX_BYPASS_PCT = '2'
+        EVAL_MAX_FP_PCT     = '2'
+        // Deploy/Promote/SLO Watch are owned by Argo CD + Argo Rollouts (see gitops-env/).
+        GITOPS_ENV_REPO = 'http://10.65.16.39:3000/EHui/claw-agent.git'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                dir('app-source') {
+                    sh 'git rev-parse --short HEAD || true'
+                }
+            }
+        }
+
+        stage('Lint & Policy Validation') {
+            steps {
+                dir('app-source') {
+                    sh '''
+                        python scripts/validate_policy.py guardrails/policy.yaml
+                        python scripts/lint_prompts.py --dir prompts/
+                    '''
+                }
+            }
+        }
+
+        stage('Guardrail Policy Unit Tests') {
+            steps {
+                dir('app-source') {
+                    sh 'pytest tests/guardrails/ -q --junitxml=reports/policy-tests.xml'
+                }
+            }
+            post {
+                always {
+                    junit 'app-source/reports/policy-tests.xml'
+                }
+            }
+        }
+
+        stage('Build & Package') {
+            steps {
+                dir('app-source') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'registry-cred',
+                        usernameVariable: 'REG_USER',
+                        passwordVariable: 'REG_PASS')]) {
+                        sh '''
+                            echo "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin
+                            docker build -t "$REGISTRY/ai-guardrails:$IMAGE_TAG" .
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Offline Evaluation Gate') {
+            steps {
+                dir('app-source') {
+                    sh '''
+                        python scripts/eval.py \
+                            --policy guardrails/policy.yaml \
+                            --dataset eval/regression.jsonl \
+                            --out reports/eval.json
+                        python scripts/check_gate.py \
+                            --report reports/eval.json \
+                            --max-bypass "$EVAL_MAX_BYPASS_PCT" \
+                            --max-fp "$EVAL_MAX_FP_PCT"
+                    '''
+                }
+            }
+        }
+
+        stage('Red Team / Adversarial') {
+            steps {
+                dir('app-source') {
+                    sh '''
+                        python scripts/redteam.py --policy guardrails/policy.yaml --out reports/redteam.json
+                        python scripts/check_redteam.py --report reports/redteam.json
+                    '''
+                }
+            }
+        }
+
+        stage('Push Artifact') {
+            when { branch 'main' }
+            steps {
+                sh 'docker push "$REGISTRY/ai-guardrails:$IMAGE_TAG"'
+            }
+        }
+
+        stage('Update GitOps Manifests') {
+            when { branch 'main' }
+            steps {
+                withCredentials([string(credentialsId: 'gitops-pat', variable: 'GITOPS_PAT')]) {
+                    sh '''
+                        for ENV in staging prod; do
+                          (
+                            cd "gitops-env/envs/${ENV}"
+                            kustomize edit set image \
+                              registry.internal.example.com/ai/ai-guardrails=registry.internal.example.com/ai/ai-guardrails:$IMAGE_TAG
+                          )
+                        done
+                        git config user.name "ai-guardrails-ci"
+                        git config user.email "ci@example.com"
+                        git add gitops-env/envs/
+                        git commit -m "promote ai-guardrails:$IMAGE_TAG" || echo "no changes"
+                        git push "http://x-access-token:${GITOPS_PAT}@10.65.16.39:3000/EHui/claw-agent.git" HEAD:main
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'app-source/reports/**', allowEmptyArchive: true
+            cleanWs()
+        }
+        failure {
+            echo 'FAILURE: gate blocked promote; Argo CD will not receive a new image tag.'
+        }
+    }
+}

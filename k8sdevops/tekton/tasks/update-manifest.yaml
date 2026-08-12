@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: update-manifest
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image
+      type: string
+    - name: deployment-file
+      type: string
+      default: manifests/deployment.yaml
+    - name: git-user-email
+      type: string
+      default: ci-bot@example.com
+    - name: git-user-name
+      type: string
+      default: tekton-ci-bot
+  workspaces:
+    - name: source
+  steps:
+    - name: patch-and-commit
+      image: alpine/git:2.45.2
+      env:
+        - name: GIT_USER_EMAIL
+          value: $(params.git-user-email)
+        - name: GIT_USER_NAME
+          value: $(params.git-user-name)
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        cd "$(workspaces.source.path)/src"
+        apk add --no-cache yq >/dev/null 2>&1 || true
+
+        # 使用 sed 更新镜像（不依赖 yq，兼容性更好）
+        sed -i "s|image: .*|image: $(params.image)|" "$(params.deployment-file)"
+
+        # 仅更新 APP_VERSION 环境变量的 value
+        TAG="$(echo "$(params.image)" | awk -F: '{print $NF}')"
+        sed -i "/name: APP_VERSION/{n;s|value: \".*\"|value: \"${TAG}\"|;}" "$(params.deployment-file)"
+
+        git config user.email "${GIT_USER_EMAIL}"
+        git config user.name "${GIT_USER_NAME}"
+        git add "$(params.deployment-file)"
+        git commit -m "ci: bump image to $(params.image)"
+        git push origin HEAD

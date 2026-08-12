@@ -1,0 +1,92 @@
+﻿Slides: 29
+Size: 13.33 x 7.50
+
+=== Slide 1 layout=cover shapes=4 ===
+  {'name': 'Picture 19', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.33, 'H': 7.5, 'img_ext': 'jpg', 'img_size': '5824x3264'}
+  {'name': 'Rectangle 20', 'type': 'AUTO_SHAPE ', 'L': 0.0, 'T': 0.0, 'W': 13.33, 'H': 7.5, 'auto_shape': 'RECTANGLE (1)'}
+  {'name': 'Image', 'type': 'PICTURE ', 'L': 1.89, 'T': -0.7, 'W': 1.72, 'H': 0.55, 'img_ext': 'png', 'img_size': '291x94'}
+  {'name': 'TextBox 2', 'type': 'TEXT_BOX ', 'L': 1.77, 'T': 2.67, 'W': 11.76, 'H': 1.21, 'text': '2026骞存垬鐣ユ妧鏈秼鍔?}
+
+=== Slide 2 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.08, 'T': 0.0, 'W': 13.65, 'H': 7.5, 'img_ext': 'png', 'img_size': '1421x780'}
+
+=== Slide 3 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.78, 'H': 7.5, 'img_ext': 'png', 'img_size': '1963x1069'}
+
+=== Slide 4 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.1, 'T': -0.0, 'W': 13.43, 'H': 7.55, 'img_ext': 'png', 'img_size': '1983x1115'}
+
+=== Slide 5 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 2', 'type': 'PICTURE ', 'L': -0.25, 'T': 0.0, 'W': 13.83, 'H': 7.5, 'img_ext': 'png', 'img_size': '1984x1076'}
+
+=== Slide 6 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 2', 'type': 'PICTURE ', 'L': -0.0, 'T': -0.07, 'W': 13.46, 'H': 7.57, 'img_ext': 'png', 'img_size': '1426x802'}
+
+=== Slide 7 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.06, 'T': 0.0, 'W': 13.45, 'H': 7.5, 'img_ext': 'png', 'img_size': '2564x1431'}
+
+=== Slide 8 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 2', 'type': 'PICTURE ', 'L': -0.09, 'T': 0.0, 'W': 13.7, 'H': 7.5, 'img_ext': 'png', 'img_size': '2581x1413'}
+
+=== Slide 9 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.14, 'T': 0.0, 'W': 13.61, 'H': 7.5, 'img_ext': 'png', 'img_size': '2570x1417'}
+
+=== Slide 10 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.62, 'H': 7.5, 'img_ext': 'png', 'img_size': '2565x1412'}
+
+=== Slide 11 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.89, 'H': 7.75, 'img_ext': 'png', 'img_size': '2592x1446'}
+
+=== Slide 12 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 2', 'type': 'PICTURE ', 'L': -0.1, 'T': 0.0, 'W': 13.54, 'H': 7.5, 'img_ext': 'png', 'img_size': '2571x1424'}
+
+=== Slide 13 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.01, 'T': 0.0, 'W': 13.35, 'H': 7.5, 'img_ext': 'png', 'img_size': '2566x1442'}
+
+=== Slide 14 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.05, 'T': 0.0, 'W': 13.43, 'H': 7.5, 'img_ext': 'png', 'img_size': '2561x1430'}
+
+=== Slide 15 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.22, 'T': 0.0, 'W': 13.78, 'H': 7.5, 'img_ext': 'png', 'img_size': '2565x1396'}
+
+=== Slide 16 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.12, 'T': -0.02, 'W': 13.54, 'H': 7.52, 'img_ext': 'png', 'img_size': '2575x1431'}
+
+=== Slide 17 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.09, 'T': -0.09, 'W': 13.66, 'H': 7.61, 'img_ext': 'png', 'img_size': '2575x1434'}
+
+=== Slide 18 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.82, 'H': 7.5, 'img_ext': 'png', 'img_size': '2584x1403'}
+
+=== Slide 19 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.15, 'T': -0.0, 'W': 13.83, 'H': 7.61, 'img_ext': 'png', 'img_size': '2566x1413'}
+
+=== Slide 20 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.6, 'H': 7.5, 'img_ext': 'png', 'img_size': '2586x1426'}
+
+=== Slide 21 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 14.78, 'H': 7.5, 'img_ext': 'png', 'img_size': '2571x1304'}
+
+=== Slide 22 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.08, 'T': 0.0, 'W': 13.49, 'H': 7.5, 'img_ext': 'png', 'img_size': '2541x1412'}
+
+=== Slide 23 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.17, 'T': 0.0, 'W': 13.68, 'H': 7.5, 'img_ext': 'png', 'img_size': '2576x1412'}
+
+=== Slide 24 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.13, 'T': 0.0, 'W': 13.59, 'H': 7.54, 'img_ext': 'png', 'img_size': '2558x1418'}
+
+=== Slide 25 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.42, 'H': 7.5, 'img_ext': 'png', 'img_size': '2562x1432'}
+
+=== Slide 26 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.47, 'H': 7.5, 'img_ext': 'png', 'img_size': '2558x1425'}
+
+=== Slide 27 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': -0.06, 'T': 0.0, 'W': 13.46, 'H': 7.5, 'img_ext': 'png', 'img_size': '2556x1424'}
+
+=== Slide 28 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 1', 'type': 'PICTURE ', 'L': 0.0, 'T': 0.0, 'W': 13.76, 'H': 7.5, 'img_ext': 'png', 'img_size': '2564x1398'}
+
+=== Slide 29 layout=Title shapes=1 ===
+  {'name': '鍥剧墖 2', 'type': 'PICTURE ', 'L': -0.06, 'T': 0.0, 'W': 13.45, 'H': 7.5, 'img_ext': 'png', 'img_size': '2551x1422'}

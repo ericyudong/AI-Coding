@@ -1,0 +1,51 @@
+﻿=== Template layouts safe content zones ===
+
+[涓籏V]
+
+[涓妉ogo]
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.42, 'T': 0.89, 'W': 5.12, 'H': 0.61}
+  PH {'name': '鍐呭鍗犱綅绗?2', 'type': <PP_PLACEHOLDER_TYPE.OBJECT: 7>, 'L': 0.55, 'T': 2.65, 'W': 10.71, 'H': 4.18}
+
+[涓嬫爣棰榏
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.26, 'T': 0.18, 'W': 3.71, 'H': 0.49}
+
+[涓ゆ爮鍐呭]
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.42, 'T': 0.89, 'W': 5.12, 'H': 0.61}
+
+[搴曞浘01]
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.79, 'T': 1.01, 'W': 3.41, 'H': 0.49}
+
+[搴曞浘02]
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.79, 'T': 1.01, 'W': 3.41, 'H': 0.49}
+
+[浠呮爣棰榏
+
+[鍐呭涓庢爣棰榏
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.92, 'T': 0.5, 'W': 4.3, 'H': 1.75}
+  PH {'name': '鍐呭鍗犱綅绗?2', 'type': <PP_PLACEHOLDER_TYPE.OBJECT: 7>, 'L': 5.67, 'T': 1.08, 'W': 6.75, 'H': 5.33}
+  PH {'name': '鏂囨湰鍗犱綅绗?3', 'type': <PP_PLACEHOLDER_TYPE.BODY: 2>, 'L': 0.92, 'T': 2.25, 'W': 4.3, 'H': 4.17}
+  PH {'name': '鏃ユ湡鍗犱綅绗?4', 'type': <PP_PLACEHOLDER_TYPE.DATE: 16>, 'L': 0.92, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+  PH {'name': '椤佃剼鍗犱綅绗?5', 'type': <PP_PLACEHOLDER_TYPE.FOOTER: 15>, 'L': 4.42, 'T': 6.95, 'W': 4.5, 'H': 0.4}
+  PH {'name': '鐏墖缂栧彿鍗犱綅绗?6', 'type': <PP_PLACEHOLDER_TYPE.SLIDE_NUMBER: 13>, 'L': 9.42, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+
+[鍥剧墖涓庢爣棰榏
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.92, 'T': 0.5, 'W': 4.3, 'H': 1.75}
+  PH {'name': '鍥剧墖鍗犱綅绗?2', 'type': <PP_PLACEHOLDER_TYPE.PICTURE: 18>, 'L': 5.67, 'T': 1.08, 'W': 6.75, 'H': 5.33}
+  PH {'name': '鏂囨湰鍗犱綅绗?3', 'type': <PP_PLACEHOLDER_TYPE.BODY: 2>, 'L': 0.92, 'T': 2.25, 'W': 4.3, 'H': 4.17}
+  PH {'name': '鏃ユ湡鍗犱綅绗?4', 'type': <PP_PLACEHOLDER_TYPE.DATE: 16>, 'L': 0.92, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+  PH {'name': '椤佃剼鍗犱綅绗?5', 'type': <PP_PLACEHOLDER_TYPE.FOOTER: 15>, 'L': 4.42, 'T': 6.95, 'W': 4.5, 'H': 0.4}
+  PH {'name': '鐏墖缂栧彿鍗犱綅绗?6', 'type': <PP_PLACEHOLDER_TYPE.SLIDE_NUMBER: 13>, 'L': 9.42, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+
+[鏍囬鍜岀珫鎺掓枃瀛梋
+  PH {'name': '鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 0.92, 'T': 0.4, 'W': 11.5, 'H': 1.45}
+  PH {'name': '绔栨帓鏂囧瓧鍗犱綅绗?2', 'type': <PP_PLACEHOLDER_TYPE.BODY: 2>, 'L': 0.92, 'T': 2.0, 'W': 11.5, 'H': 4.76}
+  PH {'name': '鏃ユ湡鍗犱綅绗?3', 'type': <PP_PLACEHOLDER_TYPE.DATE: 16>, 'L': 0.92, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+  PH {'name': '椤佃剼鍗犱綅绗?4', 'type': <PP_PLACEHOLDER_TYPE.FOOTER: 15>, 'L': 4.42, 'T': 6.95, 'W': 4.5, 'H': 0.4}
+  PH {'name': '鐏墖缂栧彿鍗犱綅绗?5', 'type': <PP_PLACEHOLDER_TYPE.SLIDE_NUMBER: 13>, 'L': 9.42, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+
+[绔栨帓鏍囬涓庢枃鏈琞
+  PH {'name': '绔栨帓鏍囬 1', 'type': <PP_PLACEHOLDER_TYPE.TITLE: 1>, 'L': 9.54, 'T': 0.4, 'W': 2.88, 'H': 6.36}
+  PH {'name': '绔栨帓鏂囧瓧鍗犱綅绗?2', 'type': <PP_PLACEHOLDER_TYPE.BODY: 2>, 'L': 0.92, 'T': 0.4, 'W': 8.46, 'H': 6.36}
+  PH {'name': '鏃ユ湡鍗犱綅绗?3', 'type': <PP_PLACEHOLDER_TYPE.DATE: 16>, 'L': 0.92, 'T': 6.95, 'W': 3.0, 'H': 0.4}
+  PH {'name': '椤佃剼鍗犱綅绗?4', 'type': <PP_PLACEHOLDER_TYPE.FOOTER: 15>, 'L': 4.42, 'T': 6.95, 'W': 4.5, 'H': 0.4}
+  PH {'name': '鐏墖缂栧彿鍗犱綅绗?5', 'type': <PP_PLACEHOLDER_TYPE.SLIDE_NUMBER: 13>, 'L': 9.42, 'T': 6.95, 'W': 3.0, 'H': 0.4}

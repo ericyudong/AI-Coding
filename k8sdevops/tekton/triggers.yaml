@@ -1,0 +1,69 @@
+# Tekton Triggers 示例：Git Push 事件触发 CI Pipeline
+# 需要先安装 Tekton Triggers:
+#   kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: demo-app-listener
+  namespace: tekton-pipelines
+spec:
+  serviceAccountName: pipeline-sa
+  triggers:
+    - name: github-push-trigger
+      bindings:
+        - ref: github-push-binding
+      template:
+        ref: demo-app-trigger-template
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-push-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+      value: $(body.repository.clone_url)
+    - name: git-revision
+      value: $(body.after)
+    - name: image-tag
+      value: $(body.after)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: demo-app-trigger-template
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: image-tag
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: demo-app-ci-trigger-
+        namespace: tekton-pipelines
+      spec:
+        pipelineRef:
+          name: demo-app-ci
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: image
+            value: registry.example.com/demo/demo-app:$(tt.params.image-tag)
+        workspaces:
+          - name: shared-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
+        taskRunTemplate:
+          serviceAccountName: pipeline-sa

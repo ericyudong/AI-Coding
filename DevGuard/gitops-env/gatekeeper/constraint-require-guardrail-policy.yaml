@@ -1,0 +1,14 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sGuardrailPolicyRequired
+metadata:
+  name: require-guardrail-policy
+spec:
+  match:
+    kinds:
+      - apiGroups: ['argoproj.io']
+        kinds: ['Rollout']
+    namespaces:
+      - ai-guardrails-prod
+  parameters:
+    configMap: guardrail-policy
+    forbidImageTag: 'latest'

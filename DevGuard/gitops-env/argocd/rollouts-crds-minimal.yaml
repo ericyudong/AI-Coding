@@ -1,0 +1,71 @@
+# Minimal Argo Rollouts CRDs for local minikube (full controller install blocked by github.com).
+# Enough for Argo CD to sync Rollout / AnalysisTemplate objects.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: rollouts.argoproj.io
+spec:
+  group: argoproj.io
+  scope: Namespaced
+  names:
+    kind: Rollout
+    listKind: RolloutList
+    plural: rollouts
+    shortNames: [ro]
+    singular: rollout
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: analysistemplates.argoproj.io
+spec:
+  group: argoproj.io
+  scope: Namespaced
+  names:
+    kind: AnalysisTemplate
+    listKind: AnalysisTemplateList
+    plural: analysistemplates
+    shortNames: [at]
+    singular: analysistemplate
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: analysisruns.argoproj.io
+spec:
+  group: argoproj.io
+  scope: Namespaced
+  names:
+    kind: AnalysisRun
+    listKind: AnalysisRunList
+    plural: analysisruns
+    shortNames: [ar]
+    singular: analysisrun
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}

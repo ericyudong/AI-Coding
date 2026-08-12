@@ -1,0 +1,136 @@
+# LiteLLM Proxy — 路由 + 六层 Guardrails + 可观测
+# 文档中的 before_call / after_call 映射为 LiteLLM 的 pre_call / post_call
+# 密钥一律 os.environ，禁止写入仓库
+
+model_list:
+  - model_name: default
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_KEY
+      guardrails:
+        - presidio-pii
+        - lakera-in
+        - injection-rail
+        - dialog-rail
+        - tool-rail
+        - llamaguard-out
+        - bedrock-out
+  - model_name: default
+    litellm_params:
+      model: azure/gpt-4o
+      api_base: os.environ/AZURE_OPENAI_BASE
+      api_key: os.environ/AZURE_OPENAI_KEY
+      api_version: "2024-08-01-preview"
+      guardrails:
+        - presidio-pii
+        - lakera-in
+        - injection-rail
+        - dialog-rail
+        - tool-rail
+        - llamaguard-out
+        - bedrock-out
+
+  - model_name: reasoning
+    litellm_params:
+      model: o3-mini
+      api_key: os.environ/OPENAI_KEY
+      guardrails: [presidio-pii, injection-rail, dialog-rail, llamaguard-out]
+
+  - model_name: fast
+    litellm_params:
+      model: ollama/llama3.1:8b
+      api_base: os.environ/OLLAMA_FAST_BASE
+      guardrails: [presidio-pii, injection-rail, dialog-rail]
+
+  - model_name: vision
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_KEY
+      guardrails: [presidio-pii, llamaguard-out]
+
+  - model_name: local
+    litellm_params:
+      model: ollama/llama3.1:70b
+      api_base: os.environ/OLLAMA_LOCAL_BASE
+      guardrails:
+        - presidio-pii
+        - injection-rail
+        - dialog-rail
+        - tool-rail
+        - llamaguard-out
+
+router_settings:
+  routing_strategy: least-busy
+  fallbacks:
+    - default: [reasoning]
+    - reasoning: [local]
+  num_retries: 2
+  timeout: 60
+  retry_after: 5
+
+guardrails:
+  # Input Rail: PII（pre_call ≈ before_call）
+  - guardrail_name: presidio-pii
+    litellm_params:
+      guardrail: presidio
+      mode: pre_call
+      presidio_analyzer_api_base: os.environ/PRESIDIO_ANALYZER_URL
+      presidio_anonymizer_api_base: os.environ/PRESIDIO_ANONYMIZER_URL
+      output_parse_pii: true
+
+  # Input Rail: Lakera 提示注入 / 越狱
+  - guardrail_name: lakera-in
+    litellm_params:
+      guardrail: lakera
+      mode: pre_call
+      api_key: os.environ/LAKERA_KEY
+
+  # Input Rail: 本地正则注入防御（无 Lakera 时兜底）
+  - guardrail_name: injection-rail
+    litellm_params:
+      guardrail: custom_guardrail.InjectionRail
+      mode: pre_call
+      policy_path: /app/guardrails/policy.yaml
+
+  # Dialog Rail: 话题边界 / 轮次上限
+  - guardrail_name: dialog-rail
+    litellm_params:
+      guardrail: custom_guardrail.DialogRail
+      mode: pre_call
+      policy_path: /app/guardrails/policy.yaml
+
+  # Tool Rail: function-call 白名单 + schema
+  - guardrail_name: tool-rail
+    litellm_params:
+      guardrail: custom_guardrail.ToolRail
+      mode: pre_call
+      policy_path: /app/guardrails/policy.yaml
+
+  # Output Rail: Llama Guard（post_call ≈ after_call）
+  - guardrail_name: llamaguard-out
+    litellm_params:
+      guardrail: llamaguard
+      mode: post_call
+      guardrail_mode: "llama-guard-2"
+      hf_model: "meta-llama/LlamaGuard-2-8b"
+
+  # Output Rail: Bedrock
+  - guardrail_name: bedrock-out
+    litellm_params:
+      guardrail: bedrock
+      mode: post_call
+      guardrailIdentifier: os.environ/BEDROCK_GUARDRAIL_ID
+      guardrailVersion: "DRAFT"
+      region_name: os.environ/BEDROCK_REGION
+
+litellm_settings:
+  callbacks: [langfuse, otel, custom_callbacks.audit_callback, custom_callbacks.tier_routing_callback]
+  success_callback: [langfuse]
+  failure_callback: [langfuse]
+  drop_params: true
+  set_verbose: false
+
+general_settings:
+  telemetry: true
+  master_key: os.environ/LITELLM_MASTER_KEY
+  alerting_threshold: 300

@@ -1,0 +1,1 @@
+import{C as o}from"./ChatPanel-CnxVZc6G.js";import{d as l,A as a,o as m}from"./index-DdEROhMW.js";import"./brand-Dk9LX6iD.js";const c=l({__name:"QaView",props:{module:{},title:{}},setup(e){const t=["企业对外担保需要经过哪些内部决策程序？","跨境电商业务涉及哪些主要合规风险？","境外子公司设立需要关注哪些法律问题？"];return(n,r)=>(m(),a(o,{module:e.module,title:e.title,examples:t},null,8,["module","title"]))}});export{c as default};

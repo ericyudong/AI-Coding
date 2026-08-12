@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: main
+  workspaces:
+    - name: output
+  steps:
+    - name: clone
+      image: alpine/git:2.45.2
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        git clone "$(params.url)" "$(workspaces.output.path)/src"
+        cd "$(workspaces.output.path)/src"
+        git checkout "$(params.revision)"

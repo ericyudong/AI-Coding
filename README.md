@@ -1,244 +1,327 @@
-# Eric's AI Project Collection | Eric的AI项目集合
+# Eric's AI Project Collection
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-15+-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-30+-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
-## 🌟 简介 / Introduction 欢迎来到Eric的AI项目集合！这个仓库汇集了多个前沿的AI相关项目，涵盖了从大语言模型训练、智能代理系统、数据基础设施到企业级AI平台的完整生态系统。
+## 🌟 Introduction
 
-**Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, covering a complete ecosystem from LLM training and intelligent agent systems to data infrastructure and enterprise-grade AI platforms.**
-
----
-
-## 📂 项目分类 / Project Categories
-
-### 🤖 1. 智能代理系统 / Intelligent Agent Systems
-
-#### Hermes Agent ⚡
-- **简介**: 由Nous Research构建的自我改进型AI代理，具有内置学习循环。支持多平台通信、自动化任务、技能创建和记忆管理。
-- **English**: Self-improving AI agent built by Nous Research with built-in learning loop. Supports multi-platform communication, automation, skill creation, and memory management.
-- **核心特性**:
-  - 终端界面 (Terminal UI)
-  - 多平台支持 (Telegram, Discord, Slack等)
-  - 技能自动创建和改进 (Automatic skill creation and improvement)
-  - 定时任务调度 (Cron scheduling)
-  - 子代理委托 (Subagent delegation)
-
-#### OpenClaw
-- **简介**: 开源AI代理框架，支持工具调用、多模态交互和自适应学习。
-- **English**: Open-source AI agent framework supporting tool calling, multimodal interaction, and adaptive learning.
-- **核心特性**: 工具生态系统、自定义agent创建、可扩展架构
-
-#### Jiuwenclaw
-- **简介**: 基于OpenClaw的中文AI代理系统，针对中文环境优化。
-- **English**: Chinese AI agent system based on OpenClaw, optimized for Chinese environments.
-- **核心特性**: 中文语言模型集成、本地知识库、搜索引擎集成
-
-#### Agent Model System 🤖
-- **简介**: 强大的三Agent协作系统，从HuggingFace自动下载Deepseek模型，进行微调并部署到本地。
-- **English**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
-- **核心特性**: InteractionAgent（交互协调）、ModelDownloadAgent（自动下载）、ModelFinetuneAgent（自动微调与部署）
+Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, organized into two major categories: **AI Infra & Dev Tools** and **AI Agent** — covering a complete ecosystem from model training and infrastructure to intelligent agent systems and enterprise applications.
 
 ---
 
-### 🎯 2. 模型训练与微调 / Model Training & Fine-tuning
-
-#### LlamaFactory 🚀
-- **简介**: 统一的大模型微调框架，支持100+模型的无代码离线训练。
-- **English**: Unified LLM fine-tuning framework supporting 100+ models with zero-code offline training.
-- **核心特性**:
-  - 多模型支持 (Multi-model support: LLaMA, Qwen, Mistral等)
-  - 完整微调流程 (Complete fine-tuning pipeline: LoRA, QLoRA, Full)
-  - Web UI界面 (Gradio-based LLaMA-Board)
-  - 多奖励模型支持 (Multiple reward models)
-  - 高效训练资源管理 (Efficient resource management)
-
-#### Data-Juicer 📊
-- **简介**: 基础模型时代的数据操作系统，用于数据清洗、合成和分析。
-- **English**: Data Operating System for the foundation model era, for data cleaning, synthesis, and analysis.
-- **核心特性**:
-  - 200+数据处理算子 (200+ data processing operators)
-  - 多模态数据处理 (Multimodal data processing)
-  - 云原生架构设计 (Cloud-native architecture)
-  - 大规模数据处理能力 (Large-scale data processing)
-  - 可视化配置界面
+## 📂 Project Categories
 
 ---
 
-### 🎨 3. 开发工具与基础设施 / Development Tools & Infrastructure
+# 🏗️ Category 1: AI Infra & Dev Tools
 
-#### CSGHub 🏢
-- **简介**: 专为企业设计的LLM资产管理平台前端，作为私有化的Huggingface替代方案。
-- **English**: LLM asset management platform frontend designed for enterprise, as a private Huggingface alternative.
-- **核心特性**:
-  - 统一模型管理 (Unified model management)
-  - 数据集管理 (Dataset management)
-  - Space应用部署 (Space deployment)
-  - 企业级安全控制 (Enterprise-level security)
-  - 本地化部署支持 (On-premises deployment)
+Infrastructure platforms, model training frameworks, development tools, data processing systems, and utility showcases.
 
-#### CSGHub Server 🏢
-- **简介**: CSGHub开源大模型资产管理平台的服务端，提供基于REST API的模型、数据集等资产管理功能。
-- **English**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
-- **核心特性**: 用户和组织管理、模型/数据集托管、Git LFS支持、内容审核、活跃度跟踪
+## 🎯 1.1 Model Training & Fine-tuning
 
-#### GPUStack 🖥️
-- **简介**: GPU资源管理和调度平台，优化GPU集群使用效率。
-- **English**: GPU resource management and scheduling platform, optimizing GPU cluster efficiency.
-- **核心特性**: GPU集群管理、资源调度、性能监控
+### LlamaFactory 🚀
+- **Description**: Unified LLM fine-tuning framework supporting 100+ models with zero-code offline training.
+- **Key Features**:
+  - Multi-model support (LLaMA, Qwen, Mistral, etc.)
+  - Complete fine-tuning pipeline (LoRA, QLoRA, Full)
+  - Web UI (Gradio-based LLaMA-Board)
+  - Multiple reward models
+  - Efficient resource management
 
-#### MLflow 📈
-- **简介**: 开源机器学习实验跟踪平台，支持完整的ML生命周期管理。
-- **English**: Open-source ML experiment tracking platform supporting complete ML lifecycle management.
-- **核心特性**: 实验跟踪、模型注册、部署管理
+### Data-Juicer 📊
+- **Description**: Data Operating System for the foundation model era, for data cleaning, synthesis, and analysis.
+- **Key Features**:
+  - 200+ data processing operators
+  - Multimodal data processing
+  - Cloud-native architecture
+  - Large-scale data processing
+  - Visual configuration interface
 
 ---
 
-### 🏢 4. 企业级应用 / Enterprise Applications
+## 🎨 1.2 Development Tools & Infrastructure
 
-#### E-Claw 🏗️
-- **简介**: 基于OpenClaw架构的企业级AI代理运行平台，支持多租户隔离和RAG检索。
-- **English**: Enterprise-grade AI agent runtime platform based on OpenClaw, supporting multi-tenant isolation and RAG retrieval.
-- **核心特性**:
-  - 多租户隔离 (Multi-tenant isolation)
-  - 任务管理与断点续传 (Task management and checkpoint resume)
-  - 知识库与RAG检索 (Knowledge base and RAG retrieval)
-  - RBAC权限控制 (RBAC permission control)
-  - 资源配额管理 (Resource quota management)
-  - AI网关统一接入 (Unified AI gateway)
-  - 审计日志记录 (Audit logging)
-- **技术栈**: FastAPI, Vue 3, PostgreSQL, Redis, Docker, Kubernetes
+### CSGHub 🏢
+- **Description**: LLM asset management platform frontend designed for enterprise, as a private Huggingface alternative.
+- **Key Features**:
+  - Unified model management
+  - Dataset management
+  - Space deployment
+  - Enterprise-level security
+  - On-premises deployment
 
-#### AI QA System
-- **简介**: 基于LangChain的智能问答系统，支持文档理解和上下文问答。
-- **English**: Intelligent Q&A system based on LangChain, supporting document understanding and context-based question answering.
-- **核心特性**: RAG检索、文档向量索引、多语言支持
+### CSGHub Server 🏢
+- **Description**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
+- **Key Features**: User and organization management, model/dataset hosting, Git LFS support, content moderation, activity tracking
 
-#### DeepSeek QA System 💬
-- **简介**: 基于FastAPI + DeepSeek大模型的智能问答系统，支持多轮对话和对话历史管理。
-- **English**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
-- **核心特性**: DeepSeek大模型集成、多轮对话、现代化Web界面、异步处理、对话记录管理
+### GPUStack 🖥️
+- **Description**: GPU resource management and scheduling platform, optimizing GPU cluster efficiency.
+- **Key Features**: GPU cluster management, resource scheduling, performance monitoring
 
-#### JIRA System 👔
-- **简介**: 项目管理与问题跟踪系统（类JIRA），支持用户管理、项目管理、问题追踪和评论功能。
-- **English**: Project management and issue tracking system (JIRA-like), supporting user management, project management, issue tracking, and commenting.
-- **技术栈**: FastAPI, Vue 3, PrimeVue, SQLite
+### MLflow 📈
+- **Description**: Open-source ML experiment tracking platform supporting complete ML lifecycle management.
+- **Key Features**: Experiment tracking, model registry, deployment management
 
----
+### AIGateway 🛡️
+- **Description**: Unified LLM inference gateway built on LiteLLM Proxy with multi-model routing, six-layer guardrails, and full observability/auditing. Designed for financial compliance with gate thresholds: jailbreak bypass ≤ 2%, false positive ≤ 2%, PII leak = 0, groundedness ≥ 0.9.
+- **Key Features**:
+  - Six-layer guardrails: Input (Presidio PII, Lakera, injection), Dialog, Retrieval, Tool, Output (LlamaGuard/Bedrock), Monitoring (Langfuse/OTel)
+  - Policy-as-code (`policy.yaml`) with validation and eval gates
+  - Tier-based model routing via `x-model-tier` header
+  - Rollback scripts (route, canary weight, GitOps image) with MTTR ≤ 15 min
+  - Docker Compose and Kubernetes/Argo CD deployments
 
-### 📦 5. 数据处理与资源管理 / Data Processing & Resources
+### DevGuard 🔒
+- **Description**: AI Guardrails monorepo with Argo CD-native GitOps. Combines CI build gates with guardrail evaluation and GitOps deployment via Argo CD, Argo Rollouts, and Gatekeeper.
+- **Key Features**:
+  - CI gates: policy validation, unit tests, eval, red-team checks
+  - Gate thresholds: jailbreak bypass ≤ 2%, false positive ≤ 2%, PII leak = 0%
+  - Argo CD self-healing and auto-rollback on SLO breach
+  - Admission control via Gatekeeper constraints
+  - Compliance support (SR 11-7 / DORA / MiFID II / GDPR Art.22)
 
-#### Data-Juicer-main
-- **简介**: Data-Juicer的主要版本，包含完整的数据处理流水线。
-- **English**: Main version of Data-Juicer with complete data processing pipeline.
+### K8s DevOps (Tekton + Argo CD) ☸️
+- **Description**: Complete GitOps demonstration combining Tekton CI pipelines with Argo CD continuous delivery, featuring a sample Go application.
+- **Key Features**:
+  - Tekton pipeline: git-clone → build-push-image (Kaniko) → update-manifest
+  - Argo CD auto-sync from Git manifests to Kubernetes cluster
+  - Optional webhook-triggered CI via Tekton Triggers
+  - Sample Go app runnable locally without Kubernetes
 
-#### Wanwu
-- **简介**: 万物数据平台，专注于AI数据的收集、处理和分析。
-- **English**: Wanwu data platform focusing on AI data collection, processing, and analysis.
-
-#### GPU Allocator 🖥️
-- **简介**: NVIDIA GPU按卡分配的Web管理系统。
-- **English**: Web management system for allocating NVIDIA GPUs by card.
-- **核心特性**: GPU资源池管理、应用管理、按卡分配、实时状态刷新、内存使用可视化
-
-#### Slurm Job Manager 👔
-- **简介**: 基于Slurm的分布式HPC作业管理与监控Web前端系统。
-- **English**: Distributed HPC job management and monitoring web frontend system based on Slurm.
-- **核心特性**: 作业提交与取消、实时监控（每10秒刷新）、节点状态查看、作业统计分析、深色主题UI
-
----
-
-### 💬 6. 工具与演示系统 / Tools & Showcase Systems
-
-#### AI Models Showcase
-- **简介**: AI模型展示平台，用于演示和测试各种AI模型能力。
-- **English**: AI model showcase platform for demonstrating and testing various AI model capabilities.
-- **核心特性**: 模型对比、交互式演示、性能评估
-
-#### Easy Learn AI
-- **简介**: AI学习和评估网站，提供交互式学习体验。
-- **English**: AI learning and evaluation website providing interactive learning experience.
-
-#### ClawManager
-- **简介**: AI代理管理工具，用于监控和管理多个AI代理实例。
-- **English**: AI agent management tool for monitoring and managing multiple AI agent instances.
-- **核心特性**: InteractionAgent（交互协调）、ModelDownloadAgent（自动下载）、ModelFinetuneAgent（自动微调与部署）
+### SkillHub 🧩
+- **Description**: Enterprise-grade, open-source agent skill registry platform for publishing, discovering, and managing reusable skill packages across an organization.
+- **Key Features**:
+  - Self-hosted, private registry with full data sovereignty
+  - Semantic versioning with custom tags (beta, stable) and latest tracking
+  - CLI-based skill installation and management
+  - Scanner, monitoring, and Docker Compose deployment support
+- **Tech Stack**: Java 21 backend, React 19 frontend
 
 ---
 
+## 📦 1.3 Data Processing & Resources
 
-## 🗂️ 项目架构总览 / Project Architecture Overview
+### Wanwu
+- **Description**: Wanwu data platform focusing on AI data collection, processing, and analysis.
+
+### GPU Allocator 🖥️
+- **Description**: Web management system for allocating NVIDIA GPUs by card.
+- **Key Features**: GPU resource pool management, application management, per-card allocation, real-time status refresh, memory usage visualization
+
+### Slurm Job Manager 👔
+- **Description**: Distributed HPC job management and monitoring web frontend system based on Slurm.
+- **Key Features**: Job submission and cancellation, real-time monitoring (refresh every 10 seconds), node status view, job statistics, dark theme UI
+
+---
+
+## 💬 1.4 Tools & Showcase Systems
+
+### OCR Test Platform 📄
+- **Description**: Web platform for testing OCR model performance, supporting document upload, OCR recognition, and visual model configuration.
+- **Key Features**:
+  - Document upload via drag-and-drop (PNG, JPG, JPEG, TIFF, BMP, GIF, PDF)
+  - Automatic PDF page conversion and per-page recognition with merged results
+  - Multi-engine support: Tesseract, PaddleOCR, EasyOCR, OvisOCR
+  - Visual engine configuration (language, PSM, OEM, GPU, preprocessing)
+  - Recognition history, text copy, and TXT export
+- **Tech Stack**: FastAPI, HTML5 + CSS3 + JavaScript, PyMuPDF
+
+### AI Models Showcase
+- **Description**: AI model showcase platform for demonstrating and testing various AI model capabilities.
+- **Key Features**: Model comparison, interactive demos, performance evaluation
+
+### Easy Learn AI
+- **Description**: AI learning and evaluation website providing interactive learning experience.
+
+### ClawManager
+- **Description**: AI agent management tool for monitoring and managing multiple AI agent instances.
+- **Key Features**: InteractionAgent (interaction coordination), ModelDownloadAgent (automatic downloading), ModelFinetuneAgent (automatic fine-tuning and deployment)
+
+### Util Scripts 🛠️
+- **Description**: Collection of utility scripts for converting exam, answer, and token evaluation data to Word documents.
+- **Key Features**: convert_exam_to_word.py, convert_answers_to_word.py, convert_token_eval_to_word.py, convert_to_word.py
+
+---
+
+# 🤖 Category 2: AI Agent
+
+Intelligent agent systems and enterprise AI agent applications.
+
+## 🧠 2.1 Intelligent Agent Systems
+
+### Hermes Agent ⚡
+- **Description**: Self-improving AI agent built by Nous Research with a built-in learning loop. Supports multi-platform communication, automation, skill creation, and memory management.
+- **Key Features**:
+  - Terminal UI
+  - Multi-platform support (Telegram, Discord, Slack, etc.)
+  - Automatic skill creation and improvement
+  - Cron scheduling
+  - Subagent delegation
+
+### OpenAkita 🌐
+- **Description**: Open-source multi-agent AI assistant platform. Multiple AI agents collaborate as an "AI company" that autonomously gets things done — web search, computer operation, file management, and scheduled tasks across 6 IM platforms (Telegram, Feishu, WeCom, DingTalk, QQ, etc.).
+- **Key Features**:
+  - Multi-agent collaboration and organization orchestration
+  - Plugin system with 89+ tools
+  - 6-layer sandbox security
+  - 30+ LLM support
+  - Desktop / Web / Mobile clients
+
+### OpenClaw
+- **Description**: Open-source AI agent framework supporting tool calling, multimodal interaction, and adaptive learning.
+- **Key Features**: Tool ecosystem, custom agent creation, extensible architecture
+
+### Jiuwenclaw
+- **Description**: Chinese AI agent system based on OpenClaw, optimized for Chinese environments.
+- **Key Features**: Chinese language model integration, local knowledge base, search engine integration
+
+### Agent Model System 🤖
+- **Description**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
+- **Key Features**: InteractionAgent (interaction coordination), ModelDownloadAgent (automatic downloading), ModelFinetuneAgent (automatic fine-tuning and deployment)
+
+### Agent Harness Framework 🔧
+- **Description**: Engineering framework for agent runtime management, memory management, and self-evolution. Provides a complete agent lifecycle with telemetry-driven optimization.
+- **Key Features**:
+  - Full agent lifecycle management (init, run, pause, resume, terminate)
+  - Multi-tier memory architecture (short-term, long-term, working memory)
+  - Runtime telemetry collection (behavior, metrics, interactions)
+  - Self-evolution engine for automatic strategy and prompt optimization
+  - Web monitoring UI
+
+---
+
+## 🏢 2.2 Enterprise Applications
+
+### E-Claw 🏗️
+- **Description**: Enterprise-grade AI agent runtime platform based on OpenClaw, supporting multi-tenant isolation and RAG retrieval.
+- **Key Features**:
+  - Multi-tenant isolation
+  - Task management and checkpoint resume
+  - Knowledge base and RAG retrieval
+  - RBAC permission control
+  - Resource quota management
+  - Unified AI gateway
+  - Audit logging
+- **Tech Stack**: FastAPI, Vue 3, PostgreSQL, Redis, Docker, Kubernetes
+
+### AI QA System
+- **Description**: Intelligent Q&A system based on LangChain, supporting document understanding and context-based question answering.
+- **Key Features**: RAG retrieval, document vector indexing, multilingual support
+
+### DeepSeek QA System 💬
+- **Description**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
+- **Key Features**: DeepSeek LLM integration, multi-turn conversations, modern web interface, asynchronous processing, conversation history management
+
+### Legal Agent ⚖️
+- **Description**: Intelligent legal agent platform with a portal home, legal research, contract review/drafting, and labor-law Q&A modules, built from UI design specifications.
+- **Key Features**:
+  - Legal search: regulation query, similar case retrieval, administrative penalties, professional interpretation
+  - Contract review: doc/docx/pdf upload with checklist and reference-based review
+  - Contract drafting with multiple drafting styles
+  - Q&A AI for labor law, financial compliance, and enterprise globalization
+- **Tech Stack**: Vue 3 + TypeScript + Vite + Element Plus + Pinia, FastAPI + SQLAlchemy + SQLite, OpenAI-compatible API
+
+### RecruitOS + HR Agent 👥
+- **Description**: Recruitment management system (RecruitOS) with an integrated HR Agent AI service providing understanding, generation, and recommendation capabilities. RecruitOS depends on the HR Agent for all AI features.
+- **Key Features**:
+  - Full recruitment workflow: data, rules, permissions, execution, and audit
+  - HR Agent with LLM-powered drafting, parsing, dialogue, and analysis
+  - JWT authentication with role-based permissions (8 demo roles)
+  - Offline mock mode when no API key is configured
+- **Tech Stack**: React + TypeScript + Vite + Ant Design + Recharts, Express + TypeScript + Prisma + SQLite
+
+### JIRA System 👔
+- **Description**: Project management and issue tracking system (JIRA-like), supporting user management, project management, issue tracking, and commenting.
+- **Tech Stack**: FastAPI, Vue 3, PrimeVue, SQLite
+
+---
+
+## 🗂️ Project Architecture Overview
 
 ```
 Eric's AI Project Collection
-├── 🤖 Intelligent Agent Systems (智能代理系统)
-│   ├── hermes-agent/      # Self-improving agent platform
-│   ├── openclaw-main/    # AI agent framework
-│   ├── jiuwenclaw/       # Chinese AI agent system
-│   └── agent-model-system/ # Three-agent collaboration system
 │
-├── 🎯 Model Training (模型训练)
-│   ├── LlamaFactory/      # LLM fine-tuning platform
-│   └── data-juicer/      # Data processing OS
+├── 🏗️ AI Infra & Dev Tools
+│   ├── 🎯 Model Training
+│   │   ├── LlamaFactory/          # LLM fine-tuning platform
+│   │   └── data-juicer/           # Data processing OS
+│   │
+│   ├── 🎨 Development Tools & Infrastructure
+│   │   ├── csghub/                # LLM asset management frontend
+│   │   ├── csghub-server/         # LLM asset management server
+│   │   ├── gpustack-main/         # GPU resource management
+│   │   ├── mlflow/                # ML experiment tracking
+│   │   ├── AIGateway/             # LiteLLM gateway + 6-layer guardrails
+│   │   ├── DevGuard/              # AI guardrails GitOps (Argo CD)
+│   │   ├── k8sdevops/             # Tekton CI + Argo CD GitOps
+│   │   └── skillhub/              # Agent skill registry
+│   │
+│   ├── 📦 Data Processing & Resources
+│   │   ├── wanwu/                 # Wanwu data platform
+│   │   ├── gpu-allocator/         # GPU allocation system
+│   │   └── slurm-job-manager/     # Slurm job management
+│   │
+│   └── 💬 Tools & Showcase
+│       ├── ocr-test-platform/     # OCR model testing platform
+│       ├── ai-models-showcase/    # AI model showcase
+│       ├── easy-learn-ai/         # AI learning website
+│       ├── ClawManager-main/      # AI agent manager
+│       └── util/                  # Utility scripts
 │
-├── 🎨 Development Tools (开发工具)
-│   ├── csghub/           # LLM asset management frontend
-│   ├── csghub-server/    # LLM asset management server
-│   ├── gpustack-main/    # GPU resource management
-│   └── mlflow/           # ML experiment tracking
-│
-├── 🏢 Enterprise Apps (企业应用)
-│   ├── e-claw/           # Enterprise AI agent platform
-│   ├── ai-qa-system/     # Intelligent Q&A system
-│   ├── deepseek-qa-system/ # DeepSeek Q&A system
-│   ├── ai-models-showcase/ # AI model showcase
-│   ├── jira-system/      # Project management system
-│   └── ClawManager-main/ # AI agent manager
-│
-├── 📦 Data Processing (数据处理)
-│   ├── wanwu/           # Wanwu data platform
-│   └── easy-learn-ai/    # AI learning website
-│
-└── 🖥️ Resource Management (资源管理)
-    ├── gpu-allocator/   # GPU allocation system
-    └── slurm-job-manager/ # Slurm job management
+└── 🤖 AI Agent
+    ├── 🧠 Intelligent Agent Systems
+    │   ├── hermes-agent/          # Self-improving agent platform
+    │   ├── openakita/             # Open-source multi-agent AI assistant
+    │   ├── openclaw-main/         # AI agent framework
+    │   ├── jiuwenclaw/            # Chinese AI agent system
+    │   ├── agent-model-system/    # Three-agent collaboration system
+    │   └── agent-harness/         # Agent runtime + memory + self-evolution
+    │
+    └── 🏢 Enterprise Applications
+        ├── e-claw/                # Enterprise AI agent platform
+        ├── ai-qa-system/          # Intelligent Q&A system
+        ├── deepseek-qa-system/    # DeepSeek Q&A system
+        ├── legal-agent/           # Intelligent legal agent platform
+        ├── recruit-agent/         # RecruitOS + HR Agent
+        └── jira-system/           # Project management system
 ```
 
 ---
 
-## 🚀 快速开始 / Quick Start
+## 🚀 Quick Start
 
-### 🖥️ 对于开发者 / For Developers
+### 🖥️ For Developers
 
 ```bash
 # Clone the repository
 git clone https://github.com/ericyudong/AI-Coding.git
 cd AI-Coding
 
-# 设置Python虚拟环境 / Set up Python virtual environment
+# Set up Python virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # or
 venv\Scripts\activate     # Windows
 
-# 安装基础依赖 / Install basic dependencies
+# Install basic dependencies
 pip install fastapi uvicorn sqlalchemy langchain
 ```
 
-### 🤖 尝试Hermes Agent / Try Hermes Agent
+### 🤖 Try Hermes Agent
 
 ```bash
-# 一键安装 / One-click install
+# One-click install
 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
 
-# 启动对话 / Start conversation
+# Start conversation
 hermes
 ```
 
-### 🎯 训练自定义模型 / Train Custom Models
+### 🎯 Train Custom Models
 
 ```bash
 cd LlamaFactory
@@ -246,7 +329,7 @@ pip install -r requirements.txt
 python src/export_model.py --model_name_or_path meta-llama/Llama-3-8b --export_dir ./output
 ```
 
-### 🏢 部署E-Claw企业平台 / Deploy E-Claw Enterprise Platform
+### 🏢 Deploy E-Claw Enterprise Platform
 
 ```bash
 cd AI-Coding/e-claw/backend
@@ -254,111 +337,150 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+### 🛡️ Run AIGateway Locally
+
+```bash
+cd AIGateway
+cp .env.example .env
+pip install -r requirements.txt
+python scripts/validate_policy.py
+cd deployments && docker compose up -d --build
+```
+
+### 📄 Launch OCR Test Platform
+
+```bash
+cd ocr-test-platform/backend
+pip install -r requirements.txt
+python main.py
+# Visit http://localhost:8000
+```
+
 ---
 
-## 📖 详细文档 / Detailed Documentation
+## 📖 Detailed Documentation
 
-### 项目特定文档 / Project-Specific Documentation
+### AI Infra & Dev Tools
 
-| 项目 / Project | 文档链接 / Documentation |
-|----------------|-------------------------|
-| **Hermes Agent** | [https://hermes-agent.nousresearch.com/docs/](https://hermes-agent.nousresearch.com/docs/) |
+| Project | Documentation |
+|---------|---------------|
 | **LlamaFactory** | [https://github.com/hiyouga/LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) |
 | **Data-Juicer** | [https://datajuicer.github.io/data-juicer/](https://datajuicer.github.io/data-juicer/) |
 | **CSGHub** | [https://github.com/OpenCSGs/csghub](https://github.com/OpenCSGs/csghub) |
-| **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
-| **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
 | **GPU Allocator** | [gpu-allocator/README.md](./gpu-allocator/README.md) |
-| **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
-| **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
+| **AIGateway** | [AIGateway/README.md](./AIGateway/README.md) |
+| **DevGuard** | [DevGuard/README.md](./DevGuard/README.md) |
+| **K8s DevOps** | [k8sdevops/README.md](./k8sdevops/README.md) |
+| **SkillHub** | [https://iflytek.github.io/skillhub/](https://iflytek.github.io/skillhub/) |
+| **OCR Test Platform** | [ocr-test-platform/README.md](./ocr-test-platform/README.md) |
 | **Slurm Job Manager** | [slurm-job-manager/README.md](./slurm-job-manager/README.md) |
+
+### AI Agent
+
+| Project | Documentation |
+|---------|---------------|
+| **Hermes Agent** | [https://hermes-agent.nousresearch.com/docs/](https://hermes-agent.nousresearch.com/docs/) |
+| **OpenAkita** | [openakita/README.md](./openakita/README.md) |
+| **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
+| **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
+| **Agent Harness** | [agent-harness/README.md](./agent-harness/README.md) |
+| **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
+| **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
+| **AI QA System** | [ai-qa-system/README.md](./ai-qa-system/README.md) |
+| **Legal Agent** | [legal-agent/README.md](./legal-agent/README.md) |
+| **RecruitOS + HR Agent** | [recruit-agent/README.md](./recruit-agent/README.md) |
 
 ---
 
-## 🛠️ 技术栈概览 / Technology Stack Overview
+## 🛠️ Technology Stack Overview
 
-### 核心技术 / Core Technologies
-- ** Programming Languages**: Python 3.11+, TypeScript, JavaScript
-- ** **Web Frameworks**: FastAPI, Flask, Vue 3, React
-- ** **Databases**: PostgreSQL, MongoDB, SQLite, Redis
-- ** **ML/DL Frameworks**: PyTorch, TensorFlow, LangChain, Transformers
-- ** **Containerization**: Docker, Kubernetes
-- ** **Development Tools**: Git, VS Code, JupyterLab
+### Core Technologies
+- **Programming Languages**: Python 3.11+, TypeScript, JavaScript, Java 21, Go
+- **Web Frameworks**: FastAPI, Flask, Vue 3, React, Express, Element Plus, Ant Design
+- **Databases**: PostgreSQL, MongoDB, SQLite, Redis, Prisma
+- **ML/DL Frameworks**: PyTorch, TensorFlow, LangChain, Transformers
+- **Containerization & DevOps**: Docker, Kubernetes, Argo CD, Argo Rollouts, Tekton, Gatekeeper
+- **Development Tools**: Git, VS Code, JupyterLab
 
-### AI相关技术 / AI-Related Technologies
+### AI-Related Technologies
 - **LLM Training**: LoRA, QLoRA, DPO, PPO
 - **Vector Databases**: ChromaDB, FAISS
-- **Agent Frameworks**: LangChain, AutoGPT
-- **Model Deployment**: MLflow, Gradio, Ollama
+- **Agent Frameworks**: LangChain, AutoGPT, OpenClaw
+- **AI Safety & Guardrails**: Presidio, Lakera, LlamaGuard, Bedrock, policy-as-code
+- **Model Deployment**: MLflow, Gradio, Ollama, LiteLLM
+- **OCR Engines**: Tesseract, PaddleOCR, EasyOCR, OvisOCR
 - **Data Processing**: Pandas, NumPy, Dask
 
 ---
 
-## 🌟 使用场景 / Use Cases
+## 🌟 Use Cases
 
-### 👨‍💼 企业应用 / Enterprise Applications
-- ** customer service automation** (客户服务自动化)
-- ** document processing and analysis** (文档处理分析)
-- ** knowledge management** (知识管理)
-- ** workflow automation** (工作流自动化)
-- ** issue tracking and management** (问题追踪与管理)
-- ** GPU resource allocation** (GPU资源分配)
-- ** HPC job scheduling** (HPC作业调度)
+### 👨‍💼 Enterprise Applications
+- Customer service automation
+- Document processing and analysis (OCR, contract review)
+- Knowledge management and legal research
+- Recruitment management and HR AI assistance
+- Workflow automation
+- Issue tracking and management
+- GPU resource allocation
+- HPC job scheduling
+- AI gateway with guardrails for financial compliance
 
-### 🎓 教育研究 / Education & Research
-- ** personalized learning assistants** (个性化学习助手)
-- ** academic research support** (学术研究支持)
-- ** experiment tracking** (实验跟踪)
-- ** model fine-tuning** (模型微调)
+### 🎓 Education & Research
+- Personalized learning assistants
+- Academic research support
+- Experiment tracking
+- Model fine-tuning
 
-### 🔄 开发者工具 / Developer Tools
-- ** code generation assistance** (代码生成辅助)
-- ** automated testing** (自动化测试)
-- ** CI/CD integration** (CI/CD集成)
-- ** API development** (API开发)
+### 🔄 Developer Tools
+- Code generation assistance
+- Automated testing
+- CI/CD integration (Tekton, Argo CD, GitOps)
+- API development
+- Agent skill registries and multi-agent orchestration
 
 ---
 
-## 🤝 贡献指南 / Contributing
+## 🤝 Contributing
 
-我们欢迎各种形式的贡献！/ We welcome all forms of contributions!
+We welcome all forms of contributions!
 
-### 如何贡献 / How to Contribute
-1. Fork 本仓库 / Fork this repository
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`) / Create feature branch
-3. 提交更改 (`git commit -m 'Add some amazing feature'`) / Commit changes
-4. 推送到分支 (`git push origin feature/amazing-feature`) / Push to branch
-5. 创建Pull Request / Create Pull Request
+### How to Contribute
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
 
-### 代码规范 / Code Standards
+### Code Standards
 - **Python**: Follow PEP 8 style guide
 - **TypeScript**: Use ESLint and Prettier
-- **Comments**: Provide clear documentation in both Chinese and English
+- **Comments**: Provide clear documentation
 - **Testing**: Write tests for new features
 
 ---
 
-## 📝 许可证 / License
+## 📝 License
 
-大部分项目使用MIT许可证。具体请查看各个项目的LICENSE文件。
-Most projects use the MIT License. Please check the LICENSE file in each project for details.
+Most projects use the MIT License. Some projects (e.g., OpenAkita uses AGPL-3.0, SkillHub uses Apache 2.0) have their own licenses — please check the LICENSE file in each project for details.
 
 ---
 
-## 🙏 致谢 / Acknowledgments
+## 🙏 Acknowledgments
 
-感谢所有开源项目的贡献者，特别是：
 Special thanks to all contributors in the open-source community, especially:
 
 - **Nous Research** - Hermes Agent
 - **hiyouga** - LlamaFactory
 - **datajuicer** - Data-Juicer
 - **OpenCSG** - CSGHub
-- 以及所有其他开源项目 / And all other open-source projects
+- **OpenAkita** - Multi-agent AI assistant
+- **iFLYTEK** - SkillHub
+- And all other open-source projects
 
 ---
 
-## 📧 联系方式 / Contact
+## 📧 Contact
 
 - **Maintainer**: Eric
 - **Email**: [yudongeric@gmail.com]
@@ -367,23 +489,24 @@ Special thanks to all contributors in the open-source community, especially:
 
 ---
 
-## 📊 项目统计 / Project Statistics
+## 📊 Project Statistics
 
-- **总项目数 / Total Projects**: 20+
-- **语言支持 / Language Support**: Python, TypeScript, JavaScript
-- **总代码行数 / Total Lines of Code**: 100,000+
-- **开源协议 / Open Source Licenses**: MIT, Apache 2.0
+- **Total Projects**: 30+
+- **Categories**: AI Infra & Dev Tools, AI Agent
+- **Language Support**: Python, TypeScript, JavaScript, Java, Go
+- **Total Lines of Code**: 100,000+
+- **Open Source Licenses**: MIT, Apache 2.0, AGPL-3.0
 
 ---
 
 <div align="center">
-  
-  **[⬆ 回到顶部 / Back to Top](#érics-ai-project-collection--eric的ai项目集合)**
-  
+
+  **[⬆ Back to Top](#erics-ai-project-collection)**
+
   <br>
-  
+
   Made with ❤️ by Eric
-  
-  Last updated: 2026-04-21
-  
+
+  Last updated: 2026-08-12
+
 </div>

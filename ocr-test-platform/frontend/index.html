@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR测试平台</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/>
+                </svg>
+                <span>OCR测试平台</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="upload">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                    </svg>
+                    <span>文档上传</span>
+                </a>
+                <a href="#" class="nav-item" data-page="config">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                    </svg>
+                    <span>模型配置</span>
+                </a>
+                <a href="#" class="nav-item" data-page="history">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                    </svg>
+                    <span>识别历史</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="engine-status">
+                    <span class="status-dot" id="engineStatusDot"></span>
+                    <span id="currentEngineName">Tesseract</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 上传页面 -->
+            <div class="page active" id="uploadPage">
+                <header class="page-header">
+                    <h1>文档上传与识别</h1>
+                    <p>上传图片文档，使用OCR引擎进行文字识别</p>
+                </header>
+
+                <div class="upload-section">
+                    <!-- 引擎选择 -->
+                    <div class="engine-selector">
+                        <label>选择OCR引擎：</label>
+                        <select id="engineSelect">
+                            <option value="">使用默认引擎</option>
+                            <option value="tesseract">Tesseract</option>
+                            <option value="paddleocr">PaddleOCR</option>
+                            <option value="easyocr">EasyOCR</option>
+                            <option value="ovisocr">OvisOCR</option>
+                        </select>
+                    </div>
+
+                    <!-- 上传区域 -->
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                            </svg>
+                        </div>
+                        <p class="upload-text">拖拽文件到此处，或点击选择文件</p>
+                        <p class="upload-hint">支持 PNG, JPG, JPEG, TIFF, BMP, PDF 格式，最大 50MB</p>
+                        <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.tiff,.bmp,.gif,.pdf" multiple hidden>
+                    </div>
+
+                    <!-- 文件预览列表 -->
+                    <div class="file-list" id="fileList" style="display: none;">
+                        <h3>待处理文件</h3>
+                        <div id="fileItems"></div>
+                        <button class="btn btn-primary" id="startOcrBtn">开始识别</button>
+                    </div>
+                </div>
+
+                <!-- 识别结果 -->
+                <div class="result-section" id="resultSection" style="display: none;">
+                    <h2>识别结果</h2>
+                    <div class="result-container">
+                        <div class="result-image">
+                            <h3 id="resultImageTitle">原始图片</h3>
+                            <img id="resultImage" src="" alt="原始图片">
+                            <div class="result-pdf-preview" id="resultPdfPreview" style="display: none;">
+                                <svg viewBox="0 0 24 24" width="72" height="72" fill="#e53e3e">
+                                    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v7h7v9H6z"/>
+                                </svg>
+                                <div class="pdf-preview-badge">PDF</div>
+                                <div class="pdf-preview-name" id="pdfPreviewName"></div>
+                                <div class="pdf-preview-pages" id="pdfPreviewPages"></div>
+                            </div>
+                        </div>
+                        <div class="result-text">
+                            <h3>识别文本</h3>
+                            <div class="result-meta">
+                                <span>引擎: <strong id="resultEngine"></strong></span>
+                                <span>置信度: <strong id="resultConfidence"></strong></span>
+                                <span>耗时: <strong id="resultTime"></strong></span>
+                            </div>
+                            <textarea id="resultText" readonly></textarea>
+                            <div class="result-actions">
+                                <button class="btn btn-secondary" id="copyTextBtn">复制文本</button>
+                                <button class="btn btn-secondary" id="downloadTextBtn">下载文本</button>
+                                <button class="btn btn-primary" id="downloadWordBtn">下载Word</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>正在识别中，请稍候...</p>
+                </div>
+            </div>
+
+            <!-- 配置页面 -->
+            <div class="page" id="configPage">
+                <header class="page-header">
+                    <h1>OCR模型配置</h1>
+                    <p>配置OCR引擎参数，选择默认引擎</p>
+                </header>
+
+                <div class="config-section">
+                    <!-- 引擎状态 -->
+                    <div class="config-card">
+                        <h3>引擎状态</h3>
+                        <div class="engine-status-list" id="engineStatusList">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
+
+                    <!-- Tesseract配置 -->
+                    <div class="config-card">
+                        <h3>Tesseract 配置</h3>
+                        <div class="form-group">
+                            <label>安装路径</label>
+                            <input type="text" id="tesseractPath" placeholder="C:\Program Files\Tesseract-OCR\tesseract.exe">
+                        </div>
+                        <div class="form-group">
+                            <label>识别语言</label>
+                            <select id="tesseractLang">
+                                <option value="chi_sim+eng">简体中文+英文</option>
+                                <option value="chi_sim">简体中文</option>
+                                <option value="chi_tra+eng">繁体中文+英文</option>
+                                <option value="eng">英文</option>
+                                <option value="jpn+eng">日文+英文</option>
+                                <option value="kor+eng">韩文+英文</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>页面分割模式 (PSM)</label>
+                            <select id="tesseractPsm">
+                                <option value="3">自动检测</option>
+                                <option value="1">自动检测（含OSD）</option>
+                                <option value="4">假设为单列文本</option>
+                                <option value="6">假设为单个文本块</option>
+                                <option value="7">将图像视为单个文本行</option>
+                                <option value="8">将图像视为单个单词</option>
+                                <option value="10">将图像视为单个字符</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>OCR引擎模式 (OEM)</label>
+                            <select id="tesseractOem">
+                                <option value="3">默认（LSTM + Legacy）</option>
+                                <option value="0">Legacy引擎</option>
+                                <option value="1">LSTM引擎</option>
+                                <option value="2">Legacy + LSTM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- PaddleOCR配置 -->
+                    <div class="config-card">
+                        <h3>PaddleOCR 配置</h3>
+                        <div class="form-group">
+                            <label>识别语言</label>
+                            <select id="paddleLang">
+                                <option value="ch">中文</option>
+                                <option value="en">英文</option>
+                                <option value="japan">日文</option>
+                                <option value="korean">韩文</option>
+                                <option value="french">法文</option>
+                                <option value="german">德文</option>
+                            </select>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="paddleUseGpu"> 使用GPU加速
+                            </label>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="paddleUseAngleCls" checked> 启用文字方向分类
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- EasyOCR配置 -->
+                    <div class="config-card">
+                        <h3>EasyOCR 配置</h3>
+                        <div class="form-group">
+                            <label>识别语言</label>
+                            <div class="checkbox-list">
+                                <label><input type="checkbox" value="ch_sim" class="easyocr-lang" checked> 简体中文</label>
+                                <label><input type="checkbox" value="ch_tra" class="easyocr-lang"> 繁体中文</label>
+                                <label><input type="checkbox" value="en" class="easyocr-lang" checked> 英文</label>
+                                <label><input type="checkbox" value="japan" class="easyocr-lang"> 日文</label>
+                                <label><input type="checkbox" value="korean" class="easyocr-lang"> 韩文</label>
+                            </div>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="easyocrUseGpu"> 使用GPU加速
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- OvisOCR配置 -->
+                    <div class="config-card">
+                        <h3>OvisOCR 配置</h3>
+                        <div class="form-group">
+                            <label>模型ID</label>
+                            <input type="text" id="ovisocrModelId" placeholder="OvisOCR">
+                        </div>
+                        <div class="form-group">
+                            <label>API URL</label>
+                            <input type="text" id="ovisocrApiUrl" placeholder="https://maas.ehuidata.com/openai/v1">
+                        </div>
+                        <div class="form-group">
+                            <label>API Key</label>
+                            <input type="password" id="ovisocrApiKey" placeholder="输入API Key">
+                        </div>
+                    </div>
+
+                    <!-- 通用配置 -->
+                    <div class="config-card">
+                        <h3>通用配置</h3>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="preprocessEnabled" checked> 启用图片预处理
+                            </label>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="denoiseEnabled" checked> 启用去噪
+                            </label>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="thresholdEnabled" checked> 启用二值化
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-actions">
+                        <button class="btn btn-primary" id="saveConfigBtn">保存配置</button>
+                        <button class="btn btn-secondary" id="resetConfigBtn">重置默认</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 历史页面 -->
+            <div class="page" id="historyPage">
+                <header class="page-header">
+                    <h1>识别历史</h1>
+                    <p>查看最近的OCR识别记录</p>
+                </header>
+
+                <div class="history-section">
+                    <div class="history-actions">
+                        <button class="btn btn-secondary" id="refreshHistoryBtn">刷新</button>
+                        <button class="btn btn-danger" id="clearHistoryBtn">清空历史</button>
+                    </div>
+                    <div class="history-list" id="historyList">
+                        <!-- 动态加载 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

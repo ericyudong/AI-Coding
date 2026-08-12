@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: guardrail-slo
+  namespace: ai-gateway
+spec:
+  metrics:
+    - name: false-positive-pct
+      successCondition: result <= 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc:9090
+          query: |
+            100 * sum(rate(guardrail_false_positive_total[5m]))
+            / clamp_min(sum(rate(guardrail_requests_total[5m])), 1)
+    - name: jailbreak-bypass-pct
+      successCondition: result <= 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc:9090
+          query: |
+            100 * sum(rate(guardrail_jailbreak_bypass_total[5m]))
+            / clamp_min(sum(rate(guardrail_requests_total[5m])), 1)

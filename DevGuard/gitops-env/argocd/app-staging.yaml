@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-guardrails-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ai-guardrails
+  source:
+    repoURL: 'http://10.65.16.39:3000/EHui/claw-agent.git'
+    targetRevision: main
+    path: gitops-env/envs/staging
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: ai-guardrails-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false   # easier to debug in staging
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 5

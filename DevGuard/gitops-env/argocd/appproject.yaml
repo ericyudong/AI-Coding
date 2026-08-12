@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ai-guardrails
+  namespace: argocd
+spec:
+  description: AI Guardrails platform - GitOps single source of truth
+  sourceRepos:
+    - 'http://10.65.16.39:3000/EHui/claw-agent.git'
+  destinations:
+    - namespace: 'ai-guardrails-*'
+      server: 'https://kubernetes.default.svc'
+    - namespace: 'ai-guardrails-staging'
+      server: 'https://kubernetes.default.svc'
+    - namespace: 'ai-guardrails-prod'
+      server: 'https://kubernetes.default.svc'
+  clusterResourceWhitelist:
+    - group: 'argoproj.io'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  # Forbid sync into undeclared namespaces (least privilege for financial workloads).

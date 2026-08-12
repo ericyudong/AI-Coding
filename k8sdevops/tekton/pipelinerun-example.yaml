@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: demo-app-ci-run-
+  namespace: tekton-pipelines
+spec:
+  pipelineRef:
+    name: demo-app-ci
+  params:
+    - name: git-url
+      value: https://github.com/your-org/tekton-argocd-demo.git
+    - name: git-revision
+      value: main
+    - name: image
+      value: registry.example.com/demo/demo-app:1.0.1
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  taskRunTemplate:
+    serviceAccountName: pipeline-sa

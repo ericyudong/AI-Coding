@@ -1,0 +1,386 @@
+"""
+Token usage statistics API endpoints.
+
+GET  /api/stats/tokens/summary   — aggregated stats by dimension
+GET  /api/stats/tokens/timeline  — time series for charts
+GET  /api/stats/tokens/sessions  — per-session breakdown
+GET  /api/stats/tokens/records   — recent attributed requests
+GET  /api/stats/tokens/total     — grand total
+GET  /api/stats/tokens/context   — current context size + limit
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Query, Request
+
+from openakita.config import settings
+from openakita.storage.database import Database
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/stats/tokens", tags=["token_stats"])
+
+_db_instance: Database | None = None
+_db_lock = asyncio.Lock()
+_last_db_error: dict[str, str] = {}
+
+
+def _db_unavailable_payload() -> dict[str, object]:
+    return {
+        "error": "database not available",
+        "diagnostic": {
+            "db_path": str(settings.db_full_path),
+            "stage": _last_db_error.get("stage", "unknown"),
+            "exception_type": _last_db_error.get("exception_type", ""),
+            "message": _last_db_error.get("message", ""),
+        },
+    }
+
+
+async def _get_db() -> Database | None:
+    """Lazy-init a shared Database instance for stats queries."""
+    global _db_instance
+    if _db_instance is not None and _db_instance._connection is not None:
+        return _db_instance
+    async with _db_lock:
+        if _db_instance is not None and _db_instance._connection is not None:
+            return _db_instance
+        try:
+            db = Database()
+            await db.connect()
+            if db._connection is None:
+                logger.error("[TokenStats] Database connect() returned but _connection is None")
+                _last_db_error.update(
+                    {
+                        "stage": "post_connect",
+                        "exception_type": "NoConnection",
+                        "message": "Database.connect() completed but connection is None",
+                    }
+                )
+                return None
+            _db_instance = db
+            _last_db_error.clear()
+        except Exception as e:
+            logger.error(f"[TokenStats] Failed to connect database: {e}")
+            _last_db_error.update(
+                {
+                    "stage": "connect",
+                    "exception_type": type(e).__name__,
+                    "message": str(e)[:500],
+                }
+            )
+            return None
+    return _db_instance
+
+
+async def _reset_db() -> None:
+    """Reset the cached db instance so next call re-connects."""
+    global _db_instance
+    async with _db_lock:
+        if _db_instance is not None:
+            try:
+                await _db_instance.close()
+            except Exception:
+                pass
+            _db_instance = None
+
+
+def _parse_range(
+    start: str | None,
+    end: str | None,
+    period: str | None,
+    hours: int | None = None,
+) -> tuple[str, str]:
+    """Resolve time range and return as SQLite-compatible UTC timestamp strings.
+
+    SQLite CURRENT_TIMESTAMP stores UTC in 'YYYY-MM-DD HH:MM:SS' format (space separator).
+    We must query with the same format and timezone to get correct string comparisons.
+
+    新增：兼容前端/CLI 历史调用习惯
+      - hours: 直接给"过去 N 小时"，比 period 别名更直观
+      - period 增加 12h/24h/7d/30d 等更友好的别名
+      - 任何越界（负数/过大）都裁剪到 [1h, 365d]，避免空结果或扫全表
+    """
+    if start and end:
+        try:
+            s = datetime.fromisoformat(start)
+            e = datetime.fromisoformat(end)
+            return s.strftime("%Y-%m-%d %H:%M:%S"), e.strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError):
+            logger.warning(f"[TokenStats] Invalid time range: start={start!r}, end={end!r}, falling back to default")
+
+    now_utc = datetime.now(UTC).replace(tzinfo=None)
+
+    delta: timedelta | None = None
+    if hours is not None:
+        try:
+            h = int(hours)
+        except Exception:
+            h = 24
+        h = max(1, min(h, 365 * 24))
+        delta = timedelta(hours=h)
+
+    if delta is None:
+        delta_map = {
+            "1h": timedelta(hours=1),
+            "12h": timedelta(hours=12),
+            "24h": timedelta(hours=24),
+            "1d": timedelta(days=1),
+            "3d": timedelta(days=3),
+            "7d": timedelta(days=7),
+            "1w": timedelta(weeks=1),
+            "30d": timedelta(days=30),
+            "1m": timedelta(days=30),
+            "6m": timedelta(days=180),
+            "1y": timedelta(days=365),
+        }
+        delta = delta_map.get(period or "1d", timedelta(days=1))
+    start_utc = now_utc - delta
+    return start_utc.strftime("%Y-%m-%d %H:%M:%S"), now_utc.strftime("%Y-%m-%d %H:%M:%S")
+
+
+@router.get("/summary")
+async def summary(
+    request: Request,
+    group_by: str = Query("endpoint_name"),
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+    endpoint_name: str | None = Query(None),
+    operation_type: str | None = Query(None),
+):
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        rows = await db.get_token_usage_summary(
+            start_time=start_str,
+            end_time=end_str,
+            group_by=group_by,
+            endpoint_name=endpoint_name,
+            operation_type=operation_type,
+        )
+    except Exception as e:
+        logger.error(f"[TokenStats] summary query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "group_by": group_by, "data": rows}
+
+
+@router.get("/timeline")
+async def timeline(
+    request: Request,
+    interval: str = Query("hour"),
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+    endpoint_name: str | None = Query(None),
+):
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        rows = await db.get_token_usage_timeline(
+            start_time=start_str,
+            end_time=end_str,
+            interval=interval,
+            endpoint_name=endpoint_name,
+        )
+    except Exception as e:
+        logger.error(f"[TokenStats] timeline query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "interval": interval, "data": rows}
+
+
+@router.get("/sessions")
+async def sessions(
+    request: Request,
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        rows = await db.get_token_usage_sessions(
+            start_time=start_str, end_time=end_str, limit=limit, offset=offset
+        )
+    except Exception as e:
+        logger.error(f"[TokenStats] sessions query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "data": rows}
+
+
+@router.get("/records")
+async def records(
+    request: Request,
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    endpoint_name: str | None = Query(None),
+    operation_type: str | None = Query(None),
+):
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        rows = await db.get_token_usage_records(
+            start_time=start_str,
+            end_time=end_str,
+            limit=limit,
+            offset=offset,
+            endpoint_name=endpoint_name,
+            operation_type=operation_type,
+        )
+    except Exception as e:
+        logger.error(f"[TokenStats] records query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "data": rows}
+
+
+@router.get("/total")
+async def total(
+    request: Request,
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+):
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        row = await db.get_token_usage_total(start_time=start_str, end_time=end_str)
+    except Exception as e:
+        logger.error(f"[TokenStats] total query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "data": row}
+
+
+@router.get("/by-agent")
+async def by_agent(
+    request: Request,
+    period: str | None = Query(None),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    hours: int | None = Query(None, ge=1, le=8760),
+):
+    """Token usage grouped by agent_profile_id for multi-agent mode."""
+    db = await _get_db()
+    if db is None:
+        return _db_unavailable_payload()
+    start_str, end_str = _parse_range(start, end, period, hours=hours)
+    try:
+        by_agent_data = await db.get_token_usage_by_agent(start_time=start_str, end_time=end_str)
+    except Exception as e:
+        logger.error(f"[TokenStats] by-agent query failed: {e}")
+        await _reset_db()
+        return {"error": "query failed, connection reset"}
+    return {"start": start_str, "end": end_str, "by_agent": by_agent_data}
+
+
+@router.get("/pricing")
+async def pricing_overview(request: Request):
+    """Return pricing-source overview for all currently configured endpoints.
+
+    Useful for the LLMView UI to show which endpoints have user-configured
+    prices, which fall back to the built-in table, and which still resolve
+    to "-" (unknown). Fix-5.
+    """
+    try:
+        from openakita.api.routes.config import _get_endpoint_manager
+        from openakita.llm.pricing import list_builtin_prices
+    except Exception as e:
+        return {"error": f"endpoint_manager unavailable: {e}"}
+
+    manager = _get_endpoint_manager()
+    endpoints_info: list[dict] = []
+    if manager:
+        try:
+            for ep in manager.get_endpoints() or []:
+                tier = None
+                source = "unknown"
+                try:
+                    tier = ep.get_effective_pricing()
+                except Exception:
+                    tier = None
+                if tier:
+                    source = tier.get("source") or ("user" if ep.pricing_tiers else "builtin")
+                endpoints_info.append(
+                    {
+                        "name": getattr(ep, "name", ""),
+                        "provider": getattr(ep, "provider", ""),
+                        "model": getattr(ep, "model", ""),
+                        "currency": getattr(ep, "price_currency", "CNY"),
+                        "source": source,
+                        "tier": tier,
+                    }
+                )
+        except Exception as e:
+            logger.warning(f"[TokenStats] pricing overview enumerate failed: {e}")
+
+    return {
+        "endpoints": endpoints_info,
+        "builtin_table": list_builtin_prices(),
+    }
+
+
+@router.get("/context")
+async def context(request: Request):
+    """Return the current session's context token usage and limit."""
+    agent = getattr(request.app.state, "agent", None)
+    actual = getattr(agent, "_local_agent", agent) if agent else None
+    if actual is None:
+        return {"error": "agent not available"}
+
+    try:
+        # Prefer pre-computed summary (survives cleanup of large buffers)
+        cached = getattr(actual, "_last_usage_summary", None)
+        if cached and "context_tokens" in cached and "context_limit" in cached:
+            ctx = cached["context_tokens"]
+            limit = cached["context_limit"]
+            return {
+                "context_tokens": ctx,
+                "context_limit": limit,
+                "percent": round(ctx / limit * 100, 1) if limit else 0,
+            }
+
+        re = getattr(actual, "reasoning_engine", None)
+        ctx_mgr = getattr(actual, "context_manager", None) or getattr(re, "_context_manager", None)
+        if ctx_mgr and hasattr(ctx_mgr, "get_max_context_tokens"):
+            max_ctx = ctx_mgr.get_max_context_tokens()
+            messages = getattr(re, "_last_working_messages", None) or getattr(
+                getattr(actual, "_context", None), "messages", []
+            )
+            cur_ctx = ctx_mgr.estimate_messages_tokens(messages) if messages else 0
+            return {
+                "context_tokens": cur_ctx,
+                "context_limit": max_ctx,
+                "percent": round(cur_ctx / max_ctx * 100, 1) if max_ctx else 0,
+            }
+    except Exception as e:
+        logger.warning(f"[TokenStats] Failed to get context size: {e}")
+
+    return {"context_tokens": 0, "context_limit": 0, "percent": 0}

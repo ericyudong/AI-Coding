@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ai-gateway
+  namespace: argocd
+spec:
+  description: LiteLLM AI Gateway + Guardrails (GitOps)
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: ai-gateway
+      server: https://kubernetes.default.svc
+    - namespace: ai-gateway-*
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

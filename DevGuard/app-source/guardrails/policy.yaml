@@ -1,0 +1,37 @@
+version: "1.4"
+rails:
+  input:
+    schema: required
+    pii:
+      deny: [ssn, card_number, bank_account]
+      action: block
+    prompt_injection:
+      deny_patterns:
+        - "ignore previous instructions"
+        - "system override"
+        - "disregard all prior"
+      action: block
+  dialog:
+    allow_topics: [banking, investing, support]
+    deny_topics: [illegal_advice, internal_policy_leak]
+  retrieval:
+    grounded_only: true
+    citation_required: true
+  tool:
+    allowlist: [lookup_balance, create_ticket]
+    deny_list: [wire_transfer, delete_record]
+    human_approval: [wire_transfer]
+  output:
+    pii:
+      deny: [ssn, card_number]
+      action: redact
+    policy:
+      deny: [non_compliant_recommendation]
+    safety:
+      deny: [self_harm, harassment]
+  monitoring:
+    drift_window: 15m
+    alert:
+      mttd_min: 5
+      mttr_min: 15
+      false_positive_pct: 2

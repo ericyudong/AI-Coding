@@ -1,0 +1,1017 @@
+import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  IconShield, IconPlus, IconX, IconTrash,
+  IconChevronDown, IconChevronRight, IconClock, IconAlertCircle,
+} from "../icons";
+import { safeFetch } from "../providers";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { toast } from "sonner";
+import { Loader2, LockKeyhole, RotateCw, Save, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+
+type SecurityViewProps = {
+  apiBaseUrl: string;
+  serviceRunning: boolean;
+};
+
+type ZoneConfig = {
+  workspace: string[];
+  controlled: string[];
+  protected: string[];
+  forbidden: string[];
+  default_zone?: string;
+};
+
+type CommandConfig = {
+  custom_critical: string[];
+  custom_high: string[];
+  excluded_patterns: string[];
+  blocked_commands: string[];
+};
+
+type SandboxConfig = {
+  enabled: boolean;
+  backend: string;
+  sandbox_risk_levels: string[];
+  exempt_commands: string[];
+};
+
+type AuditEntry = {
+  ts: number;
+  tool: string;
+  decision: string;
+  reason: string;
+  policy: string;
+};
+
+type CheckpointEntry = {
+  checkpoint_id: string;
+  timestamp: number;
+  tool_name: string;
+  description: string;
+  file_count: number;
+};
+
+const ZONE_META: Record<string, { color: string; tw: string }> = {
+  workspace: { color: "#22c55e", tw: "bg-emerald-500" },
+  controlled: { color: "#3b82f6", tw: "bg-blue-500" },
+  protected: { color: "#f59e0b", tw: "bg-amber-500" },
+  forbidden: { color: "#ef4444", tw: "bg-red-500" },
+};
+
+const BACKEND_OPTIONS = [
+  { value: "auto", label: "轻量沙箱（当前可用）", available: true },
+  { value: "none", label: "不使用沙箱", available: true },
+  { value: "low_integrity", label: "Low Integrity (Windows，预留)", available: false },
+  { value: "bubblewrap", label: "Bubblewrap (Linux，预留)", available: false },
+  { value: "seatbelt", label: "Seatbelt (macOS，预留)", available: false },
+  { value: "docker", label: "Docker（预留）", available: false },
+];
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+type ConfirmConfig = {
+  mode: string;
+  timeout_seconds: number;
+  default_on_timeout: string;
+  confirm_ttl: number;
+};
+
+type SelfProtectConfig = {
+  enabled: boolean;
+  protected_dirs: string[];
+  death_switch_threshold: number;
+  death_switch_total_multiplier: number;
+  audit_to_file: boolean;
+  audit_path: string;
+  readonly_mode: boolean;
+};
+
+type AllowlistData = {
+  commands: Array<Record<string, unknown>>;
+  tools: Array<Record<string, unknown>>;
+};
+
+type TabId = "zones" | "commands" | "sandbox" | "audit" | "checkpoints" | "confirmation" | "selfprotection";
+type PermissionMode = "yolo" | "smart" | "cautious";
+
+export default function SecurityView({ apiBaseUrl, serviceRunning }: SecurityViewProps) {
+  const { t } = useTranslation();
+
+  const [tab, setTab] = useState<TabId>("zones");
+  const [zones, setZones] = useState<ZoneConfig>({ workspace: [], controlled: [], protected: [], forbidden: [] });
+  const [commands, setCommands] = useState<CommandConfig>({ custom_critical: [], custom_high: [], excluded_patterns: [], blocked_commands: [] });
+  const [sandbox, setSandbox] = useState<SandboxConfig>({ enabled: true, backend: "auto", sandbox_risk_levels: ["HIGH"], exempt_commands: [] });
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [checkpoints, setCheckpoints] = useState<CheckpointEntry[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({ mode: "smart", timeout_seconds: 60, default_on_timeout: "deny", confirm_ttl: 120 });
+  const [selfProtect, setSelfProtect] = useState<SelfProtectConfig>({ enabled: true, protected_dirs: ["data/", "identity/", "logs/", "src/"], death_switch_threshold: 3, death_switch_total_multiplier: 3, audit_to_file: true, audit_path: "", readonly_mode: false });
+  const [allowlist, setAllowlist] = useState<AllowlistData>({ commands: [], tools: [] });
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("yolo");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [savingAction, setSavingAction] = useState<string | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [refreshingAudit, setRefreshingAudit] = useState(false);
+  const [refreshingCheckpoints, setRefreshingCheckpoints] = useState(false);
+  const [rewindingId, setRewindingId] = useState<string | null>(null);
+  const saving = savingAction !== null;
+
+  const api = useCallback(async (path: string, method = "GET", body?: unknown) => {
+    const opts: RequestInit = { method, headers: { "Content-Type": "application/json" } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await safeFetch(`${apiBaseUrl}${path}`, opts);
+    const json = await res.json();
+    if (method !== "GET" && json && json.status === "error") throw new Error(json.message || "Server error");
+    return json;
+  }, [apiBaseUrl]);
+
+  const load = useCallback(async (showResult = false) => {
+    if (!serviceRunning) {
+      if (showResult) toast.error(t("security.backendOff", "后端服务未运行"));
+      return false;
+    }
+    setLoadingAll(true);
+    try {
+      const [modeRes, zRes, cRes, sRes, cfRes, spRes, alRes] = await Promise.all([
+        api("/api/config/permission-mode"),
+        api("/api/config/security/zones"),
+        api("/api/config/security/commands"),
+        api("/api/config/security/sandbox"),
+        api("/api/config/security/confirmation"),
+        api("/api/config/security/self-protection"),
+        api("/api/config/security/allowlist"),
+      ]);
+      const m = modeRes?.mode === "trust" ? "yolo" : modeRes?.mode;
+      if (m === "yolo" || m === "smart" || m === "cautious") setPermissionMode(m);
+      if (zRes && Array.isArray(zRes.workspace)) setZones(zRes);
+      if (cRes && Array.isArray(cRes.blocked_commands)) setCommands(cRes);
+      if (sRes && typeof sRes.enabled === "boolean") setSandbox(sRes);
+      if (cfRes && cfRes.mode) setConfirmConfig(cfRes);
+      if (spRes && spRes.enabled !== undefined) setSelfProtect(spRes);
+      if (alRes && (alRes.commands || alRes.tools)) setAllowlist(alRes);
+      if (showResult) toast.success(t("security.refreshAllDone", "安全配置已刷新"));
+      return true;
+    } catch (err) {
+      if (showResult) {
+        toast.error(t("security.refreshFailed", "刷新失败"), {
+          description: errorMessage(err, t("security.refreshFailed", "刷新失败")),
+        });
+      }
+      return false;
+    } finally {
+      setLoadingAll(false);
+    }
+  }, [api, serviceRunning, t]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const loadAudit = useCallback(async (showResult = false) => {
+    if (!serviceRunning) {
+      if (showResult) toast.error(t("security.backendOff", "后端服务未运行"));
+      return false;
+    }
+    setRefreshingAudit(true);
+    try {
+      const res = await api("/api/config/security/audit");
+      setAudit(res.entries || []);
+      if (showResult) toast.success(t("security.auditRefreshed", "审计日志已刷新"));
+      return true;
+    } catch (err) {
+      if (showResult) {
+        toast.error(t("security.refreshFailed", "刷新失败"), {
+          description: errorMessage(err, t("security.refreshFailed", "刷新失败")),
+        });
+      }
+      return false;
+    } finally {
+      setRefreshingAudit(false);
+    }
+  }, [api, serviceRunning, t]);
+
+  const loadCheckpoints = useCallback(async (showResult = false) => {
+    if (!serviceRunning) {
+      if (showResult) toast.error(t("security.backendOff", "后端服务未运行"));
+      return false;
+    }
+    setRefreshingCheckpoints(true);
+    try {
+      const res = await api("/api/config/security/checkpoints");
+      setCheckpoints(res.checkpoints || []);
+      if (showResult) toast.success(t("security.checkpointsRefreshed", "文件快照已刷新"));
+      return true;
+    } catch (err) {
+      if (showResult) {
+        toast.error(t("security.refreshFailed", "刷新失败"), {
+          description: errorMessage(err, t("security.refreshFailed", "刷新失败")),
+        });
+      }
+      return false;
+    } finally {
+      setRefreshingCheckpoints(false);
+    }
+  }, [api, serviceRunning, t]);
+
+  const loadAllowlist = useCallback(async () => {
+    if (!serviceRunning) return;
+    try {
+      const res = await api("/api/config/security/allowlist");
+      if (res.commands || res.tools) setAllowlist(res);
+    } catch (err) {
+      toast.error(t("security.refreshFailed", "刷新失败"), {
+        description: errorMessage(err, t("security.refreshFailed", "刷新失败")),
+      });
+    }
+  }, [api, serviceRunning, t]);
+
+  useEffect(() => {
+    if (tab === "audit") loadAudit();
+    if (tab === "checkpoints") loadCheckpoints();
+  }, [tab, loadAudit, loadCheckpoints]);
+
+  const doSave = async (endpoint: string, body: unknown, successKey: string) => {
+    setSavingAction(endpoint);
+    try {
+      await api(endpoint, "POST", body);
+      toast.success(t(`security.${successKey}`));
+      await load(false);
+    } catch (err) {
+      toast.error(t("security.saveFailed"), {
+        description: errorMessage(err, t("security.saveFailed")),
+      });
+    } finally {
+      setSavingAction(null);
+    }
+  };
+
+  const selectPermissionMode = async (mode: PermissionMode) => {
+    const previousMode = permissionMode;
+    setPermissionMode(mode);
+    setSavingAction("permission-mode");
+    try {
+      await api("/api/config/permission-mode", "POST", { mode });
+      toast.success(t("security.permissionModeSaved", "安全模式已更新"));
+      await load();
+      if (mode !== "yolo") setShowAdvanced(true);
+    } catch (err) {
+      setPermissionMode(previousMode);
+      toast.error(t("security.saveFailed"), {
+        description: errorMessage(err, t("security.saveFailed")),
+      });
+    } finally {
+      setSavingAction(null);
+    }
+  };
+
+  const rewindCheckpoint = async (id: string) => {
+    if (!confirm(t("security.rewindConfirm", { id }))) return;
+    setRewindingId(id);
+    try {
+      await api("/api/config/security/checkpoint/rewind", "POST", { checkpoint_id: id });
+      toast.success(t("security.rewound"));
+      await loadCheckpoints(false);
+    } catch (err) {
+      toast.error(t("security.rewindFailed", "回滚失败"), {
+        description: errorMessage(err, t("security.rewindFailed", "回滚失败")),
+      });
+    } finally {
+      setRewindingId(null);
+    }
+  };
+
+  if (!serviceRunning) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <ShieldAlert size={32} className="mb-3 opacity-50" />
+        <p className="text-sm">{t("security.backendOff")}</p>
+      </div>
+    );
+  }
+
+  const deleteAllowlistEntry = async (entryType: string, index: number) => {
+    try {
+      await api(`/api/config/security/allowlist/${entryType}/${index}`, "DELETE");
+      toast.success(t("security.allowlistDeleted", "已删除"));
+      loadAllowlist();
+    } catch (err) {
+      toast.error(t("security.saveFailed"), {
+        description: errorMessage(err, t("security.saveFailed")),
+      });
+    }
+  };
+
+  const resetDeathSwitch = async () => {
+    setSavingAction("death-switch-reset");
+    try {
+      await api("/api/config/security/death-switch/reset", "POST");
+      toast.success(t("security.deathSwitchReset", "只读保护已解除"));
+      setSelfProtect((p) => ({ ...p, readonly_mode: false }));
+    } catch (err) {
+      toast.error(t("security.saveFailed"), {
+        description: errorMessage(err, t("security.saveFailed")),
+      });
+    } finally {
+      setSavingAction(null);
+    }
+  };
+
+  const TABS: { id: TabId; labelKey: string }[] = [
+    { id: "confirmation", labelKey: "security.confirmation" },
+    { id: "zones", labelKey: "security.zones" },
+    { id: "commands", labelKey: "security.commands" },
+    { id: "sandbox", labelKey: "security.sandbox" },
+    { id: "selfprotection", labelKey: "security.selfProtection" },
+    { id: "audit", labelKey: "security.audit" },
+    { id: "checkpoints", labelKey: "security.checkpoints" },
+  ];
+  const advancedVisible = permissionMode !== "yolo" || showAdvanced;
+  const MODE_CARDS: Array<{ id: PermissionMode; title: string; desc: string; icon: typeof ShieldCheck; tone: string }> = [
+    {
+      id: "yolo",
+      title: t("security.modeTrustTitle", "信任模式"),
+      desc: t("security.modeTrustCardDesc", "默认推荐。仅保护系统敏感目录和密钥目录，其他操作不打扰。"),
+      icon: ShieldCheck,
+      tone: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      id: "smart",
+      title: t("security.modeProtectTitle", "保护模式"),
+      desc: t("security.modeProtectCardDesc", "对高风险命令、受控目录和沙箱执行进行确认或拦截。"),
+      icon: Shield,
+      tone: "text-blue-600 bg-blue-500/10 border-blue-500/20",
+    },
+    {
+      id: "cautious",
+      title: t("security.modeStrictTitle", "严格模式"),
+      desc: t("security.modeStrictCardDesc", "适合企业或高风险环境，策略更保守。"),
+      icon: LockKeyhole,
+      tone: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-[1040px] space-y-3.5 px-5 py-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <h2 className="truncate text-xl font-semibold tracking-tight" title={t("security.title", "安全控制")}>
+            {t("security.title", "安全控制")}
+          </h2>
+          <p className="truncate text-[13px] leading-5 text-muted-foreground" title={t("security.desc", "配置系统安全策略，包括文件访问区域、命令拦截和沙箱环境。")}>
+            {t("security.desc", "配置系统安全策略，包括文件访问区域、命令拦截和沙箱环境。")}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => load(true)} disabled={loadingAll || saving}>
+          <RotateCw size={14} className={cn("mr-1.5", loadingAll && "animate-spin")} />
+          {t("security.refreshAll", "刷新全部")}
+        </Button>
+      </div>
+
+      {/* Mode switch */}
+      <Card className="gap-0 border-border/70 py-0 shadow-sm">
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-[13px] font-semibold">{t("security.permissionMode", "安全模式")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 px-4 pb-4">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
+            {MODE_CARDS.map((mode) => {
+              const active = permissionMode === mode.id;
+              const ModeIcon = mode.icon;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  disabled={saving}
+                  onClick={() => selectPermissionMode(mode.id)}
+                  className={cn(
+                    "min-h-[104px] rounded-lg border p-3 text-left transition-colors",
+                    active ? "border-primary/70 bg-primary/10 shadow-sm" : "border-border/70 hover:bg-muted/40",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                      <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg border", mode.tone)}>
+                        <ModeIcon size={15} />
+                      </span>
+                      <span className="truncate">{mode.title}</span>
+                    </span>
+                    {active && <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{t("security.current", "当前")}</Badge>}
+                  </div>
+                  <p className="mt-2 text-[12px] leading-5 text-muted-foreground">{mode.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+          {permissionMode === "yolo" && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+              <p className="text-[12px] leading-5 text-muted-foreground">
+                {t("security.trustModeAdvancedHint", "当前为默认无感体验。下方细项属于高级设置，通常无需调整。")}
+              </p>
+              <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setShowAdvanced((v) => !v)}>
+                {showAdvanced ? t("security.hideAdvanced", "收起高级设置") : t("security.showAdvanced", "显示高级设置")}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {advancedVisible && (
+        <>
+      {/* Tab bar */}
+      <div className="flex shrink-0 items-center justify-between overflow-x-auto">
+        <ToggleGroup
+          type="single"
+          value={tab}
+          onValueChange={(v) => { if (v) setTab(v as TabId); }}
+          variant="outline"
+          className="min-w-max shrink-0 gap-1"
+        >
+          {TABS.map((tb) => (
+            <ToggleGroupItem
+              key={tb.id}
+              value={tb.id}
+              className="h-8 px-3 text-xs data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              title={t(tb.labelKey)}
+            >
+              {t(tb.labelKey)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {/* Confirmation */}
+      {tab === "confirmation" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/50 px-4 py-2.5">
+            <CardTitle className="text-sm font-semibold">{t("security.confirmation", "确认行为")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-4 pt-3">
+            <p className="text-xs leading-5 text-muted-foreground">{t("security.confirmationDesc", "配置安全确认弹窗的触发模式、超时行为和缓存策略。")}</p>
+            <div className="max-w-md space-y-3.5">
+              {/* Mode selector */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.confirmMode", "确认模式")}</Label>
+                <Select value={confirmConfig.mode} onValueChange={(v) => setConfirmConfig((p) => ({ ...p, mode: v }))}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cautious">{t("security.modeCautious", "谨慎 (cautious)")}</SelectItem>
+                    <SelectItem value="smart">{t("security.modeSmart", "智能 (smart)")}</SelectItem>
+                    <SelectItem value="yolo">{t("security.modeYolo", "信任 (yolo)")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {confirmConfig.mode === "cautious" && t("security.modeCautiousDesc", "中高风险操作均需确认")}
+                  {confirmConfig.mode === "smart" && t("security.modeSmartDesc", "中风险连续允许后自动放行，高风险始终确认")}
+                  {confirmConfig.mode === "yolo" && t("security.modeYoloDesc", "仅拦截极高风险，其余自动允许")}
+                </p>
+              </div>
+              {/* Timeout */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.confirmTimeout", "确认超时 (秒)")}</Label>
+                <Input type="number" value={confirmConfig.timeout_seconds} onChange={(e) => setConfirmConfig((p) => ({ ...p, timeout_seconds: parseInt(e.target.value) || 60 }))} className="h-9 w-32" />
+              </div>
+              {/* Default on timeout */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.defaultOnTimeout", "超时默认行为")}</Label>
+                <Select value={confirmConfig.default_on_timeout} onValueChange={(v) => setConfirmConfig((p) => ({ ...p, default_on_timeout: v }))}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deny">{t("security.deny", "拒绝")}</SelectItem>
+                    <SelectItem value="allow">{t("security.allow", "允许")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* TTL */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.confirmTtl", "单次确认缓存 (秒)")}</Label>
+                <Input type="number" value={confirmConfig.confirm_ttl} onChange={(e) => setConfirmConfig((p) => ({ ...p, confirm_ttl: parseFloat(e.target.value) || 120 }))} className="h-9 w-32" />
+                <p className="text-xs text-muted-foreground">{t("security.confirmTtlDesc", "相同操作在此时间内不再重复弹窗")}</p>
+              </div>
+            </div>
+
+            {/* Persistent allowlist */}
+            <div className="border-t border-border/50 pt-4 mt-4 space-y-3">
+              <Label className="text-sm font-medium">{t("security.allowlist", "持久化白名单")}</Label>
+              <p className="text-xs text-muted-foreground">{t("security.allowlistDesc", "通过「始终允许」按钮添加的规则，重启后仍生效。")}</p>
+              {allowlist.commands.length === 0 && allowlist.tools.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-2">{t("security.noAllowlist", "暂无白名单条目")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {allowlist.commands.map((entry, i) => (
+                    <div key={`cmd-${i}`} className="flex items-center gap-2 group bg-muted/30 rounded-md px-3 py-2">
+                      <Badge variant="outline" className="text-[10px]">CMD</Badge>
+                      <code className="flex-1 text-xs font-mono">{String(entry.pattern || "")}</code>
+                      <Button variant="ghost" size="icon" className="size-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => deleteAllowlistEntry("command", i)}>
+                        <IconTrash size={12} />
+                      </Button>
+                    </div>
+                  ))}
+                  {allowlist.tools.map((entry, i) => (
+                    <div key={`tool-${i}`} className="flex items-center gap-2 group bg-muted/30 rounded-md px-3 py-2">
+                      <Badge variant="outline" className="text-[10px]">TOOL</Badge>
+                      <code className="flex-1 text-xs font-mono">{String(entry.name || "")}</code>
+                      <Button variant="ghost" size="icon" className="size-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => deleteAllowlistEntry("tool", i)}>
+                        <IconTrash size={12} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border/50 mt-6 pt-4">
+              <Button onClick={() => doSave("/api/config/security/confirmation", confirmConfig, "confirmationSaved")} disabled={saving}>
+                {saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {t("security.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Self-protection */}
+      {tab === "selfprotection" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/50 px-4 py-2.5">
+            <CardTitle className="text-sm font-semibold">{t("security.selfProtection", "自保护")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-4 pt-3">
+            <p className="text-xs leading-5 text-muted-foreground">{t("security.selfProtectionDesc", "配置 Agent 自保护机制，防止误操作破坏关键目录。")}</p>
+            <div className="max-w-lg space-y-3.5">
+              {/* Enabled switch */}
+              <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">{t("security.selfProtectionEnabled", "启用自保护")}</Label>
+                </div>
+                <Switch checked={selfProtect.enabled} onCheckedChange={(v) => setSelfProtect((p) => ({ ...p, enabled: v }))} />
+              </div>
+              {/* Protected dirs */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.protectedDirs", "受保护目录")}</Label>
+                <TagEditor
+                  label=""
+                  items={selfProtect.protected_dirs}
+                  onChange={(v) => setSelfProtect((p) => ({ ...p, protected_dirs: v }))}
+                  placeholder="e.g. data/"
+                />
+              </div>
+              {/* Death switch threshold */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.deathSwitchThreshold", "自动保护阈值（连续拒绝次数）")}</Label>
+                <Input type="number" value={selfProtect.death_switch_threshold} onChange={(e) => setSelfProtect((p) => ({ ...p, death_switch_threshold: parseInt(e.target.value) || 3 }))} className="h-9 w-32" />
+              </div>
+              {/* Total multiplier */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.deathSwitchMultiplier", "累计保护系数")}</Label>
+                <Input type="number" value={selfProtect.death_switch_total_multiplier} onChange={(e) => setSelfProtect((p) => ({ ...p, death_switch_total_multiplier: parseInt(e.target.value) || 3 }))} className="h-9 w-32" />
+                <p className="text-xs text-muted-foreground">{t("security.deathSwitchMultiplierDesc", "累计拒绝次数达到阈值 × 系数时，会自动进入只读保护状态。")}</p>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">{t("security.auditToFile", "写入审计日志文件")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("security.auditToFileDesc", "关闭后仍会做安全判定，但不会继续追加本地 JSONL 审计文件。")}</p>
+                </div>
+                <Switch checked={selfProtect.audit_to_file} onCheckedChange={(v) => setSelfProtect((p) => ({ ...p, audit_to_file: v }))} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.auditPath", "审计日志路径")}</Label>
+                <Input
+                  value={selfProtect.audit_path}
+                  onChange={(e) => setSelfProtect((p) => ({ ...p, audit_path: e.target.value }))}
+                  placeholder="data/audit/policy_decisions.jsonl"
+                  className="h-9 font-mono text-sm"
+                  disabled={!selfProtect.audit_to_file}
+                />
+              </div>
+              {/* Readonly mode indicator + reset */}
+              {selfProtect.readonly_mode && (
+                <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <IconAlertCircle size={20} className="text-destructive shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-destructive">{t("security.readonlyModeActive", "Agent 当前处于只读保护状态，写入操作已暂时暂停。")}</p>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={resetDeathSwitch} disabled={savingAction === "death-switch-reset"}>
+                    {savingAction === "death-switch-reset" && <Loader2 className="mr-1 size-3 animate-spin" />}
+                    {t("security.resetDeathSwitch", "解除只读保护")}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end pt-2 border-t border-border/50 mt-6 pt-4">
+              <Button onClick={() => doSave("/api/config/security/self-protection", selfProtect, "selfProtectionSaved")} disabled={saving}>
+                {saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {t("security.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Zones */}
+      {tab === "zones" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/50 px-4 py-2.5">
+            <CardTitle className="text-sm font-semibold">{t("security.zones", "安全区域")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3.5 px-4 pb-4 pt-3">
+            <p className="text-xs leading-5 text-muted-foreground">{t("security.zonesDesc")}</p>
+            <div className="grid grid-cols-1 gap-2.5">
+              {(["workspace", "controlled", "protected", "forbidden"] as const).map((zone) => (
+                <ZonePanel
+                  key={zone}
+                  zone={zone}
+                  paths={zones[zone] || []}
+                  onChange={(paths) => setZones((prev) => ({ ...prev, [zone]: paths }))}
+                />
+              ))}
+            </div>
+            <div className="space-y-2 max-w-xs">
+              <Label className="text-sm font-medium">{t("security.defaultZone", "默认区域")}</Label>
+              <Select value={zones.default_zone || "controlled"} onValueChange={(v) => setZones((prev) => ({ ...prev, default_zone: v }))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="workspace">{t("security.zoneWorkspace", "工作区 (workspace)")}</SelectItem>
+                  <SelectItem value="controlled">{t("security.zoneControlled", "受控区 (controlled)")}</SelectItem>
+                  <SelectItem value="protected">{t("security.zoneProtected", "受保护区 (protected)")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("security.defaultZoneDesc", "路径不匹配任何区域时使用的默认区域。受控区允许创建/编辑，受保护区拒绝所有写入。")}</p>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => doSave("/api/config/security/zones", zones, "zonesSaved")} disabled={saving}>
+                {saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {t("security.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Commands */}
+      {tab === "commands" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/50 px-4 py-2.5">
+            <CardTitle className="text-sm font-semibold">{t("security.commands", "命令拦截")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-4 pt-3">
+            <p className="text-xs leading-5 text-muted-foreground">{t("security.commandsDesc")}</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TagEditor
+                label={t("security.criticalPatterns")}
+                items={commands.custom_critical}
+                onChange={(v) => setCommands((p) => ({ ...p, custom_critical: v }))}
+                placeholder={`e.g. rm\\s+-rf\\s+/`}
+              />
+              <TagEditor
+                label={t("security.highPatterns")}
+                items={commands.custom_high}
+                onChange={(v) => setCommands((p) => ({ ...p, custom_high: v }))}
+                placeholder="e.g. Remove-Item.*-Recurse"
+              />
+              <TagEditor
+                label={t("security.excludedPatterns")}
+                items={commands.excluded_patterns}
+                onChange={(v) => setCommands((p) => ({ ...p, excluded_patterns: v }))}
+                placeholder={t("security.excludedPh")}
+              />
+              <TagEditor
+                label={t("security.blockedCommands")}
+                items={commands.blocked_commands}
+                onChange={(v) => setCommands((p) => ({ ...p, blocked_commands: v }))}
+                placeholder="e.g. diskpart"
+              />
+            </div>
+            <div className="flex justify-end pt-2 border-t border-border/50 mt-6 pt-4">
+              <Button onClick={() => doSave("/api/config/security/commands", commands, "commandsSaved")} disabled={saving}>
+                {saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {t("security.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sandbox */}
+      {tab === "sandbox" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/50 px-4 py-2.5">
+            <CardTitle className="text-sm font-semibold">{t("security.sandbox", "沙箱配置")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-4 pt-3">
+            <p className="text-xs leading-5 text-muted-foreground">{t("security.sandboxDesc")}</p>
+            <div className="max-w-lg space-y-3.5">
+              <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">{t("security.sandboxEnabled")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("security.sandboxEnabledDesc", "启用或禁用命令执行沙箱")}</p>
+                </div>
+                <Switch
+                  checked={sandbox.enabled}
+                  onCheckedChange={(v) => setSandbox((p) => ({ ...p, enabled: v }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.sandboxBackend")}</Label>
+                <Select
+                  value={sandbox.backend === "none" ? "none" : "auto"}
+                  onValueChange={(v) => setSandbox((p) => ({ ...p, backend: v, enabled: v === "none" ? false : p.enabled }))}
+                >
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BACKEND_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value} disabled={!o.available}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground pt-1">
+                  {t("security.sandboxBackendDesc", "当前后端实现为轻量沙箱：执行前做策略检查并限制高危命令，Docker/seatbelt/bubblewrap 等 OS 级隔离暂未接入。")}
+                </p>
+              </div>
+              {/* Risk levels */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("security.sandboxRiskLevels", "沙箱风险等级")}</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {["HIGH", "MEDIUM"].map((lvl) => (
+                    <Badge
+                      key={lvl}
+                      variant={sandbox.sandbox_risk_levels.includes(lvl) ? "default" : "outline"}
+                      className="cursor-pointer select-none"
+                      onClick={() => {
+                        setSandbox((p) => {
+                          const has = p.sandbox_risk_levels.includes(lvl);
+                          return { ...p, sandbox_risk_levels: has ? p.sandbox_risk_levels.filter((l) => l !== lvl) : [...p.sandbox_risk_levels, lvl] };
+                        });
+                      }}
+                    >
+                      {lvl}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{t("security.sandboxRiskLevelsDesc", "选中的风险等级命令将在沙箱中执行")}</p>
+              </div>
+              {/* Exempt commands */}
+              <TagEditor
+                label={t("security.exemptCommands", "豁免命令")}
+                items={sandbox.exempt_commands}
+                onChange={(v) => setSandbox((p) => ({ ...p, exempt_commands: v }))}
+                placeholder="e.g. npm test"
+              />
+            </div>
+            <div className="flex justify-end pt-2 border-t border-border/50 mt-6 pt-4">
+              <Button
+                onClick={() => doSave(
+                  "/api/config/security/sandbox",
+                  { ...sandbox, backend: sandbox.backend === "none" ? "none" : "auto" },
+                  "sandboxSaved",
+                )}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="size-4 animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {t("security.save")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Audit */}
+      {tab === "audit" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/50 px-4 py-2.5">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold">{t("security.audit", "审计日志")}</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {t("security.auditCount", { count: audit.length })}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => loadAudit(true)} disabled={refreshingAudit} className="h-8">
+              <RotateCw size={14} className={cn("mr-1.5", refreshingAudit && "animate-spin")} /> {t("security.refresh")}
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {audit.length === 0 ? (
+              <div className="flex flex-col items-center py-10 text-center text-sm text-muted-foreground">
+                <IconShield size={32} className="mb-3 opacity-20" />
+                {t("security.noAudit")}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[100px] text-xs h-10 px-5 font-medium">{t("security.auditDecision")}</TableHead>
+                    <TableHead className="text-xs h-10 px-4 font-medium">{t("security.auditTool")}</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs h-10 px-4 font-medium">{t("security.auditReason")}</TableHead>
+                    <TableHead className="w-[120px] text-right text-xs h-10 px-5 font-medium">{t("security.auditTime")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...audit].reverse().map((e, i) => (
+                    <TableRow key={i} className="border-b-border/50 transition-colors hover:bg-muted/20">
+                      <TableCell className="px-5 py-3"><DecisionBadge decision={e.decision} /></TableCell>
+                      <TableCell className="px-4 py-3 font-medium text-sm">{e.tool}</TableCell>
+                      <TableCell className="hidden sm:table-cell px-4 py-3 text-muted-foreground text-xs max-w-[300px] truncate" title={e.reason}>{e.reason}</TableCell>
+                      <TableCell className="px-5 py-3 text-right text-xs text-muted-foreground whitespace-nowrap font-mono">
+                        {new Date(e.ts * 1000).toLocaleTimeString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Checkpoints */}
+      {tab === "checkpoints" && (
+        <Card className="p-0 gap-0 border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/50 px-4 py-2.5">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold">{t("security.checkpoints", "安全检查点")}</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {t("security.checkpointCount", { count: checkpoints.length })}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => loadCheckpoints(true)} disabled={refreshingCheckpoints} className="h-8">
+              <RotateCw size={14} className={cn("mr-1.5", refreshingCheckpoints && "animate-spin")} /> {t("security.refresh")}
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {checkpoints.length === 0 ? (
+              <div className="flex flex-col items-center py-10 text-center text-sm text-muted-foreground">
+                <IconClock size={32} className="mb-3 opacity-20" />
+                {t("security.noCheckpoints")}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs h-10 px-5 font-medium">ID</TableHead>
+                    <TableHead className="text-xs h-10 px-4 font-medium">{t("security.checkpointTool")}</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs h-10 px-4 font-medium">{t("security.checkpointFiles")}</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs h-10 px-4 font-medium">{t("security.checkpointTime")}</TableHead>
+                    <TableHead className="w-[100px] text-right text-xs h-10 px-5 font-medium" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {checkpoints.map((cp) => (
+                    <TableRow key={cp.checkpoint_id} className="border-b-border/50 transition-colors hover:bg-muted/20">
+                      <TableCell className="px-5 py-3 font-mono text-xs truncate max-w-[180px]" title={cp.checkpoint_id}>{cp.checkpoint_id}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm">{cp.tool_name}</TableCell>
+                      <TableCell className="hidden sm:table-cell px-4 py-3 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="font-mono">{cp.file_count}</Badge> {t("security.files")}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell px-4 py-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
+                        {new Date(cp.timestamp * 1000).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right">
+                        <Button variant="outline" size="sm" onClick={() => rewindCheckpoint(cp.checkpoint_id)} disabled={rewindingId === cp.checkpoint_id} className="h-7 text-xs">
+                          {rewindingId === cp.checkpoint_id && <Loader2 className="mr-1 size-3 animate-spin" />}
+                          {t("security.rewind")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── Sub-components ─── */
+
+function DecisionBadge({ decision }: { decision: string }) {
+  const variant = decision === "deny" ? "destructive" : decision === "confirm" ? "outline" : "secondary";
+  return (
+    <Badge variant={variant} className="text-[11px] uppercase shrink-0">
+      {decision}
+    </Badge>
+  );
+}
+
+function ZonePanel({ zone, paths, onChange }: {
+  zone: string;
+  paths: string[]; onChange: (v: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const [input, setInput] = useState("");
+  const [expanded, setExpanded] = useState(zone === "workspace" || zone === "controlled");
+  const meta = ZONE_META[zone];
+
+  const add = () => {
+    const v = input.trim();
+    if (v && !paths.includes(v)) onChange([...paths, v]);
+    setInput("");
+  };
+
+  return (
+    <Card className="gap-0 overflow-hidden p-0">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/50"
+      >
+        <span className={cn("size-2.5 shrink-0 rounded-full", meta.tw)} />
+        <span className="flex-1 text-sm font-semibold">{t(`security.zone_${zone}`)}</span>
+        <Badge variant="secondary" className="text-xs font-mono">{paths.length}</Badge>
+        {expanded ? <IconChevronDown size={16} className="text-muted-foreground" /> : <IconChevronRight size={16} className="text-muted-foreground" />}
+      </button>
+      {expanded && (
+        <CardContent className="space-y-2 pb-3 pt-0">
+          {paths.map((p, i) => (
+            <div key={i} className="flex items-center gap-2 group bg-muted/30 rounded-md border border-transparent hover:border-border transition-colors px-2 py-1">
+              <code className="flex-1 text-xs font-mono">{p}</code>
+              <Button
+                variant="ghost" size="icon"
+                className="size-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => onChange(paths.filter((_, j) => j !== i))}
+              >
+                <IconX size={14} />
+              </Button>
+            </div>
+          ))}
+          <div className="mt-2.5 flex gap-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              placeholder="D:/path/to/dir/**"
+              className="h-8 text-sm font-mono"
+            />
+            <Button variant="secondary" size="sm" onClick={add} className="h-8 px-3">
+              <IconPlus size={14} className="mr-1.5" />
+              {t("common.add", "添加")}
+            </Button>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+function TagEditor({ label, items, onChange, placeholder }: {
+  label: string; items: string[]; onChange: (v: string[]) => void; placeholder?: string;
+}) {
+  const { t } = useTranslation();
+  const [input, setInput] = useState("");
+
+  const add = () => {
+    const v = input.trim();
+    if (v && !items.includes(v)) onChange([...items, v]);
+    setInput("");
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <Label className="text-sm font-medium">{label}</Label>
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item, i) => (
+            <Badge key={i} variant="secondary" className="gap-1.5 border-transparent py-0.5 pl-2 pr-1 font-mono text-xs transition-colors hover:border-border">
+              {item}
+              <button
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+                className="ml-0.5 rounded-sm hover:bg-destructive/20 transition-colors p-0.5"
+              >
+                <IconX size={12} className="text-muted-foreground hover:text-destructive" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={placeholder}
+          className="h-8 text-sm font-mono"
+        />
+        <Button variant="secondary" size="sm" onClick={add} className="h-8 px-3">
+          <IconPlus size={14} className="mr-1.5" />
+          {t("common.add", "添加")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+

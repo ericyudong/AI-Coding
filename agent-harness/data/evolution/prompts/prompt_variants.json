@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "4cb6a2e5-c70e-4cf6-852b-c210653e90e5": {
+      "variant_id": "4cb6a2e5-c70e-4cf6-852b-c210653e90e5",
+      "prompt": "",
+      "version": 1,
+      "performance_score": 0.0,
+      "usage_count": 0,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "created_at": "2026-07-24T03:52:02.447226"
+    }
+  },
+  "current_variant_id": "4cb6a2e5-c70e-4cf6-852b-c210653e90e5",
+  "base_prompt": ""
+}

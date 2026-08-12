@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: demo
+  namespace: argocd
+spec:
+  description: Demo project for Tekton + Argo CD
+  sourceRepos:
+    - https://github.com/your-org/tekton-argocd-demo.git
+  destinations:
+    - namespace: demo-app
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

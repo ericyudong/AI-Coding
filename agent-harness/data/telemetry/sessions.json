@@ -1,0 +1,156 @@
+{
+  "b3afdfce-116f-421e-a78e-19757acd719b": {
+    "session_id": "b3afdfce-116f-421e-a78e-19757acd719b",
+    "agent_id": "f0f954c9-7939-4958-841b-8cdf11bcccec",
+    "task": "Add 5 and 3",
+    "start_time": "2026-07-24T03:26:51.311878",
+    "end_time": "2026-07-24T03:26:51.316882",
+    "total_iterations": 1,
+    "total_actions": 1,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 5.004,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "8"
+    },
+    "events": []
+  },
+  "899e901f-79ec-46ea-918f-799754d6f197": {
+    "session_id": "899e901f-79ec-46ea-918f-799754d6f197",
+    "agent_id": "a6185727-fa2b-4c65-be0c-4e408032ab22",
+    "task": "Add 5 and 3",
+    "start_time": "2026-07-24T03:30:05.084195",
+    "end_time": "2026-07-24T03:30:05.086195",
+    "total_iterations": 1,
+    "total_actions": 1,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 2.0,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "8"
+    },
+    "events": []
+  },
+  "80941cfc-8c3d-4dc9-8817-47eac0f97851": {
+    "session_id": "80941cfc-8c3d-4dc9-8817-47eac0f97851",
+    "agent_id": "90dab6bb-8c34-488f-b9ac-cc435b308bd7",
+    "task": "Add 5 and 3",
+    "start_time": "2026-07-24T03:31:10.869004",
+    "end_time": "2026-07-24T03:31:10.871005",
+    "total_iterations": 1,
+    "total_actions": 1,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 2.0010000000000003,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "8"
+    },
+    "events": []
+  },
+  "04872497-13ab-47f7-a902-129f56886c82": {
+    "session_id": "04872497-13ab-47f7-a902-129f56886c82",
+    "agent_id": "90dab6bb-8c34-488f-b9ac-cc435b308bd7",
+    "task": "Multiply 4 times 6",
+    "start_time": "2026-07-24T03:31:10.874829",
+    "end_time": "2026-07-24T03:31:10.877571",
+    "total_iterations": 1,
+    "total_actions": 1,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 2.742,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "24"
+    },
+    "events": []
+  },
+  "dbd5b1de-b3ed-4b10-9d66-1038420d3a82": {
+    "session_id": "dbd5b1de-b3ed-4b10-9d66-1038420d3a82",
+    "agent_id": "90dab6bb-8c34-488f-b9ac-cc435b308bd7",
+    "task": "Add 10 and 20 and 30",
+    "start_time": "2026-07-24T03:31:10.879187",
+    "end_time": "2026-07-24T03:31:10.882393",
+    "total_iterations": 1,
+    "total_actions": 1,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 3.206,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "60"
+    },
+    "events": []
+  },
+  "d298e7b8-f2f0-49e0-a7dd-c8ec1dc2131b": {
+    "session_id": "d298e7b8-f2f0-49e0-a7dd-c8ec1dc2131b",
+    "agent_id": "e6255f3c-a872-4416-884a-7f43287f6a58",
+    "task": "hello web console",
+    "start_time": "2026-07-24T03:53:39.361409",
+    "end_time": "2026-07-24T03:53:39.374638",
+    "total_iterations": 1,
+    "total_actions": 0,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 13.229,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 0.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "Processed: hello web console"
+    },
+    "events": []
+  },
+  "3a586d95-6f89-41e4-89fe-e1e0bf37a76f": {
+    "session_id": "3a586d95-6f89-41e4-89fe-e1e0bf37a76f",
+    "agent_id": "e6255f3c-a872-4416-884a-7f43287f6a58",
+    "task": "\u6c47\u603b\u4eca\u65e5\u7684AI\u65b0\u95fb",
+    "start_time": "2026-07-24T03:59:07.870571",
+    "end_time": "2026-07-24T03:59:07.875795",
+    "total_iterations": 1,
+    "total_actions": 0,
+    "total_errors": 0,
+    "total_thoughts": 1,
+    "total_duration_ms": 5.224,
+    "avg_think_duration_ms": 0.0,
+    "avg_act_duration_ms": 0.0,
+    "success_rate": 0.0,
+    "error_rate": 0.0,
+    "memory_stores": 0,
+    "memory_retrievals": 0,
+    "custom": {
+      "result": "Processed: \u6c47\u603b\u4eca\u65e5\u7684AI\u65b0\u95fb"
+    },
+    "events": []
+  }
+}

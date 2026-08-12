@@ -1,0 +1,40 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sguardrailpolicyrequired
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sGuardrailPolicyRequired
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            configMap:
+              type: string
+            forbidImageTag:
+              type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sguardrailpolicyrequired
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Rollout"
+          container := input.review.object.spec.template.spec.containers[_]
+          endswith(container.image, sprintf(":%v", [input.parameters.forbidImageTag]))
+          msg := sprintf("image tag %v is forbidden for container %v", [input.parameters.forbidImageTag, container.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Rollout"
+          volumes := object.get(input.review.object.spec.template.spec, "volumes", [])
+          not has_policy_cm(volumes, input.parameters.configMap)
+          msg := sprintf("Rollout must mount ConfigMap %v as guardrail policy", [input.parameters.configMap])
+        }
+
+        has_policy_cm(volumes, name) {
+          v := volumes[_]
+          v.configMap.name == name
+        }
