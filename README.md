@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-20-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-19-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -408,8 +408,8 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 20
-- **Categories**: AI Infra (9), AI Agent (11)
+- **Total Projects**: 19
+- **Categories**: AI Infra (9), AI Agent (10)
 - **Language Support**: Python, TypeScript, JavaScript, Go
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
