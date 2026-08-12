@@ -32,18 +32,9 @@ Infrastructure platforms, model training frameworks, development tools, data pro
   - Multiple reward models
   - Efficient resource management
 
-### Data-Juicer 📊
-- **Description**: Data Operating System for the foundation model era, for data cleaning, synthesis, and analysis.
-- **Key Features**:
-  - 200+ data processing operators
-  - Multimodal data processing
-  - Cloud-native architecture
-  - Large-scale data processing
-  - Visual configuration interface
-
 ---
 
-## 🎨 1.2 Development Tools & Infrastructure
+## 🎨 1.2 MaaS
 
 ### CSGHub 🏢
 - **Description**: LLM asset management platform frontend designed for enterprise, as a private Huggingface alternative.
@@ -105,8 +96,14 @@ Infrastructure platforms, model training frameworks, development tools, data pro
 
 ## 📦 1.3 Data Processing & Resources
 
-### Wanwu
-- **Description**: Wanwu data platform focusing on AI data collection, processing, and analysis.
+### Data-Juicer 📊
+- **Description**: Data Operating System for the foundation model era, for data cleaning, synthesis, and analysis.
+- **Key Features**:
+  - 200+ data processing operators
+  - Multimodal data processing
+  - Cloud-native architecture
+  - Large-scale data processing
+  - Visual configuration interface
 
 ### GPU Allocator 🖥️
 - **Description**: Web management system for allocating NVIDIA GPUs by card.
@@ -192,6 +189,9 @@ Intelligent agent systems and enterprise AI agent applications.
   - Self-evolution engine for automatic strategy and prompt optimization
   - Web monitoring UI
 
+### Wanwu AI Agent Platform 🌍
+- **Description**: **Wanwu AI Agent Platform** is an **enterprise-grade** **one-stop** **commercially friendly** AI agent development platform designed for business scenarios.
+
 ---
 
 ## 🏢 2.2 Enterprise Applications
@@ -247,10 +247,9 @@ Eric's AI Project Collection
 │
 ├── 🏗️ AI Infra & Dev Tools
 │   ├── 🎯 Model Training
-│   │   ├── LlamaFactory/          # LLM fine-tuning platform
-│   │   └── data-juicer/           # Data processing OS
+│   │   └── LlamaFactory/          # LLM fine-tuning platform
 │   │
-│   ├── 🎨 Development Tools & Infrastructure
+│   ├── 🎨 MaaS
 │   │   ├── csghub/                # LLM asset management frontend
 │   │   ├── csghub-server/         # LLM asset management server
 │   │   ├── gpustack-main/         # GPU resource management
@@ -261,7 +260,7 @@ Eric's AI Project Collection
 │   │   └── skillhub/              # Agent skill registry
 │   │
 │   ├── 📦 Data Processing & Resources
-│   │   ├── wanwu/                 # Wanwu data platform
+│   │   ├── data-juicer/           # Data processing OS
 │   │   ├── gpu-allocator/         # GPU allocation system
 │   │   └── slurm-job-manager/     # Slurm job management
 │   │
@@ -279,7 +278,8 @@ Eric's AI Project Collection
     │   ├── openclaw-main/         # AI agent framework
     │   ├── jiuwenclaw/            # Chinese AI agent system
     │   ├── agent-model-system/    # Three-agent collaboration system
-    │   └── agent-harness/         # Agent runtime + memory + self-evolution
+    │   ├── agent-harness/         # Agent runtime + memory + self-evolution
+    │   └── wanwu/                 # Wanwu AI Agent Platform
     │
     └── 🏢 Enterprise Applications
         ├── e-claw/                # Enterprise AI agent platform
@@ -384,6 +384,7 @@ python main.py
 | **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
 | **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
 | **Agent Harness** | [agent-harness/README.md](./agent-harness/README.md) |
+| **Wanwu AI Agent Platform** | [wanwu/README.md](./wanwu/README.md) |
 | **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
 | **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
 | **AI QA System** | [ai-qa-system/README.md](./ai-qa-system/README.md) |
