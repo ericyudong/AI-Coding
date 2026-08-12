@@ -3,59 +3,28 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-30+-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-20-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
 ## 🌟 Introduction
 
-Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, organized into two major categories: **AI Infra** and **AI Agent** — covering a complete ecosystem from model training and infrastructure to intelligent agent systems and enterprise applications.
+Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, organized into two major categories: **AI Infra** and **AI Agent** — covering a complete ecosystem from infrastructure and platform tooling to intelligent agent systems and enterprise applications.
 
 ---
 
 ## 📂 Project Categories
 
+- 🏗️ **Category 1: AI Infra** — AI infrastructure, gateways, guardrails, GPU/HPC resource management, OCR/AI showcase tools, and utility scripts.
+- 🤖 **Category 2: AI Agent** — Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms, and vertical-domain agents.
+
 ---
 
 # 🏗️ Category 1: AI Infra
 
-Infrastructure platforms, model training frameworks, development tools, data processing systems, and utility showcases.
+AI infrastructure platforms, model gateways with guardrails, GPU/HPC resource management, OCR/AI showcase systems, and development utilities.
 
-## 🎯 1.1 Model Training & Fine-tuning
-
-### LlamaFactory 🚀
-- **Description**: Unified LLM fine-tuning framework supporting 100+ models with zero-code offline training.
-- **Key Features**:
-  - Multi-model support (LLaMA, Qwen, Mistral, etc.)
-  - Complete fine-tuning pipeline (LoRA, QLoRA, Full)
-  - Web UI (Gradio-based LLaMA-Board)
-  - Multiple reward models
-  - Efficient resource management
-
----
-
-## 🎨 1.2 MaaS
-
-### CSGHub 🏢
-- **Description**: LLM asset management platform frontend designed for enterprise, as a private Huggingface alternative.
-- **Key Features**:
-  - Unified model management
-  - Dataset management
-  - Space deployment
-  - Enterprise-level security
-  - On-premises deployment
-
-### CSGHub Server 🏢
-- **Description**: CSGHub Server - the backend part of the open-source LLM asset management platform, providing REST API-based model and dataset asset management.
-- **Key Features**: User and organization management, model/dataset hosting, Git LFS support, content moderation, activity tracking
-
-### GPUStack 🖥️
-- **Description**: GPU resource management and scheduling platform, optimizing GPU cluster efficiency.
-- **Key Features**: GPU cluster management, resource scheduling, performance monitoring
-
-### MLflow 📈
-- **Description**: Open-source ML experiment tracking platform supporting complete ML lifecycle management.
-- **Key Features**: Experiment tracking, model registry, deployment management
+## 🛡️ 1.1 Inference Gateway & Guardrails
 
 ### AIGateway 🛡️
 - **Description**: Unified LLM inference gateway built on LiteLLM Proxy with multi-model routing, six-layer guardrails, and full observability/auditing. Designed for financial compliance with gate thresholds: jailbreak bypass ≤ 2%, false positive ≤ 2%, PII leak = 0, groundedness ≥ 0.9.
@@ -75,6 +44,10 @@ Infrastructure platforms, model training frameworks, development tools, data pro
   - Admission control via Gatekeeper constraints
   - Compliance support (SR 11-7 / DORA / MiFID II / GDPR Art.22)
 
+---
+
+## ☸️ 1.2 Cloud-Native DevOps
+
 ### K8s DevOps (Tekton + Argo CD) ☸️
 - **Description**: Complete GitOps demonstration combining Tekton CI pipelines with Argo CD continuous delivery, featuring a sample Go application.
 - **Key Features**:
@@ -83,27 +56,9 @@ Infrastructure platforms, model training frameworks, development tools, data pro
   - Optional webhook-triggered CI via Tekton Triggers
   - Sample Go app runnable locally without Kubernetes
 
-### SkillHub 🧩
-- **Description**: Enterprise-grade, open-source agent skill registry platform for publishing, discovering, and managing reusable skill packages across an organization.
-- **Key Features**:
-  - Self-hosted, private registry with full data sovereignty
-  - Semantic versioning with custom tags (beta, stable) and latest tracking
-  - CLI-based skill installation and management
-  - Scanner, monitoring, and Docker Compose deployment support
-- **Tech Stack**: Java 21 backend, React 19 frontend
-
 ---
 
-## 📦 1.3 Data Processing & Resources
-
-### Data-Juicer 📊
-- **Description**: Data Operating System for the foundation model era, for data cleaning, synthesis, and analysis.
-- **Key Features**:
-  - 200+ data processing operators
-  - Multimodal data processing
-  - Cloud-native architecture
-  - Large-scale data processing
-  - Visual configuration interface
+## 🖥️ 1.3 GPU & HPC Resource Management
 
 ### GPU Allocator 🖥️
 - **Description**: Web management system for allocating NVIDIA GPUs by card.
@@ -131,9 +86,6 @@ Infrastructure platforms, model training frameworks, development tools, data pro
 - **Description**: AI model showcase platform for demonstrating and testing various AI model capabilities.
 - **Key Features**: Model comparison, interactive demos, performance evaluation
 
-### Easy Learn AI
-- **Description**: AI learning and evaluation website providing interactive learning experience.
-
 ### ClawManager
 - **Description**: AI agent management tool for monitoring and managing multiple AI agent instances.
 - **Key Features**: InteractionAgent (interaction coordination), ModelDownloadAgent (automatic downloading), ModelFinetuneAgent (automatic fine-tuning and deployment)
@@ -146,18 +98,9 @@ Infrastructure platforms, model training frameworks, development tools, data pro
 
 # 🤖 Category 2: AI Agent
 
-Intelligent agent systems and enterprise AI agent applications.
+Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms, and vertical-domain intelligent agents.
 
-## 🧠 2.1 Intelligent Agent Systems
-
-### Hermes Agent ⚡
-- **Description**: Self-improving AI agent built by Nous Research with a built-in learning loop. Supports multi-platform communication, automation, skill creation, and memory management.
-- **Key Features**:
-  - Terminal UI
-  - Multi-platform support (Telegram, Discord, Slack, etc.)
-  - Automatic skill creation and improvement
-  - Cron scheduling
-  - Subagent delegation
+## 🧠 2.1 Open-Source Agent Frameworks
 
 ### OpenAkita 🌐
 - **Description**: Open-source multi-agent AI assistant platform. Multiple AI agents collaborate as an "AI company" that autonomously gets things done — web search, computer operation, file management, and scheduled tasks across 6 IM platforms (Telegram, Feishu, WeCom, DingTalk, QQ, etc.).
@@ -176,6 +119,10 @@ Intelligent agent systems and enterprise AI agent applications.
 - **Description**: Chinese AI agent system based on OpenClaw, optimized for Chinese environments.
 - **Key Features**: Chinese language model integration, local knowledge base, search engine integration
 
+---
+
+## 🤖 2.2 Multi-Agent Collaboration Systems
+
 ### Agent Model System 🤖
 - **Description**: Powerful three-agent collaboration system for automatically downloading Deepseek models from HuggingFace, fine-tuning, and deploying locally.
 - **Key Features**: InteractionAgent (interaction coordination), ModelDownloadAgent (automatic downloading), ModelFinetuneAgent (automatic fine-tuning and deployment)
@@ -189,12 +136,9 @@ Intelligent agent systems and enterprise AI agent applications.
   - Self-evolution engine for automatic strategy and prompt optimization
   - Web monitoring UI
 
-### Wanwu AI Agent Platform 🌍
-- **Description**: **Wanwu AI Agent Platform** is an **enterprise-grade** **one-stop** **commercially friendly** AI agent development platform designed for business scenarios.
-
 ---
 
-## 🏢 2.2 Enterprise Applications
+## 🏢 2.3 Enterprise AI Platforms
 
 ### E-Claw 🏗️
 - **Description**: Enterprise-grade AI agent runtime platform based on OpenClaw, supporting multi-tenant isolation and RAG retrieval.
@@ -207,23 +151,6 @@ Intelligent agent systems and enterprise AI agent applications.
   - Unified AI gateway
   - Audit logging
 - **Tech Stack**: FastAPI, Vue 3, PostgreSQL, Redis, Docker, Kubernetes
-
-### AI QA System
-- **Description**: Intelligent Q&A system based on LangChain, supporting document understanding and context-based question answering.
-- **Key Features**: RAG retrieval, document vector indexing, multilingual support
-
-### DeepSeek QA System 💬
-- **Description**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
-- **Key Features**: DeepSeek LLM integration, multi-turn conversations, modern web interface, asynchronous processing, conversation history management
-
-### Legal Agent ⚖️
-- **Description**: Intelligent legal agent platform with a portal home, legal research, contract review/drafting, and labor-law Q&A modules, built from UI design specifications.
-- **Key Features**:
-  - Legal search: regulation query, similar case retrieval, administrative penalties, professional interpretation
-  - Contract review: doc/docx/pdf upload with checklist and reference-based review
-  - Contract drafting with multiple drafting styles
-  - Q&A AI for labor law, financial compliance, and enterprise globalization
-- **Tech Stack**: Vue 3 + TypeScript + Vite + Element Plus + Pinia, FastAPI + SQLAlchemy + SQLite, OpenAI-compatible API
 
 ### RecruitOS + HR Agent 👥
 - **Description**: Recruitment management system (RecruitOS) with an integrated HR Agent AI service providing understanding, generation, and recommendation capabilities. RecruitOS depends on the HR Agent for all AI features.
@@ -240,54 +167,69 @@ Intelligent agent systems and enterprise AI agent applications.
 
 ---
 
+## 💬 2.4 Intelligent Q&A & Vertical Agents
+
+### DeepSeek QA System 💬
+- **Description**: Intelligent Q&A system based on FastAPI + DeepSeek LLM, supporting multi-turn conversations and conversation history management.
+- **Key Features**: DeepSeek LLM integration, multi-turn conversations, modern web interface, asynchronous processing, conversation history management
+
+### AI QA System
+- **Description**: Intelligent Q&A system based on LangChain, supporting document understanding and context-based question answering.
+- **Key Features**: RAG retrieval, document vector indexing, multilingual support
+
+### Legal Agent ⚖️
+- **Description**: Intelligent legal agent platform with a portal home, legal research, contract review/drafting, and labor-law Q&A modules, built from UI design specifications.
+- **Key Features**:
+  - Legal search: regulation query, similar case retrieval, administrative penalties, professional interpretation
+  - Contract review: doc/docx/pdf upload with checklist and reference-based review
+  - Contract drafting with multiple drafting styles
+  - Q&A AI for labor law, financial compliance, and enterprise globalization
+- **Tech Stack**: Vue 3 + TypeScript + Vite + Element Plus + Pinia, FastAPI + SQLAlchemy + SQLite, OpenAI-compatible API
+
+---
+
 ## 🗂️ Project Architecture Overview
 
 ```
 Eric's AI Project Collection
 │
 ├── 🏗️ AI Infra
-│   ├── 🎯 Model Training
-│   │   └── LlamaFactory/          # LLM fine-tuning platform
+│   ├── 🛡️ Inference Gateway & Guardrails
+│   │   ├── AIGateway/                # LiteLLM gateway + 6-layer guardrails
+│   │   └── DevGuard/                 # AI guardrails GitOps (Argo CD)
 │   │
-│   ├── 🎨 MaaS
-│   │   ├── csghub/                # LLM asset management frontend
-│   │   ├── csghub-server/         # LLM asset management server
-│   │   ├── gpustack-main/         # GPU resource management
-│   │   ├── mlflow/                # ML experiment tracking
-│   │   ├── AIGateway/             # LiteLLM gateway + 6-layer guardrails
-│   │   ├── DevGuard/              # AI guardrails GitOps (Argo CD)
-│   │   ├── k8sdevops/             # Tekton CI + Argo CD GitOps
-│   │   └── skillhub/              # Agent skill registry
+│   ├── ☸️ Cloud-Native DevOps
+│   │   └── k8sdevops/                # Tekton CI + Argo CD GitOps
 │   │
-│   ├── 📦 Data Processing & Resources
-│   │   ├── data-juicer/           # Data processing OS
-│   │   ├── gpu-allocator/         # GPU allocation system
-│   │   └── slurm-job-manager/     # Slurm job management
+│   ├── 🖥️ GPU & HPC Resource Management
+│   │   ├── gpu-allocator/            # GPU allocation system
+│   │   └── slurm-job-manager/        # Slurm job management
 │   │
 │   └── 💬 Tools & Showcase
-│       ├── ocr-test-platform/     # OCR model testing platform
-│       ├── ai-models-showcase/    # AI model showcase
-│       ├── easy-learn-ai/         # AI learning website
-│       ├── ClawManager-main/      # AI agent manager
-│       └── util/                  # Utility scripts
+│       ├── ocr-test-platform/        # OCR model testing platform
+│       ├── ai-models-showcase/       # AI model showcase
+│       ├── ClawManager-main/         # AI agent manager
+│       └── util/                     # Utility scripts
 │
 └── 🤖 AI Agent
-    ├── 🧠 Intelligent Agent Systems
-    │   ├── hermes-agent/          # Self-improving agent platform
-    │   ├── openakita/             # Open-source multi-agent AI assistant
-    │   ├── openclaw-main/         # AI agent framework
-    │   ├── jiuwenclaw/            # Chinese AI agent system
-    │   ├── agent-model-system/    # Three-agent collaboration system
-    │   ├── agent-harness/         # Agent runtime + memory + self-evolution
-    │   └── wanwu/                 # Wanwu AI Agent Platform
+    ├── 🧠 Open-Source Agent Frameworks
+    │   ├── openakita/                # Open-source multi-agent AI assistant
+    │   ├── openclaw-main/            # AI agent framework
+    │   └── jiuwenclaw/               # Chinese AI agent system
     │
-    └── 🏢 Enterprise Applications
-        ├── e-claw/                # Enterprise AI agent platform
-        ├── ai-qa-system/          # Intelligent Q&A system
-        ├── deepseek-qa-system/    # DeepSeek Q&A system
-        ├── legal-agent/           # Intelligent legal agent platform
-        ├── recruit-agent/         # RecruitOS + HR Agent
-        └── jira-system/           # Project management system
+    ├── 🤖 Multi-Agent Collaboration
+    │   ├── agent-model-system/       # Three-agent collaboration system
+    │   └── agent-harness/            # Agent runtime + memory + self-evolution
+    │
+    ├── 🏢 Enterprise AI Platforms
+    │   ├── e-claw/                   # Enterprise AI agent platform
+    │   ├── recruit-agent/            # RecruitOS + HR Agent
+    │   └── jira-system/              # Project management system
+    │
+    └── 💬 Intelligent Q&A & Vertical Agents
+        ├── deepseek-qa-system/       # DeepSeek Q&A system
+        ├── ai-qa-system/             # Intelligent Q&A system
+        └── legal-agent/              # Intelligent legal agent platform
 ```
 
 ---
@@ -311,32 +253,6 @@ venv\Scripts\activate     # Windows
 pip install fastapi uvicorn sqlalchemy langchain
 ```
 
-### 🤖 Try Hermes Agent
-
-```bash
-# One-click install
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
-
-# Start conversation
-hermes
-```
-
-### 🎯 Train Custom Models
-
-```bash
-cd LlamaFactory
-pip install -r requirements.txt
-python src/export_model.py --model_name_or_path meta-llama/Llama-3-8b --export_dir ./output
-```
-
-### 🏢 Deploy E-Claw Enterprise Platform
-
-```bash
-cd AI-Coding/e-claw/backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
 ### 🛡️ Run AIGateway Locally
 
 ```bash
@@ -345,6 +261,14 @@ cp .env.example .env
 pip install -r requirements.txt
 python scripts/validate_policy.py
 cd deployments && docker compose up -d --build
+```
+
+### 🏢 Deploy E-Claw Enterprise Platform
+
+```bash
+cd e-claw/backend
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### 📄 Launch OCR Test Platform
@@ -364,39 +288,38 @@ python main.py
 
 | Project | Documentation |
 |---------|---------------|
-| **LlamaFactory** | [https://github.com/hiyouga/LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) |
-| **Data-Juicer** | [https://datajuicer.github.io/data-juicer/](https://datajuicer.github.io/data-juicer/) |
-| **CSGHub** | [https://github.com/OpenCSGs/csghub](https://github.com/OpenCSGs/csghub) |
-| **GPU Allocator** | [gpu-allocator/README.md](./gpu-allocator/README.md) |
 | **AIGateway** | [AIGateway/README.md](./AIGateway/README.md) |
 | **DevGuard** | [DevGuard/README.md](./DevGuard/README.md) |
 | **K8s DevOps** | [k8sdevops/README.md](./k8sdevops/README.md) |
-| **SkillHub** | [https://iflytek.github.io/skillhub/](https://iflytek.github.io/skillhub/) |
-| **OCR Test Platform** | [ocr-test-platform/README.md](./ocr-test-platform/README.md) |
+| **GPU Allocator** | [gpu-allocator/README.md](./gpu-allocator/README.md) |
 | **Slurm Job Manager** | [slurm-job-manager/README.md](./slurm-job-manager/README.md) |
+| **OCR Test Platform** | [ocr-test-platform/README.md](./ocr-test-platform/README.md) |
+| **AI Models Showcase** | [ai-models-showcase/README.md](./ai-models-showcase/README.md) |
+| **ClawManager** | [ClawManager-main/](./ClawManager-main/) |
+| **Util Scripts** | [util/](./util/) |
 
 ### AI Agent
 
 | Project | Documentation |
 |---------|---------------|
-| **Hermes Agent** | [https://hermes-agent.nousresearch.com/docs/](https://hermes-agent.nousresearch.com/docs/) |
 | **OpenAkita** | [openakita/README.md](./openakita/README.md) |
 | **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
+| **Jiuwenclaw** | [jiuwenclaw/](./jiuwenclaw/) |
 | **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
 | **Agent Harness** | [agent-harness/README.md](./agent-harness/README.md) |
-| **Wanwu AI Agent Platform** | [wanwu/README.md](./wanwu/README.md) |
 | **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
 | **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
 | **AI QA System** | [ai-qa-system/README.md](./ai-qa-system/README.md) |
 | **Legal Agent** | [legal-agent/README.md](./legal-agent/README.md) |
 | **RecruitOS + HR Agent** | [recruit-agent/README.md](./recruit-agent/README.md) |
+| **JIRA System** | [jira-system/](./jira-system/) |
 
 ---
 
 ## 🛠️ Technology Stack Overview
 
 ### Core Technologies
-- **Programming Languages**: Python 3.11+, TypeScript, JavaScript, Java 21, Go
+- **Programming Languages**: Python 3.11+, TypeScript, JavaScript, Go
 - **Web Frameworks**: FastAPI, Flask, Vue 3, React, Express, Element Plus, Ant Design
 - **Databases**: PostgreSQL, MongoDB, SQLite, Redis, Prisma
 - **ML/DL Frameworks**: PyTorch, TensorFlow, LangChain, Transformers
@@ -404,11 +327,10 @@ python main.py
 - **Development Tools**: Git, VS Code, JupyterLab
 
 ### AI-Related Technologies
-- **LLM Training**: LoRA, QLoRA, DPO, PPO
 - **Vector Databases**: ChromaDB, FAISS
-- **Agent Frameworks**: LangChain, AutoGPT, OpenClaw
+- **Agent Frameworks**: LangChain, OpenClaw
 - **AI Safety & Guardrails**: Presidio, Lakera, LlamaGuard, Bedrock, policy-as-code
-- **Model Deployment**: MLflow, Gradio, Ollama, LiteLLM
+- **Model Deployment**: LiteLLM, Ollama
 - **OCR Engines**: Tesseract, PaddleOCR, EasyOCR, OvisOCR
 - **Data Processing**: Pandas, NumPy, Dask
 
@@ -428,7 +350,6 @@ python main.py
 - AI gateway with guardrails for financial compliance
 
 ### 🎓 Education & Research
-- Personalized learning assistants
 - Academic research support
 - Experiment tracking
 - Model fine-tuning
@@ -438,7 +359,7 @@ python main.py
 - Automated testing
 - CI/CD integration (Tekton, Argo CD, GitOps)
 - API development
-- Agent skill registries and multi-agent orchestration
+- Multi-agent orchestration
 
 ---
 
@@ -463,7 +384,7 @@ We welcome all forms of contributions!
 
 ## 📝 License
 
-Most projects use the MIT License. Some projects (e.g., OpenAkita uses AGPL-3.0, SkillHub uses Apache 2.0) have their own licenses — please check the LICENSE file in each project for details.
+Most projects use the MIT License. Some projects (e.g., OpenAkita uses AGPL-3.0) have their own licenses — please check the LICENSE file in each project for details.
 
 ---
 
@@ -471,13 +392,8 @@ Most projects use the MIT License. Some projects (e.g., OpenAkita uses AGPL-3.0,
 
 Special thanks to all contributors in the open-source community, especially:
 
-- **Nous Research** - Hermes Agent
-- **hiyouga** - LlamaFactory
-- **datajuicer** - Data-Juicer
-- **OpenCSG** - CSGHub
 - **OpenAkita** - Multi-agent AI assistant
-- **iFLYTEK** - SkillHub
-- And all other open-source projects
+- And all other open-source projects that inspired this collection
 
 ---
 
@@ -492,11 +408,11 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 30+
-- **Categories**: AI Infra, AI Agent
-- **Language Support**: Python, TypeScript, JavaScript, Java, Go
+- **Total Projects**: 20
+- **Categories**: AI Infra (9), AI Agent (11)
+- **Language Support**: Python, TypeScript, JavaScript, Go
 - **Total Lines of Code**: 100,000+
-- **Open Source Licenses**: MIT, Apache 2.0, AGPL-3.0
+- **Open Source Licenses**: MIT, AGPL-3.0
 
 ---
 
