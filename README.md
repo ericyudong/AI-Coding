@@ -86,9 +86,15 @@ AI infrastructure platforms, model gateways with guardrails, GPU/HPC resource ma
 - **Description**: AI model showcase platform for demonstrating and testing various AI model capabilities.
 - **Key Features**: Model comparison, interactive demos, performance evaluation
 
-### ClawManager
-- **Description**: AI agent management tool for monitoring and managing multiple AI agent instances.
-- **Key Features**: InteractionAgent (interaction coordination), ModelDownloadAgent (automatic downloading), ModelFinetuneAgent (automatic fine-tuning and deployment)
+### ClawManager 🎛️
+- **Description**: Kubernetes-first control plane for managing OpenClaw and Linux desktop runtimes at team and cluster scale. Acts as a virtual desktop management platform with batch deployment, Webtop support, desktop portal access, runtime image settings, OpenClaw memory/preferences Markdown backup and migration, and built-in AI Gateway for model governance, audit, cost accounting, and risk control.
+- **Key Features**:
+  - One admin panel for users, quotas, instances, and runtime images
+  - OpenClaw import/export for memory and preferences
+  - Secure browser access without exposing pods directly
+  - AI Gateway with model governance, audit trails, cost analysis, and risk controls
+  - Kubernetes-native deployment with admin-managed rollout and self-service instance creation
+  - Multilingual documentation (English / 中文 / 日本語 / 한국어 / Deutsch)
 
 ### Util Scripts 🛠️
 - **Description**: Collection of utility scripts for converting exam, answer, and token evaluation data to Word documents.
@@ -114,10 +120,6 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 ### OpenClaw
 - **Description**: Open-source AI agent framework supporting tool calling, multimodal interaction, and adaptive learning.
 - **Key Features**: Tool ecosystem, custom agent creation, extensible architecture
-
-### Jiuwenclaw
-- **Description**: Chinese AI agent system based on OpenClaw, optimized for Chinese environments.
-- **Key Features**: Chinese language model integration, local knowledge base, search engine integration
 
 ---
 
@@ -208,14 +210,13 @@ Eric's AI Project Collection
 │   └── 💬 Tools & Showcase
 │       ├── ocr-test-platform/        # OCR model testing platform
 │       ├── ai-models-showcase/       # AI model showcase
-│       ├── ClawManager-main/         # AI agent manager
+│       ├── ClawManager-main/         # Kubernetes-native virtual desktop control plane + AI Gateway
 │       └── util/                     # Utility scripts
 │
 └── 🤖 AI Agent
     ├── 🧠 Open-Source Agent Frameworks
     │   ├── openakita/                # Open-source multi-agent AI assistant
-    │   ├── openclaw-main/            # AI agent framework
-    │   └── jiuwenclaw/               # Chinese AI agent system
+    │   └── openclaw-main/            # AI agent framework
     │
     ├── 🤖 Multi-Agent Collaboration
     │   ├── agent-model-system/       # Three-agent collaboration system
@@ -295,7 +296,7 @@ python main.py
 | **Slurm Job Manager** | [slurm-job-manager/README.md](./slurm-job-manager/README.md) |
 | **OCR Test Platform** | [ocr-test-platform/README.md](./ocr-test-platform/README.md) |
 | **AI Models Showcase** | [ai-models-showcase/README.md](./ai-models-showcase/README.md) |
-| **ClawManager** | [ClawManager-main/](./ClawManager-main/) |
+| **ClawManager** | [ClawManager-main/ClawManager-main/README.md](./ClawManager-main/ClawManager-main/README.md) |
 | **Util Scripts** | [util/](./util/) |
 
 ### AI Agent
@@ -303,8 +304,7 @@ python main.py
 | Project | Documentation |
 |---------|---------------|
 | **OpenAkita** | [openakita/README.md](./openakita/README.md) |
-| **OpenClaw** | [openclaw-main/docs/](./openclaw-main/docs/) |
-| **Jiuwenclaw** | [jiuwenclaw/](./jiuwenclaw/) |
+| **OpenClaw** | [openclaw-main/README.md](./openclaw-main/README.md) |
 | **Agent Model System** | [agent-model-system/README.md](./agent-model-system/README.md) |
 | **Agent Harness** | [agent-harness/README.md](./agent-harness/README.md) |
 | **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
@@ -413,6 +413,7 @@ Special thanks to all contributors in the open-source community, especially:
 - **Language Support**: Python, TypeScript, JavaScript, Go
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
+- **Highlights**: ClawManager (Kubernetes-native virtual desktop + AI Gateway), OpenAkita (multi-agent), AIGateway (6-layer guardrails)
 
 ---
 
