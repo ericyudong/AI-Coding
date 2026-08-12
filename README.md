@@ -9,7 +9,7 @@
 
 ## 🌟 Introduction
 
-Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, organized into two major categories: **AI Infra & Dev Tools** and **AI Agent** — covering a complete ecosystem from model training and infrastructure to intelligent agent systems and enterprise applications.
+Welcome to Eric's AI Project Collection! This repository brings together several cutting-edge AI-related projects, organized into two major categories: **AI Infra** and **AI Agent** — covering a complete ecosystem from model training and infrastructure to intelligent agent systems and enterprise applications.
 
 ---
 
@@ -17,7 +17,7 @@ Welcome to Eric's AI Project Collection! This repository brings together several
 
 ---
 
-# 🏗️ Category 1: AI Infra & Dev Tools
+# 🏗️ Category 1: AI Infra
 
 Infrastructure platforms, model training frameworks, development tools, data processing systems, and utility showcases.
 
@@ -245,7 +245,7 @@ Intelligent agent systems and enterprise AI agent applications.
 ```
 Eric's AI Project Collection
 │
-├── 🏗️ AI Infra & Dev Tools
+├── 🏗️ AI Infra
 │   ├── 🎯 Model Training
 │   │   └── LlamaFactory/          # LLM fine-tuning platform
 │   │
@@ -360,7 +360,7 @@ python main.py
 
 ## 📖 Detailed Documentation
 
-### AI Infra & Dev Tools
+### AI Infra
 
 | Project | Documentation |
 |---------|---------------|
@@ -493,7 +493,7 @@ Special thanks to all contributors in the open-source community, especially:
 ## 📊 Project Statistics
 
 - **Total Projects**: 30+
-- **Categories**: AI Infra & Dev Tools, AI Agent
+- **Categories**: AI Infra, AI Agent
 - **Language Support**: Python, TypeScript, JavaScript, Java, Go
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, Apache 2.0, AGPL-3.0
