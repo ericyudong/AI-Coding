@@ -1,0 +1,47 @@
+# Example: skip register for dry-run training only
+
+name: ai-ml-factory-train-only
+description: Train + evaluate without registry upload
+allow_skip_evaluate: false
+
+steps:
+  - id: prepare
+    component: prepare_data
+    enabled: true
+    needs: []
+    params:
+      n_samples: 2000
+    inputs: {}
+
+  - id: train
+    component: train_model
+    enabled: true
+    needs: [prepare]
+    params:
+      max_depth: 4
+      n_estimators: 80
+    inputs:
+      dataset: prepare.dataset
+
+  - id: evaluate
+    component: evaluate_model
+    enabled: true
+    needs: [prepare, train]
+    params:
+      min_auc: 0.85
+    inputs:
+      dataset: prepare.dataset
+      model: train.model
+
+  - id: register
+    component: register_artifact
+    enabled: false
+    needs: [train, evaluate]
+    params:
+      model_name: fraud-xgb
+      model_version: v0.0.0-dev
+      s3_uri: s3://ai-factory/models
+      mlflow_tracking_uri: http://mlflow.ml-registry.svc.cluster.local:5000
+    inputs:
+      model: train.model
+      metrics: evaluate.metrics

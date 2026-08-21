@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Cluster Gateway</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh; color: #fff;
+        }
+        .wrap { max-width: 1500px; margin: 0 auto; padding: 24px; }
+        h1 {
+            font-size: 2em;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .sub { color: #888; margin: 6px 0 20px; }
+        button {
+            padding: 9px 14px; border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 500; color: #fff; background: rgba(255,255,255,.08);
+        }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #7c3aed); }
+        .btn-danger { background: #ff4757; }
+        .btn-small { padding: 6px 10px; font-size: 12px; }
+        .file-btn { position: relative; overflow: hidden; display: inline-block; }
+        .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .env-production { background: rgba(255,71,87,.18); color: #ff6b7a; }
+        .env-staging { background: rgba(255,193,7,.18); color: #ffc107; }
+        .env-development { background: rgba(46,213,115,.18); color: #2ed573; }
+        .env-edge { background: rgba(179,136,255,.18); color: #b388ff; }
+        .st-healthy { background: rgba(46,213,115,.2); color: #2ed573; }
+        .st-offline { background: rgba(255,71,87,.2); color: #ff4757; }
+        .st-demo { background: rgba(0,212,255,.2); color: #00d4ff; }
+        .st-pending { background: rgba(255,193,7,.22); color: #ffc107; }
+        .btn-ok { background: #2ed573; color: #102010; }
+        label { display: block; color: #aaa; font-size: 13px; margin-bottom: 6px; }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; border-radius: 8px; color: #fff;
+            border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.05); font-size: 14px;
+        }
+        textarea { min-height: 90px; font-family: inherit; }
+        select option { background: #1a1a2e; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .tab { border-radius: 20px; padding: 8px 14px; background: rgba(255,255,255,.06); color: #ccc; }
+        .tab.active { background: linear-gradient(135deg, #00d4ff, #7c3aed); color: #fff; }
+        .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
+        @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+        .stat { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 14px; text-align: center; }
+        .stat b { display: block; font-size: 1.5em; color: #00d4ff; }
+        .stat span { color: #888; font-size: 12px; }
+        .grid { display: grid; gap: 14px; }
+        .g3 { grid-template-columns: repeat(3, 1fr); }
+        .g2 { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 900px) { .g3, .g2 { grid-template-columns: 1fr; } }
+        .card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 16px; }
+        .title { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .title::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg,#00d4ff,#7c3aed); border-radius: 2px; }
+        .pill { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .ok { background: rgba(46,213,115,.2); color: #2ed573; }
+        .warn { background: rgba(255,193,7,.2); color: #ffc107; }
+        .info { background: rgba(0,212,255,.2); color: #00d4ff; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid rgba(255,255,255,.06); }
+        th { color: #888; font-weight: 500; }
+        .muted { color: #888; } .mono { font-family: ui-monospace, Menlo, monospace; }
+        .bar { height: 8px; background: rgba(255,255,255,.08); border-radius: 6px; overflow: hidden; margin-top: 6px; }
+        .bar > i { display: block; height: 100%; background: linear-gradient(90deg,#00d4ff,#7c3aed); }
+        .toast { position: fixed; right: 20px; bottom: 20px; display: none; background: #1f2a44; border: 1px solid rgba(255,255,255,.15); padding: 12px 16px; border-radius: 10px; max-width: 380px; }
+        .chat { background: rgba(0,0,0,.2); border-radius: 10px; padding: 12px; min-height: 180px; white-space: pre-wrap; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .form-group { margin-bottom: 10px; }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>AI Cluster Gateway</h1>
+    <p class="sub">OCM Hub–Spoke：ManagedCluster 放置推理流量，ManifestWork 部署模型 · OpenAI 兼容 /v1</p>
+    <div class="tabs">
+        <button type="button" class="tab active" data-p="overview" onclick="showPage('overview')">总览</button>
+        <button type="button" class="tab" data-p="clusters" onclick="showPage('clusters')">ManagedCluster</button>
+        <button type="button" class="tab" data-p="deploy" onclick="showPage('deploy')">部署模型</button>
+        <button type="button" class="tab" data-p="models" onclick="showPage('models')">部署列表</button>
+        <button type="button" class="tab" data-p="play" onclick="showPage('play')">推理试玩</button>
+        <button type="button" class="tab" data-p="routes" onclick="showPage('routes')">路由</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div id="overview"></div>
+    <div id="clusters" style="display:none"></div>
+    <div id="deploy" class="card" style="display:none">
+        <div class="title">部署到指定集群</div>
+        <div class="form-row">
+            <div><label>对外别名</label><input id="alias" value="qwen2-7b-extra"></div>
+            <div><label>模型 ID</label><input id="modelId" value="Qwen/Qwen2-7B-Instruct"></div>
+        </div>
+        <div class="form-row">
+            <div><label>目标集群</label><select id="clusterId"></select></div>
+            <div><label>绑定路由名（可选）</label><input id="routeName" placeholder="default / fast / reasoning"></div>
+        </div>
+        <div class="form-row">
+            <div><label>副本</label><input id="replicas" type="number" value="1" min="1"></div>
+            <div><label>每副本 GPU</label><input id="gpu" type="number" value="1" min="0"></div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label>Runtime</label>
+                <select id="runtime"><option value="vllm">vLLM</option><option value="tgi">TGI</option></select>
+            </div>
+            <div><label>权重</label><input id="weight" type="number" value="100"></div>
+        </div>
+        <div class="row">
+            <button class="btn-primary" onclick="doDeploy()">部署</button>
+            <button onclick="loadPlacement()">查看 GPU 余量</button>
+        </div>
+        <div id="placeHint" class="muted" style="margin-top:10px"></div>
+    </div>
+    <div id="models" style="display:none"></div>
+    <div id="play" class="card" style="display:none">
+        <div class="title">OpenAI 兼容试玩</div>
+        <div class="form-row">
+            <div><label>model</label><select id="playModel"></select></div>
+            <div><label>钉死集群（可选）</label><select id="playCluster"><option value="">自动路由</option></select></div>
+        </div>
+        <div class="form-group"><label>用户消息</label><textarea id="prompt">比较一下多集群推理网关和直连 vLLM 的差别</textarea></div>
+        <button class="btn-primary" onclick="doChat()">发送 /v1/chat/completions</button>
+        <div class="chat" id="chatOut" style="margin-top:12px"></div>
+    </div>
+    <div id="routes" style="display:none"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+    let data = { clusters: [], deployments: [], routes: [], stats: {}, models: [] };
+    let currentPage = "overview";
+    function toast(msg, err) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.style.borderColor = err ? "rgba(255,71,87,.5)" : "rgba(46,213,115,.4)";
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 2800);
+    }
+    async function api(path, options) {
+        const res = await fetch(path, options);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail || body));
+        return body;
+    }
+    function showPage(name) {
+        currentPage = name;
+        ["overview","clusters","deploy","models","play","routes"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = id === name ? "block" : "none";
+        });
+        document.querySelectorAll(".tabs > .tab").forEach((el) => {
+            el.classList.toggle("active", el.dataset.p === name);
+        });
+        renderPage();
+        refresh();
+    }
+    function renderPage() {
+        if (currentPage === "overview") renderOverview();
+        if (currentPage === "clusters") renderClusters();
+        if (currentPage === "models") renderModels();
+        if (currentPage === "routes") renderRoutes();
+        if (currentPage === "deploy" || currentPage === "play") fillSelects();
+    }
+    function fillSelects() {
+        const clusterSel = document.getElementById("clusterId");
+        const playCluster = document.getElementById("playCluster");
+        const playModel = document.getElementById("playModel");
+        if (!clusterSel || !playCluster || !playModel) return;
+        const clusterOpts = data.clusters.filter((c) => c.hubAcceptsClient).map((c) => `<option value="${c.id}">${c.name} · GPU 余 ${c.gpu_free}/${c.gpu_total}</option>`).join("");
+        clusterSel.innerHTML = clusterOpts;
+        playCluster.innerHTML = '<option value="">自动路由</option>' + clusterOpts;
+        playModel.innerHTML = (data.models || []).map((m) => `<option value="${m.id}">${m.id}</option>`).join("");
+    }
+    function renderStats() {
+        const s = data.stats || {};
+        const hub = data.hub || {};
+        const counts = hub.counts || {};
+        document.getElementById("stats").innerHTML = `
+            <div class="stat"><b>${counts.managedClusters || data.clusters.length}</b><span>ManagedCluster</span></div>
+            <div class="stat"><b>${counts.accepted || 0}</b><span>已接受</span></div>
+            <div class="stat"><b>${data.deployments.length}</b><span>ManifestWork 模型</span></div>
+            <div class="stat"><b>${(data.placements || []).length}</b><span>Placement</span></div>
+            <div class="stat"><b>${s.requests || 0}</b><span>网关请求</span></div>
+            <div class="stat"><b>${s.avg_latency_ms || 0}</b><span>平均延迟 ms</span></div>`;
+    }
+    function renderOverview() {
+        const cards = data.clusters.map((c) => {
+            const pct = c.gpu_total ? Math.round((c.gpu_used / c.gpu_total) * 100) : 0;
+            const deps = data.deployments.filter((d) => d.cluster_id === c.id);
+            return `<div class="card" style="cursor:pointer" onclick="showPage('clusters')">
+                <div style="display:flex;justify-content:space-between"><strong>${c.name}</strong><span class="pill ${statusClass(c.status)}">${statusText(c.status)}</span></div>
+                <div class="muted" style="margin:8px 0;font-size:12px">${c.environment} · ns/${c.clusterNamespace || c.name}</div>
+                <div class="muted" style="font-size:12px">GPU ${c.gpu_used}/${c.gpu_total}</div>
+                <div class="bar"><i style="width:${pct}%"></i></div>
+                <div class="muted" style="margin-top:10px;font-size:12px">${deps.map(d => d.alias).join(" · ") || "无部署"}</div>
+            </div>`;
+        }).join("");
+        const routeRows = (data.routes || []).map((r) => {
+            const names = (r.backends || []).map((b) => {
+                const d = data.deployments.find((x) => x.id === b.deployment_id);
+                return d ? `${d.alias}@${d.cluster_name} (${b.weight})` : b.deployment_id;
+            }).join("<br>");
+            return `<tr><td class="mono">${r.name}</td><td>${r.strategy}</td><td>${names}</td></tr>`;
+        }).join("");
+        document.getElementById("overview").innerHTML = `
+            <div class="grid g3" style="margin-bottom:14px">${cards}</div>
+            <div class="card"><div class="title">公开模型路由</div>
+            <table><thead><tr><th>model</th><th>策略</th><th>后端</th></tr></thead><tbody>${routeRows}</tbody></table></div>`;
+    }
+    function statusClass(status) {
+        if (status === "healthy") return "st-healthy";
+        if (status === "offline") return "st-offline";
+        if (status === "pending") return "st-pending";
+        return "st-demo";
+    }
+    function statusText(status) {
+        return { healthy: "Available", offline: "离线", demo: "演示", pending: "待接受" }[status] || status || "未知";
+    }
+    function renderClusters() {
+        const rows = data.clusters.map((c) => {
+            const pct = c.gpu_total ? Math.round((c.gpu_used / c.gpu_total) * 100) : 0;
+            const deps = data.deployments.filter((d) => d.cluster_id === c.id);
+            const actions = c.hubAcceptsClient
+                ? `<button type="button" class="btn-small" onclick="doRefreshCluster('${c.id}')">刷新</button>
+                   <button type="button" class="btn-danger btn-small" onclick="doRemoveCluster('${c.id}','${c.name}')">移除</button>`
+                : `<button type="button" class="btn-ok btn-small" onclick="doAccept('${c.id}')">Accept</button>
+                   <button type="button" class="btn-danger btn-small" onclick="doDeny('${c.id}')">Deny</button>`;
+            return `<tr>
+                <td><strong>${c.name}</strong><div class="muted mono" style="font-size:11px">ns/${c.clusterNamespace || c.name}</div></td>
+                <td><span class="pill env-${c.environment}">${c.environment}</span></td>
+                <td>${c.region || "-"}</td>
+                <td><span class="pill ${statusClass(c.status)}">${statusText(c.status)}</span></td>
+                <td>
+                    <div class="muted" style="font-size:12px">${c.gpu_used}/${c.gpu_total} GPU</div>
+                    <div class="bar"><i style="width:${pct}%"></i></div>
+                </td>
+                <td>${deps.map((d) => d.alias).join(", ") || "-"}</td>
+                <td class="mono muted" style="font-size:12px">${(c.clusterClaims || []).slice(0,2).map(x => x.name.split(".")[0]+"="+x.value).join("<br>") || "-"}</td>
+                <td><div class="row">${actions}</div></td>
+            </tr>`;
+        }).join("");
+        const works = (data.manifestWorks || []).map((w) => {
+            const cond = ((w.status || {}).conditions || [])[0] || {};
+            return `<tr><td class="mono">${w.metadata.namespace}</td><td>${w.metadata.name}</td>
+                <td><span class="pill ${cond.status === "True" ? "ok" : "warn"}">${cond.reason || cond.status || "-"}</span></td></tr>`;
+        }).join("");
+        const placements = (data.placements || []).map((p) => {
+            const decided = (((p.decision || {}).status || {}).decisions || []).map((d) => d.clusterName).join(", ") || "无匹配";
+            return `<tr><td class="mono">${p.metadata.name}</td><td>${decided}</td></tr>`;
+        }).join("");
+        document.getElementById("clusters").innerHTML = `
+            <div class="card" style="margin-bottom:14px">
+                <div class="title">clusteradm join</div>
+                <p class="muted" style="margin-bottom:12px">与 k8s-cluster-explorer 共用同一份 OCM Hub。Join 创建未接受的 ManagedCluster；Accept 后才能下发 ManifestWork / 推理。</p>
+                <div class="form-row">
+                    <div><label>集群名</label><input id="cName" placeholder="prod-shanghai"></div>
+                    <div>
+                        <label>环境</label>
+                        <select id="cEnv">
+                            <option value="production">production</option>
+                            <option value="staging">staging</option>
+                            <option value="development">development</option>
+                            <option value="edge">edge</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div><label>区域</label><input id="cRegion" placeholder="cn-shanghai"></div>
+                    <div>
+                        <label>Context</label>
+                        <select id="cContext"><option value="">自动 / 当前 context</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div><label>kubeconfig 路径（仅 join bootstrap）</label><input id="cPath" placeholder="~/.kube/config" value="~/.kube/config" onchange="loadClusterContexts()"></div>
+                    <div><label>GPU 总量（0 则自动探测）</label><input id="cGpu" type="number" value="0" min="0"></div>
+                </div>
+                <label class="row" style="margin-bottom:10px"><input id="cAccept" type="checkbox" style="width:auto"> 同时设置 hubAcceptsClient</label>
+                <div class="row">
+                    <button type="button" class="btn-primary" onclick="doRegisterCluster()">Join</button>
+                    <button type="button" onclick="doImportContexts()">导入全部 context</button>
+                    <label class="file-btn">上传 kubeconfig<input type="file" onchange="doUploadCluster(event)"></label>
+                    <button type="button" onclick="doLoadDemo()">加载演示 Hub</button>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:14px">
+                <div class="title">ManagedCluster（${data.clusters.length}）</div>
+                <table>
+                    <thead><tr>
+                        <th>名称</th><th>环境</th><th>区域</th><th>状态</th><th>GPU</th><th>模型</th><th>Claims</th><th></th>
+                    </tr></thead>
+                    <tbody>${rows || '<tr><td colspan="8" class="muted">还没有集群</td></tr>'}</tbody>
+                </table>
+            </div>
+            <div class="grid g2">
+                <div class="card"><div class="title">ManifestWork</div>
+                    <table><thead><tr><th>cluster ns</th><th>名称</th><th>状态</th></tr></thead>
+                    <tbody>${works || '<tr><td colspan="3" class="muted">暂无</td></tr>'}</tbody></table></div>
+                <div class="card"><div class="title">PlacementDecision</div>
+                    <table><thead><tr><th>Placement</th><th>选中集群</th></tr></thead>
+                    <tbody>${placements || '<tr><td colspan="2" class="muted">暂无</td></tr>'}</tbody></table></div>
+            </div>`;
+    }
+    async function loadClusterContexts() {
+        const path = (document.getElementById("cPath") || {}).value;
+        if (!path) return;
+        try {
+            const info = await api("/api/contexts?kubeconfig_path=" + encodeURIComponent(path));
+            const select = document.getElementById("cContext");
+            if (!select) return;
+            select.innerHTML = '<option value="">自动 / 当前 context</option>';
+            (info.contexts || []).forEach((ctx) => {
+                const opt = document.createElement("option");
+                opt.value = ctx.name;
+                opt.textContent = ctx.name + (ctx.current ? " (current)" : "");
+                select.appendChild(opt);
+            });
+        } catch (err) { /* 路径尚未就绪时忽略 */ }
+    }
+    async function doRegisterCluster() {
+        try {
+            await api("/api/clusters", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: document.getElementById("cName").value,
+                    kubeconfig_path: document.getElementById("cPath").value,
+                    context: document.getElementById("cContext").value || null,
+                    environment: document.getElementById("cEnv").value,
+                    region: document.getElementById("cRegion").value,
+                    gpu_total: Number(document.getElementById("cGpu").value || 0),
+                    auto_accept: document.getElementById("cAccept").checked,
+                }),
+            });
+            toast("已提交 join，等待 Hub Accept");
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doImportContexts() {
+        try {
+            const result = await api("/api/clusters/import", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    kubeconfig_path: document.getElementById("cPath").value,
+                    environment: document.getElementById("cEnv").value,
+                    region: document.getElementById("cRegion").value,
+                    auto_accept: document.getElementById("cAccept").checked,
+                }),
+            });
+            toast(`已发起 ${result.count} 个 join`);
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doUploadCluster(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const form = new FormData();
+        form.append("file", file);
+        form.append("name", document.getElementById("cName").value);
+        form.append("context", document.getElementById("cContext").value);
+        form.append("environment", document.getElementById("cEnv").value);
+        form.append("region", document.getElementById("cRegion").value);
+        form.append("import_all", "true");
+        form.append("auto_accept", document.getElementById("cAccept").checked ? "true" : "false");
+        try {
+            const result = await api("/api/clusters/upload", { method: "POST", body: form });
+            toast(`已从文件导入 ${result.count} 个集群`);
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+        event.target.value = "";
+    }
+    async function doLoadDemo() {
+        const result = await api("/api/clusters/demo", { method: "POST" });
+        toast(result.count ? `已同步 ${result.count} 个 OCM 对象` : "演示 Hub 已存在");
+        await refresh();
+        renderClusters();
+    }
+    async function doRefreshCluster(id) {
+        try {
+            await api("/api/clusters/" + id + "/refresh", { method: "POST" });
+            toast("已刷新");
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doRemoveCluster(id, name) {
+        if (!confirm(`移除集群 ${name}？其上的模型部署也会下线。`)) return;
+        try {
+            const result = await api("/api/clusters/" + id, { method: "DELETE" });
+            toast(`已移除，下线 ${result.undeployed || 0} 个部署`);
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doAccept(id) {
+        try {
+            await api("/api/managedclusters/" + id + "/accept", { method: "POST" });
+            toast(id + " 已接受");
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doDeny(id) {
+        try {
+            await api("/api/managedclusters/" + id + "/deny", { method: "POST" });
+            toast(id + " 已拒绝");
+            await refresh();
+            renderClusters();
+        } catch (err) { toast(err.message, true); }
+    }
+    function renderModels() {
+        const rows = data.deployments.map((d) => `<tr>
+            <td class="mono">${d.alias}</td><td>${d.model_id}</td><td>${d.cluster_name}</td>
+            <td>${d.replicas} × GPU ${d.gpu}</td><td><span class="pill ok">${d.status}</span></td>
+            <td class="mono">${d.manifest_work || d.k8s_name || "-"}</td>
+            <td class="mono">${d.endpoint || "-"}</td>
+            <td><button type="button" class="btn-danger btn-small" onclick="doUndeploy('${d.id}')">下线</button></td>
+        </tr>`).join("");
+        document.getElementById("models").innerHTML = `<div class="card"><div class="title">已部署模型（ManifestWork）</div>
+            <table><thead><tr><th>别名</th><th>模型</th><th>集群</th><th>规格</th><th>状态</th><th>Work</th><th>Endpoint</th><th></th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="8" class="muted">暂无部署</td></tr>'}</tbody></table></div>`;
+    }
+    function renderRoutes() {
+        const rows = (data.routes || []).map((r) => `<tr><td class="mono">${r.name}</td><td>${r.strategy}</td>
+            <td>${(r.backends||[]).length}</td><td class="muted">${r.updated_at || ""}</td></tr>`).join("");
+        document.getElementById("routes").innerHTML = `<div class="card"><div class="title">路由表</div>
+            <p class="muted" style="margin-bottom:10px">客户端使用这些名字作为 OpenAI <span class="mono">model</span>。Placement 选出的 Available 集群才会承接流量；也可用请求头 X-Cluster-Id（ManagedCluster 名）/ X-Region 收窄。</p>
+            <table><thead><tr><th>name</th><th>strategy</th><th>backends</th><th>updated</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    async function refresh() {
+        try {
+            data = await api("/api/overview");
+            renderStats();
+            fillSelects();
+            renderPage();
+        } catch (err) {
+            toast(err.message, true);
+        }
+    }
+    async function loadPlacement() {
+        const gpu = Number(document.getElementById("gpu").value || 1);
+        const info = await api("/api/placement?gpu=" + gpu);
+        document.getElementById("placeHint").innerHTML = (info.placement ? `Placement <span class="mono">${info.placement}</span> · ` : "") +
+            info.clusters.map((c) =>
+            `${c.name}: 剩余 ${c.gpu_free} GPU ${c.fits ? "✓ 可部署" : "✗ 不足"}`).join(" · ");
+    }
+    async function doDeploy() {
+        try {
+            await api("/api/models/deploy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    alias: document.getElementById("alias").value,
+                    model_id: document.getElementById("modelId").value,
+                    cluster_id: document.getElementById("clusterId").value,
+                    replicas: Number(document.getElementById("replicas").value),
+                    gpu: Number(document.getElementById("gpu").value),
+                    runtime: document.getElementById("runtime").value,
+                    weight: Number(document.getElementById("weight").value),
+                    add_to_route: document.getElementById("routeName").value || null,
+                }),
+            });
+            toast("部署已提交");
+            await refresh();
+            showPage("models");
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doUndeploy(id) {
+        if (!confirm("下线该部署？")) return;
+        await api("/api/models/" + id, { method: "DELETE" });
+        toast("已下线");
+        await refresh();
+        renderModels();
+    }
+    async function doChat() {
+        const headers = { "Content-Type": "application/json" };
+        const pin = document.getElementById("playCluster").value;
+        if (pin) headers["x-cluster-id"] = pin;
+        try {
+            const res = await api("/v1/chat/completions", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    model: document.getElementById("playModel").value,
+                    messages: [{ role: "user", content: document.getElementById("prompt").value }],
+                }),
+            });
+            const msg = (((res.choices || [])[0] || {}).message || {}).content || "";
+            const g = res.gateway || {};
+            document.getElementById("chatOut").textContent =
+                msg + `\n\n——\ncluster: ${g.cluster}  served: ${g.served_as}  latency: ${g.latency_ms}ms`;
+            await refresh();
+        } catch (err) { toast(err.message, true); }
+    }
+    refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ai-ml-factory-ci
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+      default: main
+    - name: image
+      type: string
+      default: registry.example.com/ai/ai-ml-factory:latest
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: unit-train-smoke
+      runAfter: [fetch-source]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: pytest-and-train
+            image: python:3.11-slim
+            workingDir: $(workspaces.source.path)/ai-ml-factory
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+              pip install -q -r requirements.txt
+              pytest -q tests/
+              python training/xgboost/train.py --out-dir /tmp/artifact --n-samples 800
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: build-image
+      runAfter: [unit-train-smoke]
+      taskRef:
+        name: build-push-image
+      params:
+        - name: image
+          value: $(params.image)
+        - name: dockerfile
+          value: ai-ml-factory/training/Dockerfile
+        - name: context
+          value: ai-ml-factory
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: compile-kfp
+      runAfter: [unit-train-smoke]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: compile
+            image: python:3.11-slim
+            workingDir: $(workspaces.source.path)/ai-ml-factory
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+              pip install -q kfp==2.8.0
+              python -m pipelines.compiler fraud-default
+              test -f pipelines/compiled/ai-ml-factory-train-register.yaml
+      workspaces:
+        - name: source
+          workspace: shared-workspace

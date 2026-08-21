@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: InferenceService
+      name: fraud-xgb
+    patch: |-
+      - op: replace
+        path: /spec/predictor/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/predictor/maxReplicas
+        value: 10
+  - target:
+      kind: InferenceService
+      name: assist-vllm
+    patch: |-
+      - op: replace
+        path: /spec/predictor/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/predictor/nodeSelector/nvidia.com~1gpu.product
+        value: NVIDIA-H100-80GB-HBM3

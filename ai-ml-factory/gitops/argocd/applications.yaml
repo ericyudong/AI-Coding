@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ai-ml-factory
+  namespace: argocd
+spec:
+  description: Git Commit to NVIDIA GPU — production AI/ML platform
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: ai-factory
+      server: https://kubernetes.default.svc
+    - namespace: ml-registry
+      server: https://kubernetes.default.svc
+    - namespace: kserve-demo
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-ml-factory-staging
+  namespace: argocd
+spec:
+  project: ai-ml-factory
+  source:
+    repoURL: https://github.com/ericyudong/AI-Coding.git
+    targetRevision: main
+    path: ai-ml-factory/manifests/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-factory
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-ml-factory-prod
+  namespace: argocd
+spec:
+  project: ai-ml-factory
+  source:
+    repoURL: https://github.com/ericyudong/AI-Coding.git
+    targetRevision: main
+    path: ai-ml-factory/manifests/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-factory
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    # prod: manual sync / progressive delivery

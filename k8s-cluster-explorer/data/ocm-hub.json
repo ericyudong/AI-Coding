@@ -1,0 +1,994 @@
+{
+  "hub": {
+    "name": "local-hub",
+    "architecture": "hub-spoke"
+  },
+  "managedClusters": [
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1",
+      "kind": "ManagedCluster",
+      "metadata": {
+        "name": "prod-cn-shanghai",
+        "labels": {
+          "environment": "production",
+          "region": "cn-shanghai",
+          "vendor": "ocm",
+          "platform": "OpenStack",
+          "gpu": "true"
+        },
+        "creationTimestamp": "2026-08-18T13:29:33.977914+00:00",
+        "uid": "f36fbcbc178f428e967a65dfdc6e301f"
+      },
+      "spec": {
+        "hubAcceptsClient": true,
+        "leaseDurationSeconds": 60,
+        "managedClusterClientConfigs": [
+          {
+            "url": "https://k8s.prod.internal:6443"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "HubAcceptedManagedCluster",
+            "status": "True",
+            "reason": "HubClusterAdminAccepted",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.956546+00:00"
+          },
+          {
+            "type": "ManagedClusterJoined",
+            "status": "True",
+            "reason": "ManagedClusterJoined",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.957091+00:00"
+          },
+          {
+            "type": "ManagedClusterAvailable",
+            "status": "True",
+            "reason": "ManagedClusterAvailable",
+            "message": "klusterlet lease refreshed",
+            "lastTransitionTime": "2026-08-18T13:37:52.957093+00:00"
+          }
+        ],
+        "clusterClaims": [
+          {
+            "name": "id.k8s.io",
+            "value": "prod-cn-shanghai"
+          },
+          {
+            "name": "region.open-cluster-management.io",
+            "value": "cn-shanghai"
+          },
+          {
+            "name": "platform.open-cluster-management.io",
+            "value": "OpenStack"
+          },
+          {
+            "name": "gpu.open-cluster-management.io",
+            "value": "true"
+          }
+        ],
+        "version": {
+          "kubernetes": "v1.29.4"
+        },
+        "capacity": {
+          "cpu": "36",
+          "memory": "136Gi",
+          "nvidia.com/gpu": "8"
+        },
+        "allocatable": {
+          "cpu": "36",
+          "memory": "136Gi",
+          "nvidia.com/gpu": "8"
+        }
+      },
+      "_local": {
+        "kubeconfig_path": null,
+        "context": null,
+        "source": "demo",
+        "mock_profile": "prod",
+        "clusterNamespace": "prod-cn-shanghai",
+        "csr": "managedcluster-import-prod-cn-shanghai-c8a42f"
+      }
+    },
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1",
+      "kind": "ManagedCluster",
+      "metadata": {
+        "name": "staging-cn-shanghai",
+        "labels": {
+          "environment": "staging",
+          "region": "cn-shanghai",
+          "vendor": "ocm",
+          "platform": "OpenStack",
+          "gpu": "true"
+        },
+        "creationTimestamp": "2026-08-18T13:29:33.991690+00:00",
+        "uid": "ae32d91f010c48b9983fdcad6bddeaa8"
+      },
+      "spec": {
+        "hubAcceptsClient": true,
+        "leaseDurationSeconds": 60,
+        "managedClusterClientConfigs": [
+          {
+            "url": "https://k8s.staging.internal:6443"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "HubAcceptedManagedCluster",
+            "status": "True",
+            "reason": "HubClusterAdminAccepted",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.957927+00:00"
+          },
+          {
+            "type": "ManagedClusterJoined",
+            "status": "True",
+            "reason": "ManagedClusterJoined",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.957930+00:00"
+          },
+          {
+            "type": "ManagedClusterAvailable",
+            "status": "True",
+            "reason": "ManagedClusterAvailable",
+            "message": "klusterlet lease refreshed",
+            "lastTransitionTime": "2026-08-18T13:37:52.957931+00:00"
+          }
+        ],
+        "clusterClaims": [
+          {
+            "name": "id.k8s.io",
+            "value": "staging-cn-shanghai"
+          },
+          {
+            "name": "region.open-cluster-management.io",
+            "value": "cn-shanghai"
+          },
+          {
+            "name": "platform.open-cluster-management.io",
+            "value": "OpenStack"
+          },
+          {
+            "name": "gpu.open-cluster-management.io",
+            "value": "true"
+          }
+        ],
+        "version": {
+          "kubernetes": "v1.28.9"
+        },
+        "capacity": {
+          "cpu": "12",
+          "memory": "40Gi",
+          "nvidia.com/gpu": "2"
+        },
+        "allocatable": {
+          "cpu": "12",
+          "memory": "40Gi",
+          "nvidia.com/gpu": "2"
+        }
+      },
+      "_local": {
+        "kubeconfig_path": null,
+        "context": null,
+        "source": "demo",
+        "mock_profile": "staging",
+        "clusterNamespace": "staging-cn-shanghai",
+        "csr": "managedcluster-import-staging-cn-shanghai-7febb1"
+      }
+    },
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1",
+      "kind": "ManagedCluster",
+      "metadata": {
+        "name": "edge-us-west",
+        "labels": {
+          "environment": "edge",
+          "region": "us-west-1",
+          "vendor": "ocm",
+          "platform": "BareMetal",
+          "gpu": "true"
+        },
+        "creationTimestamp": "2026-08-18T13:29:33.992693+00:00",
+        "uid": "b93ccd745f884f7d876a8c2f1896ce13"
+      },
+      "spec": {
+        "hubAcceptsClient": true,
+        "leaseDurationSeconds": 60,
+        "managedClusterClientConfigs": [
+          {
+            "url": "https://k8s.edge.internal:6443"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "HubAcceptedManagedCluster",
+            "status": "True",
+            "reason": "HubClusterAdminAccepted",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.958602+00:00"
+          },
+          {
+            "type": "ManagedClusterJoined",
+            "status": "True",
+            "reason": "ManagedClusterJoined",
+            "message": "",
+            "lastTransitionTime": "2026-08-18T13:37:52.958605+00:00"
+          },
+          {
+            "type": "ManagedClusterAvailable",
+            "status": "True",
+            "reason": "ManagedClusterAvailable",
+            "message": "klusterlet lease refreshed",
+            "lastTransitionTime": "2026-08-18T13:37:52.958606+00:00"
+          }
+        ],
+        "clusterClaims": [
+          {
+            "name": "id.k8s.io",
+            "value": "edge-us-west"
+          },
+          {
+            "name": "region.open-cluster-management.io",
+            "value": "us-west-1"
+          },
+          {
+            "name": "platform.open-cluster-management.io",
+            "value": "BareMetal"
+          },
+          {
+            "name": "gpu.open-cluster-management.io",
+            "value": "true"
+          }
+        ],
+        "version": {
+          "kubernetes": "v1.27.12"
+        },
+        "capacity": {
+          "cpu": "16",
+          "memory": "32Gi",
+          "nvidia.com/gpu": "1"
+        },
+        "allocatable": {
+          "cpu": "16",
+          "memory": "32Gi",
+          "nvidia.com/gpu": "1"
+        }
+      },
+      "_local": {
+        "kubeconfig_path": null,
+        "context": null,
+        "source": "demo",
+        "mock_profile": "edge",
+        "clusterNamespace": "edge-us-west",
+        "csr": "managedcluster-import-edge-us-west-529f34"
+      }
+    },
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1",
+      "kind": "ManagedCluster",
+      "metadata": {
+        "name": "kind-dev",
+        "labels": {
+          "environment": "development",
+          "region": "local",
+          "vendor": "ocm"
+        },
+        "creationTimestamp": "2026-08-18T13:29:33.993934+00:00",
+        "uid": "1fc521a4576147e6a1c9613756864ffc"
+      },
+      "spec": {
+        "hubAcceptsClient": false,
+        "leaseDurationSeconds": 60,
+        "managedClusterClientConfigs": [
+          {
+            "url": "https://127.0.0.1:6443"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "HubAcceptedManagedCluster",
+            "status": "False",
+            "reason": "Pending",
+            "message": "等待 Hub 管理员批准",
+            "lastTransitionTime": "2026-08-18T13:29:33.993967+00:00"
+          },
+          {
+            "type": "ManagedClusterJoined",
+            "status": "False",
+            "reason": "Pending",
+            "message": "尚未加入",
+            "lastTransitionTime": "2026-08-18T13:29:33.993970+00:00"
+          },
+          {
+            "type": "ManagedClusterAvailable",
+            "status": "False",
+            "reason": "Pending",
+            "message": "等待心跳",
+            "lastTransitionTime": "2026-08-18T13:29:33.993972+00:00"
+          }
+        ],
+        "clusterClaims": [
+          {
+            "name": "id.k8s.io",
+            "value": "kind-dev"
+          }
+        ],
+        "version": {
+          "kubernetes": "Unknown"
+        },
+        "capacity": {},
+        "allocatable": {}
+      },
+      "_local": {
+        "kubeconfig_path": null,
+        "context": null,
+        "source": "demo",
+        "mock_profile": "staging",
+        "clusterNamespace": "kind-dev",
+        "csr": "managedcluster-import-kind-dev-bb4ccd"
+      }
+    }
+  ],
+  "manifestWorks": [
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "demo-nginx",
+        "namespace": "prod-cn-shanghai",
+        "creationTimestamp": "2026-08-18T13:29:33.995976+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "demo-nginx",
+                "namespace": "default"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "nginx"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:29:33.995989+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "default",
+                "name": "demo-nginx"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "inf-qwen2-72b-40dd",
+        "namespace": "prod-cn-shanghai",
+        "creationTimestamp": "2026-08-18T13:37:01.432590+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "inf-qwen2-72b-40dd",
+                "namespace": "inference"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "inf-qwen2-72b-40dd"
+                  }
+                },
+                "template": {
+                  "metadata": {
+                    "labels": {
+                      "app": "inf-qwen2-72b-40dd",
+                      "gateway.model": "qwen2-72b"
+                    }
+                  },
+                  "spec": {
+                    "containers": [
+                      {
+                        "name": "runtime",
+                        "image": "vllm/vllm-openai:latest",
+                        "args": [
+                          "--model",
+                          "Qwen/Qwen2-72B-Instruct",
+                          "--served-model-name",
+                          "qwen2-72b"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "Service",
+              "metadata": {
+                "name": "inf-qwen2-72b-40dd",
+                "namespace": "inference"
+              },
+              "spec": {
+                "selector": {
+                  "app": "inf-qwen2-72b-40dd"
+                },
+                "ports": [
+                  {
+                    "port": 8000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:37:01.432609+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "inference",
+                "name": "inf-qwen2-72b-40dd"
+              },
+              "status": "Applied"
+            },
+            {
+              "resourceMeta": {
+                "group": "",
+                "version": "v1",
+                "kind": "Service",
+                "namespace": "inference",
+                "name": "inf-qwen2-72b-40dd"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "inf-llama3-70b-5ba5",
+        "namespace": "prod-cn-shanghai",
+        "creationTimestamp": "2026-08-18T13:37:01.435202+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "inf-llama3-70b-5ba5",
+                "namespace": "inference"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "inf-llama3-70b-5ba5"
+                  }
+                },
+                "template": {
+                  "metadata": {
+                    "labels": {
+                      "app": "inf-llama3-70b-5ba5",
+                      "gateway.model": "llama3-70b"
+                    }
+                  },
+                  "spec": {
+                    "containers": [
+                      {
+                        "name": "runtime",
+                        "image": "vllm/vllm-openai:latest",
+                        "args": [
+                          "--model",
+                          "meta-llama/Meta-Llama-3-70B-Instruct",
+                          "--served-model-name",
+                          "llama3-70b"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "Service",
+              "metadata": {
+                "name": "inf-llama3-70b-5ba5",
+                "namespace": "inference"
+              },
+              "spec": {
+                "selector": {
+                  "app": "inf-llama3-70b-5ba5"
+                },
+                "ports": [
+                  {
+                    "port": 8000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:37:01.435728+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "inference",
+                "name": "inf-llama3-70b-5ba5"
+              },
+              "status": "Applied"
+            },
+            {
+              "resourceMeta": {
+                "group": "",
+                "version": "v1",
+                "kind": "Service",
+                "namespace": "inference",
+                "name": "inf-llama3-70b-5ba5"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "inf-qwen2-7b-6003",
+        "namespace": "staging-cn-shanghai",
+        "creationTimestamp": "2026-08-18T13:37:01.436645+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "inf-qwen2-7b-6003",
+                "namespace": "inference"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "inf-qwen2-7b-6003"
+                  }
+                },
+                "template": {
+                  "metadata": {
+                    "labels": {
+                      "app": "inf-qwen2-7b-6003",
+                      "gateway.model": "qwen2-7b"
+                    }
+                  },
+                  "spec": {
+                    "containers": [
+                      {
+                        "name": "runtime",
+                        "image": "vllm/vllm-openai:latest",
+                        "args": [
+                          "--model",
+                          "Qwen/Qwen2-7B-Instruct",
+                          "--served-model-name",
+                          "qwen2-7b"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "Service",
+              "metadata": {
+                "name": "inf-qwen2-7b-6003",
+                "namespace": "inference"
+              },
+              "spec": {
+                "selector": {
+                  "app": "inf-qwen2-7b-6003"
+                },
+                "ports": [
+                  {
+                    "port": 8000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:37:01.436659+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "inference",
+                "name": "inf-qwen2-7b-6003"
+              },
+              "status": "Applied"
+            },
+            {
+              "resourceMeta": {
+                "group": "",
+                "version": "v1",
+                "kind": "Service",
+                "namespace": "inference",
+                "name": "inf-qwen2-7b-6003"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "inf-qwen2-1-5b-41bd",
+        "namespace": "edge-us-west",
+        "creationTimestamp": "2026-08-18T13:37:01.438625+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "inf-qwen2-1-5b-41bd",
+                "namespace": "inference"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "inf-qwen2-1-5b-41bd"
+                  }
+                },
+                "template": {
+                  "metadata": {
+                    "labels": {
+                      "app": "inf-qwen2-1-5b-41bd",
+                      "gateway.model": "qwen2-1.5b"
+                    }
+                  },
+                  "spec": {
+                    "containers": [
+                      {
+                        "name": "runtime",
+                        "image": "vllm/vllm-openai:latest",
+                        "args": [
+                          "--model",
+                          "Qwen/Qwen2-1.5B-Instruct",
+                          "--served-model-name",
+                          "qwen2-1.5b"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "Service",
+              "metadata": {
+                "name": "inf-qwen2-1-5b-41bd",
+                "namespace": "inference"
+              },
+              "spec": {
+                "selector": {
+                  "app": "inf-qwen2-1-5b-41bd"
+                },
+                "ports": [
+                  {
+                    "port": 8000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:37:01.438668+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "inference",
+                "name": "inf-qwen2-1-5b-41bd"
+              },
+              "status": "Applied"
+            },
+            {
+              "resourceMeta": {
+                "group": "",
+                "version": "v1",
+                "kind": "Service",
+                "namespace": "inference",
+                "name": "inf-qwen2-1-5b-41bd"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "work.open-cluster-management.io/v1",
+      "kind": "ManifestWork",
+      "metadata": {
+        "name": "inf-qwen2-7b-extra-5652",
+        "namespace": "staging-cn-shanghai",
+        "creationTimestamp": "2026-08-18T13:37:01.440519+00:00"
+      },
+      "spec": {
+        "workload": {
+          "manifests": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "metadata": {
+                "name": "inf-qwen2-7b-extra-5652",
+                "namespace": "inference"
+              },
+              "spec": {
+                "replicas": 1,
+                "selector": {
+                  "matchLabels": {
+                    "app": "inf-qwen2-7b-extra-5652"
+                  }
+                },
+                "template": {
+                  "metadata": {
+                    "labels": {
+                      "app": "inf-qwen2-7b-extra-5652",
+                      "gateway.model": "qwen2-7b-extra"
+                    }
+                  },
+                  "spec": {
+                    "containers": [
+                      {
+                        "name": "runtime",
+                        "image": "vllm/vllm-openai:latest",
+                        "args": [
+                          "--model",
+                          "Qwen/Qwen2-7B-Instruct",
+                          "--served-model-name",
+                          "qwen2-7b-extra"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "Service",
+              "metadata": {
+                "name": "inf-qwen2-7b-extra-5652",
+                "namespace": "inference"
+              },
+              "spec": {
+                "selector": {
+                  "app": "inf-qwen2-7b-extra-5652"
+                },
+                "ports": [
+                  {
+                    "port": 8000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Applied",
+            "status": "True",
+            "reason": "ManifestsApplied",
+            "message": "klusterlet work-agent 已应用到 spoke",
+            "lastTransitionTime": "2026-08-18T13:37:01.440531+00:00"
+          }
+        ],
+        "resourceStatus": {
+          "manifests": [
+            {
+              "resourceMeta": {
+                "group": "apps",
+                "version": "v1",
+                "kind": "Deployment",
+                "namespace": "inference",
+                "name": "inf-qwen2-7b-extra-5652"
+              },
+              "status": "Applied"
+            },
+            {
+              "resourceMeta": {
+                "group": "",
+                "version": "v1",
+                "kind": "Service",
+                "namespace": "inference",
+                "name": "inf-qwen2-7b-extra-5652"
+              },
+              "status": "Applied"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "placements": [
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1beta1",
+      "kind": "Placement",
+      "metadata": {
+        "name": "gpu-inference",
+        "namespace": "default",
+        "creationTimestamp": "2026-08-18T13:29:33.994672+00:00"
+      },
+      "spec": {
+        "clusterSets": [
+          "default"
+        ],
+        "predicates": [
+          {
+            "requiredClusterSelector": {
+              "labelSelector": {
+                "matchLabels": {}
+              },
+              "claimSelector": {
+                "matchExpressions": [
+                  {
+                    "key": "gpu.open-cluster-management.io",
+                    "operator": "In",
+                    "values": [
+                      "true"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "cluster.open-cluster-management.io/v1beta1",
+      "kind": "Placement",
+      "metadata": {
+        "name": "prod-only",
+        "namespace": "default",
+        "creationTimestamp": "2026-08-18T13:29:33.995360+00:00"
+      },
+      "spec": {
+        "clusterSets": [
+          "default"
+        ],
+        "predicates": [
+          {
+            "requiredClusterSelector": {
+              "labelSelector": {
+                "matchLabels": {
+                  "environment": "production"
+                }
+              },
+              "claimSelector": {
+                "matchExpressions": []
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

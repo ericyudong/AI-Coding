@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-19-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-23-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -35,6 +35,16 @@ AI infrastructure platforms, model gateways with guardrails, GPU/HPC resource ma
   - Rollback scripts (route, canary weight, GitOps image) with MTTR ≤ 15 min
   - Docker Compose and Kubernetes/Argo CD deployments
 
+### AI Cluster Gateway 🌐
+- **Description**: OpenAI-compatible inference gateway on the shared CNCF OCM Hub: routes traffic to ManagedClusters and deploys models as ManifestWorks.
+- **Key Features**:
+  - Same OCM objects as k8s-cluster-explorer (`ManagedCluster` / `ManifestWork` / `Placement`)
+  - `/v1/chat/completions` with alias, weighted routing, and failover
+  - Pin traffic with `X-Cluster-Id` (cluster name) / `X-Region`
+  - Deploy vLLM/TGI only after Hub Accept; GPU admission via Placement `gpu-inference`
+  - Demo fleet: prod / staging / edge Available + pending `kind-dev`
+- **Tech Stack**: FastAPI, kubernetes Python client, httpx, HTML5 + CSS3 + JavaScript
+
 ### DevGuard 🔒
 - **Description**: AI Guardrails monorepo with Argo CD-native GitOps. Combines CI build gates with guardrail evaluation and GitOps deployment via Argo CD, Argo Rollouts, and Gatekeeper.
 - **Key Features**:
@@ -55,6 +65,39 @@ AI infrastructure platforms, model gateways with guardrails, GPU/HPC resource ma
   - Argo CD auto-sync from Git manifests to Kubernetes cluster
   - Optional webhook-triggered CI via Tekton Triggers
   - Sample Go app runnable locally without Kubernetes
+
+### K8s Multi-Cluster Manager 📡
+- **Description**: CNCF Open Cluster Management (OCM) Hub–Spoke control plane: ManagedCluster handshake, ManifestWork pull, and Placement decisions, plus inventory on accepted clusters.
+- **Key Features**:
+  - Double opt-in join (`hubAcceptsClient`) instead of Hub storing spoke kubeconfigs as the core model
+  - ManifestWork in the cluster namespace; in-process klusterlet pull/reconcile
+  - Placement + PlacementDecision via labelSelector / claimSelector
+  - ClusterClaims and OCM conditions (Accepted / Joined / Available)
+  - Read-only inventory (nodes, pods, workloads) on accepted clusters
+  - Demo Hub with 3 available spokes and 1 pending join
+- **Tech Stack**: FastAPI, kubernetes Python client, HTML5 + CSS3 + JavaScript
+
+### Git → GPU AI Factory 🏭
+- **Description**: Interactive demo of a production AI/ML platform path — From Git Commit to NVIDIA GPU — with the principle that models are versioned artifacts, not containers.
+- **Key Features**:
+  - Vertical stack: Git → CI/CD → Kubeflow → Model Registry → KServe → Runtime → NVIDIA GPU
+  - End-to-end simulated pipeline producing registry artifacts and InferenceServices
+  - S3/MinIO ↔ OCI artifact migration; redeploy with XGBoost / Triton / vLLM
+  - GPU generation selector: A100 → H100 → H200 (CUDA Cores → Tensor Cores → HBM → NVLink)
+  - Architecture console aligned to the reference diagram
+- **Tech Stack**: FastAPI, Pydantic, HTML5 + CSS3 + JavaScript
+
+### AI/ML Factory (Kubeflow + KServe) 🚀
+- **Description**: Production-grade Kubernetes AI/ML platform scaffold — editable Kubeflow Pipelines (Scheme B), MinIO/MLflow registry, KServe InferenceServices (XGBoost / Triton / vLLM), GPU overlays, Tekton + Argo CD.
+- **Key Features**:
+  - **Scheme B editable pipelines**: component library + YAML DAG specs → `from_spec` compile → KFP IR (`pipelines/specs` → `pipelines/compiled`)
+  - Default chain: prepare → train → evaluate gate → register versioned S3 artifact
+  - Model Registry: MinIO + MLflow; serving never bakes weights into images
+  - KServe manifests for classical ML, Triton multi-framework, and vLLM LLM serving
+  - Kustomize overlays (dev/staging/prod) for A100 → H100 → H200
+  - GitHub Actions + Tekton CI; Argo CD Applications for GitOps
+  - Web console on :8006 — architecture, **Pipeline editor**, local train, registry, KServe smoke predict
+- **Tech Stack**: Kubeflow Pipelines v2, KServe, MinIO, MLflow, Triton, vLLM, Kustomize, Argo CD, Tekton, FastAPI
 
 ---
 
@@ -198,10 +241,14 @@ Eric's AI Project Collection
 ├── 🏗️ AI Infra
 │   ├── 🛡️ Inference Gateway & Guardrails
 │   │   ├── AIGateway/                # LiteLLM gateway + 6-layer guardrails
+│   │   ├── ai-cluster-gateway/       # OCM-based inference routing + ManifestWork deploy
 │   │   └── DevGuard/                 # AI guardrails GitOps (Argo CD)
 │   │
 │   ├── ☸️ Cloud-Native DevOps
-│   │   └── k8sdevops/                # Tekton CI + Argo CD GitOps
+│   │   ├── k8sdevops/                # Tekton CI + Argo CD GitOps
+│   │   ├── k8s-cluster-explorer/     # OCM Hub-Spoke multi-cluster manager
+│   │   ├── git-to-gpu/               # Git→Kubeflow→KServe→GPU narrative demo
+│   │   └── ai-ml-factory/            # Production Kubeflow + editable specs + KServe + MinIO/MLflow
 │   │
 │   ├── 🖥️ GPU & HPC Resource Management
 │   │   ├── gpu-allocator/            # GPU allocation system
@@ -281,6 +328,56 @@ python main.py
 # Visit http://localhost:8000
 ```
 
+### 📡 Launch K8s Multi-Cluster Manager
+
+```bash
+cd k8s-cluster-explorer
+pip install -r requirements.txt
+python backend/main.py
+# Visit http://localhost:8003
+```
+
+### 🌐 Launch AI Cluster Gateway
+
+```bash
+cd ai-cluster-gateway
+pip install -r requirements.txt
+python backend/main.py
+# Visit http://localhost:8004
+```
+
+### 🏭 Launch Git → GPU AI Factory
+
+```bash
+cd git-to-gpu
+pip install -r requirements.txt
+python backend/main.py
+# Visit http://localhost:8005
+```
+
+### 🚀 Bootstrap AI/ML Factory (Kubeflow + KServe)
+
+```bash
+cd ai-ml-factory
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pytest -q tests/
+python console/main.py
+# Visit http://localhost:8006
+# Pipeline editor tab → edit specs → validate → compile KFP IR
+# CLI: python -m pipelines.compiler fraud-default
+# Cluster deploy: see ai-ml-factory/docs/deploy.md · modules: docs/MODULES.md
+```
+
+### 🔌 Local demo ports (Cloud-Native stack)
+
+| Port | Project | What it is |
+|------|---------|------------|
+| **8003** | [k8s-cluster-explorer](./k8s-cluster-explorer/) | OCM Hub–Spoke multi-cluster manager |
+| **8004** | [ai-cluster-gateway](./ai-cluster-gateway/) | OpenAI-compatible gateway on the same OCM Hub |
+| **8005** | [git-to-gpu](./git-to-gpu/) | Narrative Git→GPU demo console |
+| **8006** | [ai-ml-factory](./ai-ml-factory/) | Production scaffold console + editable Pipeline editor |
+
 ---
 
 ## 📖 Detailed Documentation
@@ -290,8 +387,12 @@ python main.py
 | Project | Documentation |
 |---------|---------------|
 | **AIGateway** | [AIGateway/README.md](./AIGateway/README.md) |
+| **AI Cluster Gateway** | [ai-cluster-gateway/README.md](./ai-cluster-gateway/README.md) |
 | **DevGuard** | [DevGuard/README.md](./DevGuard/README.md) |
 | **K8s DevOps** | [k8sdevops/README.md](./k8sdevops/README.md) |
+| **K8s Multi-Cluster Manager** | [k8s-cluster-explorer/README.md](./k8s-cluster-explorer/README.md) |
+| **Git → GPU AI Factory** | [git-to-gpu/README.md](./git-to-gpu/README.md) |
+| **AI/ML Factory (Kubeflow + KServe)** | [ai-ml-factory/README.md](./ai-ml-factory/README.md) · [模块对照](./ai-ml-factory/docs/MODULES.md) · [部署](./ai-ml-factory/docs/deploy.md) |
 | **GPU Allocator** | [gpu-allocator/README.md](./gpu-allocator/README.md) |
 | **Slurm Job Manager** | [slurm-job-manager/README.md](./slurm-job-manager/README.md) |
 | **OCR Test Platform** | [ocr-test-platform/README.md](./ocr-test-platform/README.md) |
@@ -323,14 +424,15 @@ python main.py
 - **Web Frameworks**: FastAPI, Flask, Vue 3, React, Express, Element Plus, Ant Design
 - **Databases**: PostgreSQL, MongoDB, SQLite, Redis, Prisma
 - **ML/DL Frameworks**: PyTorch, TensorFlow, LangChain, Transformers
-- **Containerization & DevOps**: Docker, Kubernetes, Argo CD, Argo Rollouts, Tekton, Gatekeeper
+- **Containerization & DevOps**: Docker, Kubernetes, OCM (Open Cluster Management), Argo CD, Argo Rollouts, Tekton, Gatekeeper, Kustomize
 - **Development Tools**: Git, VS Code, JupyterLab
 
 ### AI-Related Technologies
 - **Vector Databases**: ChromaDB, FAISS
 - **Agent Frameworks**: LangChain, OpenClaw
 - **AI Safety & Guardrails**: Presidio, Lakera, LlamaGuard, Bedrock, policy-as-code
-- **Model Deployment**: LiteLLM, Ollama
+- **Model Training & Serving**: Kubeflow Pipelines v2, KServe, Triton, vLLM, XGBoost, MLflow, MinIO/S3
+- **Model Deployment / Gateways**: LiteLLM, Ollama, OpenAI-compatible cluster gateway
 - **OCR Engines**: Tesseract, PaddleOCR, EasyOCR, OvisOCR
 - **Data Processing**: Pandas, NumPy, Dask
 
@@ -348,6 +450,8 @@ python main.py
 - GPU resource allocation
 - HPC job scheduling
 - AI gateway with guardrails for financial compliance
+- Multi-cluster OCM Hub–Spoke control and inference routing
+- Git→GPU ML platforms (editable Kubeflow pipelines → versioned artifacts → KServe → NVIDIA GPU)
 
 ### 🎓 Education & Research
 - Academic research support
@@ -408,12 +512,12 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 19
-- **Categories**: AI Infra (9), AI Agent (10)
+- **Total Projects**: 23
+- **Categories**: AI Infra (13), AI Agent (10)
 - **Language Support**: Python, TypeScript, JavaScript, Go
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
-- **Highlights**: ClawManager (Kubernetes-native virtual desktop + AI Gateway), OpenAkita (multi-agent), AIGateway (6-layer guardrails)
+- **Highlights**: AI/ML Factory (editable KFP specs → KServe → GPU), ClawManager (Kubernetes-native virtual desktop + AI Gateway), OpenAkita (multi-agent), AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
 
 ---
 
@@ -425,6 +529,6 @@ Special thanks to all contributors in the open-source community, especially:
 
   Made with ❤️ by Eric
 
-  Last updated: 2026-08-12
+  Last updated: 2026-08-21
 
 </div>

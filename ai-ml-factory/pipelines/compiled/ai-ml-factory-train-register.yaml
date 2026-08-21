@@ -1,0 +1,394 @@
+# PIPELINE DEFINITION
+# Name: ai-ml-factory-train-register
+# Description: Git→Kubeflow→Registry — versioned model artifact for KServe
+# Outputs:
+#    evaluate-model-metrics: system.Metrics
+components:
+  comp-evaluate-model:
+    executorLabel: exec-evaluate-model
+    inputDefinitions:
+      artifacts:
+        dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        min_auc:
+          defaultValue: 0.9
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      parameters:
+        n_samples:
+          defaultValue: 5000.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-register-artifact:
+    executorLabel: exec-register-artifact
+    inputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        mlflow_tracking_uri:
+          defaultValue: http://mlflow.ml-registry.svc.cluster.local:5000
+          isOptional: true
+          parameterType: STRING
+        model_name:
+          parameterType: STRING
+        model_version:
+          parameterType: STRING
+        s3_uri:
+          parameterType: STRING
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        max_depth:
+          defaultValue: 6.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        n_estimators:
+          defaultValue: 120.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.8.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas==2.2.2'\
+          \ 'scikit-learn==1.5.1' 'xgboost==2.1.1' 'joblib==1.4.2' 'pyarrow==16.1.0'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_model(\n    dataset: Input[Dataset],\n    model: Input[Model],\n\
+          \    metrics: Output[Metrics],\n    min_auc: float = 0.90,\n):\n    \"\"\
+          \"Model validation + metrics gate.\"\"\"\n    import json\n    from pathlib\
+          \ import Path\n\n    import joblib\n    import pandas as pd\n    from sklearn.metrics\
+          \ import accuracy_score, f1_score, roc_auc_score\n    from sklearn.model_selection\
+          \ import train_test_split\n\n    frame = pd.read_parquet(dataset.path)\n\
+          \    x = frame.drop(columns=[\"label\"])\n    y = frame[\"label\"]\n   \
+          \ _, x_test, _, y_test = train_test_split(x, y, test_size=0.2, random_state=42)\n\
+          \    clf = joblib.load(model.path)\n    proba = clf.predict_proba(x_test)[:,\
+          \ 1]\n    pred = (proba >= 0.5).astype(int)\n    auc = float(roc_auc_score(y_test,\
+          \ proba))\n    f1 = float(f1_score(y_test, pred))\n    acc = float(accuracy_score(y_test,\
+          \ pred))\n    metrics.log_metric(\"auc\", auc)\n    metrics.log_metric(\"\
+          f1\", f1)\n    metrics.log_metric(\"accuracy\", acc)\n    report = {\"auc\"\
+          : auc, \"f1\": f1, \"accuracy\": acc, \"gate_min_auc\": min_auc, \"passed\"\
+          : auc >= min_auc}\n    Path(metrics.path).write_text(json.dumps(report,\
+          \ indent=2))\n    if auc < min_auc:\n        raise RuntimeError(f\"evaluation\
+          \ gate failed: auc={auc:.4f} < {min_auc}\")\n\n"
+        image: python:3.11-slim
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.8.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas==2.2.2'\
+          \ 'scikit-learn==1.5.1' 'xgboost==2.1.1' 'joblib==1.4.2' && \"$0\" \"$@\"\
+          \n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_data(dataset: Output[Dataset], n_samples: int = 5000):\n\
+          \    \"\"\"Data processing + feature engineering.\"\"\"\n    from pathlib\
+          \ import Path\n\n    import pandas as pd\n    from sklearn.datasets import\
+          \ make_classification\n\n    x, y = make_classification(\n        n_samples=n_samples,\n\
+          \        n_features=20,\n        n_informative=12,\n        n_redundant=4,\n\
+          \        random_state=42,\n    )\n    frame = pd.DataFrame(x, columns=[f\"\
+          f{i}\" for i in range(x.shape[1])])\n    frame[\"label\"] = y\n    path\
+          \ = Path(dataset.path)\n    path.parent.mkdir(parents=True, exist_ok=True)\n\
+          \    frame.to_parquet(path)\n    dataset.metadata = {\"rows\": n_samples,\
+          \ \"features\": 20, \"task\": \"binary_classification\"}\n\n"
+        image: python:3.11-slim
+    exec-register-artifact:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_artifact
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.8.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'boto3==1.34.144'\
+          \ 'mlflow==2.14.3' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_artifact(\n    model: Input[Model],\n    metrics: Input[Metrics],\n\
+          \    model_name: str,\n    model_version: str,\n    s3_uri: str,\n    mlflow_tracking_uri:\
+          \ str = \"http://mlflow.ml-registry.svc.cluster.local:5000\",\n):\n    \"\
+          \"\"Publish versioned artifact to object storage + MLflow Model Registry.\"\
+          \"\"\n    import json\n    import os\n    from pathlib import Path\n   \
+          \ from urllib.parse import urlparse\n\n    import boto3\n    import mlflow\n\
+          \    from mlflow.tracking import MlflowClient\n\n    report = json.loads(Path(metrics.path).read_text())\n\
+          \    if not report.get(\"passed\"):\n        raise RuntimeError(\"refusing\
+          \ to register failed evaluation\")\n\n    parsed = urlparse(s3_uri)\n  \
+          \  if parsed.scheme not in (\"s3\", \"s3a\"):\n        raise ValueError(f\"\
+          expected s3:// URI, got {s3_uri}\")\n    bucket = parsed.netloc\n    prefix\
+          \ = parsed.path.lstrip(\"/\")\n    endpoint = os.environ.get(\"MLFLOW_S3_ENDPOINT_URL\"\
+          ) or os.environ.get(\"S3_ENDPOINT_URL\")\n    client = boto3.client(\n \
+          \       \"s3\",\n        endpoint_url=endpoint,\n        aws_access_key_id=os.environ.get(\"\
+          AWS_ACCESS_KEY_ID\", \"minio\"),\n        aws_secret_access_key=os.environ.get(\"\
+          AWS_SECRET_ACCESS_KEY\", \"minio123\"),\n        region_name=os.environ.get(\"\
+          AWS_DEFAULT_REGION\", \"us-east-1\"),\n    )\n    key = f\"{prefix.rstrip('/')}/{model_name}/{model_version}/model.joblib\"\
+          \n    client.upload_file(model.path, bucket, key)\n    meta_key = f\"{prefix.rstrip('/')}/{model_name}/{model_version}/metrics.json\"\
+          \n    client.put_object(Bucket=bucket, Key=meta_key, Body=json.dumps(report,\
+          \ indent=2).encode())\n    artifact_uri = f\"s3://{bucket}/{key}\"\n\n \
+          \   mlflow.set_tracking_uri(mlflow_tracking_uri)\n    mlflow.set_experiment(model_name)\n\
+          \    with mlflow.start_run(run_name=f\"{model_name}-{model_version}\") as\
+          \ run:\n        mlflow.log_metrics({k: float(v) for k, v in report.items()\
+          \ if isinstance(v, (int, float))})\n        mlflow.log_param(\"artifact_uri\"\
+          , artifact_uri)\n        mlflow.log_param(\"framework\", \"xgboost\")\n\
+          \        mlflow.log_artifact(model.path, artifact_path=\"model\")\n    \
+          \    model_uri = f\"runs:/{run.info.run_id}/model\"\n        result = mlflow.register_model(model_uri,\
+          \ model_name)\n        client_ml = MlflowClient()\n        client_ml.transition_model_version_stage(\n\
+          \            name=model_name,\n            version=result.version,\n   \
+          \         stage=\"Staging\",\n            archive_existing_versions=False,\n\
+          \        )\n    Path(\"/tmp/artifact-uri.txt\").write_text(artifact_uri)\n\
+          \    print(json.dumps({\"artifact_uri\": artifact_uri, \"mlflow_version\"\
+          : result.version}, indent=2))\n\n"
+        image: python:3.11-slim
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.8.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas==2.2.2'\
+          \ 'scikit-learn==1.5.1' 'xgboost==2.1.1' 'joblib==1.4.2' 'pyarrow==16.1.0'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(dataset: Input[Dataset], model: Output[Model], max_depth:\
+          \ int = 6, n_estimators: int = 120):\n    \"\"\"Classical XGBoost training\
+          \ step.\"\"\"\n    import json\n    from pathlib import Path\n\n    import\
+          \ joblib\n    import pandas as pd\n    import xgboost as xgb\n    from sklearn.model_selection\
+          \ import train_test_split\n\n    frame = pd.read_parquet(dataset.path)\n\
+          \    x = frame.drop(columns=[\"label\"])\n    y = frame[\"label\"]\n   \
+          \ x_train, _, y_train, _ = train_test_split(x, y, test_size=0.2, random_state=42)\n\
+          \    clf = xgb.XGBClassifier(\n        max_depth=max_depth,\n        n_estimators=n_estimators,\n\
+          \        learning_rate=0.08,\n        subsample=0.9,\n        eval_metric=\"\
+          logloss\",\n        n_jobs=4,\n    )\n    clf.fit(x_train, y_train)\n  \
+          \  out = Path(model.path)\n    out.parent.mkdir(parents=True, exist_ok=True)\n\
+          \    joblib.dump(clf, out)\n    model.metadata = {\n        \"framework\"\
+          : \"xgboost\",\n        \"format\": \"joblib\",\n        \"max_depth\":\
+          \ max_depth,\n        \"n_estimators\": n_estimators,\n    }\n    (out.parent\
+          \ / \"metadata.json\").write_text(json.dumps(model.metadata, indent=2))\n\
+          \n"
+        image: python:3.11-slim
+pipelineInfo:
+  description: "Git\u2192Kubeflow\u2192Registry \u2014 versioned model artifact for\
+    \ KServe"
+  name: ai-ml-factory-train-register
+root:
+  dag:
+    outputs:
+      artifacts:
+        evaluate-model-metrics:
+          artifactSelectors:
+          - outputArtifactKey: metrics
+            producerSubtask: evaluate-model
+    tasks:
+      evaluate-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-model
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            dataset:
+              taskOutputArtifact:
+                outputArtifactKey: dataset
+                producerTask: prepare-data
+            model:
+              taskOutputArtifact:
+                outputArtifactKey: model
+                producerTask: train-model
+          parameters:
+            min_auc:
+              runtimeValue:
+                constant: 0.9
+        taskInfo:
+          name: evaluate-model
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        inputs:
+          parameters:
+            n_samples:
+              runtimeValue:
+                constant: 5000.0
+        taskInfo:
+          name: prepare-data
+      register-artifact:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-register-artifact
+        dependentTasks:
+        - evaluate-model
+        - train-model
+        inputs:
+          artifacts:
+            metrics:
+              taskOutputArtifact:
+                outputArtifactKey: metrics
+                producerTask: evaluate-model
+            model:
+              taskOutputArtifact:
+                outputArtifactKey: model
+                producerTask: train-model
+          parameters:
+            mlflow_tracking_uri:
+              runtimeValue:
+                constant: http://mlflow.ml-registry.svc.cluster.local:5000
+            model_name:
+              runtimeValue:
+                constant: fraud-xgb
+            model_version:
+              runtimeValue:
+                constant: v1.0.0
+            s3_uri:
+              runtimeValue:
+                constant: s3://ai-factory/models
+        taskInfo:
+          name: register-artifact
+      train-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-data
+        inputs:
+          artifacts:
+            dataset:
+              taskOutputArtifact:
+                outputArtifactKey: dataset
+                producerTask: prepare-data
+          parameters:
+            max_depth:
+              runtimeValue:
+                constant: 6.0
+            n_estimators:
+              runtimeValue:
+                constant: 120.0
+        taskInfo:
+          name: train-model
+  outputDefinitions:
+    artifacts:
+      evaluate-model-metrics:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.8.0

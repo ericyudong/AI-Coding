@@ -1,0 +1,38 @@
+# Triton multi-framework InferenceService on NVIDIA GPU.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vision-triton
+  namespace: kserve-demo
+  labels:
+    ai-factory.model: vision-resnet
+    ai-factory.runtime: triton
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    serviceAccountName: kserve-s3-sa
+    model:
+      modelFormat:
+        name: triton
+      runtime: kserve-tritonserver
+      storageUri: s3://ai-factory/models/vision-resnet/v1.0.0/
+      resources:
+        requests:
+          cpu: "2"
+          memory: 4Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "4"
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+    nodeSelector:
+      nvidia.com/gpu.product: NVIDIA-A100-SXM4-40GB
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    minReplicas: 0
+    maxReplicas: 4
+    scaleTarget: 70
+    scaleMetric: concurrency

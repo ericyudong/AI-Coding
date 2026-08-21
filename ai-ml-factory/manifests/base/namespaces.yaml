@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-factory
+  labels:
+    app.kubernetes.io/part-of: ai-ml-factory
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-registry
+  labels:
+    app.kubernetes.io/part-of: ai-ml-factory
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kserve-demo
+  labels:
+    app.kubernetes.io/part-of: ai-ml-factory

@@ -1,0 +1,31 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kserve-gpu-metrics
+  namespace: kserve-demo
+  labels:
+    release: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      ai-factory.runtime: vllm
+  namespaceSelector:
+    matchNames:
+      - kserve-demo
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-finops-notes
+  namespace: ai-factory
+data:
+  README: |
+    Next evolution hooks:
+    - DCGM Exporter for GPU SM / HBM / NVLink metrics
+    - OpenCost / Kubecost for GPU cost attribution
+    - KServe InferenceService labels for tenant + model + runtime
+    - SLO: p95 latency, tokens/s, GPU util, $/1k tokens

@@ -1,0 +1,4 @@
+# Place exported TorchScript as model.pt after training:
+#   training/pytorch/train.py --out-dir serving/triton/model-repository/resnet/1
+# Then sync the repository to s3://ai-factory/models/vision-resnet/<version>/
+placeholder: true

@@ -1,0 +1,55 @@
+name: AI ML Factory CI
+
+on:
+  push:
+    paths:
+      - "ai-ml-factory/**"
+  pull_request:
+    paths:
+      - "ai-ml-factory/**"
+
+defaults:
+  run:
+    working-directory: ai-ml-factory
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ai-ml-factory/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests + local train smoke
+        run: |
+          pytest -q tests/
+          python training/xgboost/train.py --out-dir /tmp/fraud-xgb --n-samples 1000
+          python training/pytorch/train.py --out-dir /tmp/vision --epochs 1
+
+      - name: Compile Kubeflow Pipeline
+        run: |
+          python -m pipelines.compiler fraud-default
+          test -f pipelines/compiled/ai-ml-factory-train-register.yaml
+
+      - name: Validate Kustomize overlays
+        run: |
+          curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.2/kustomize_v5.4.2_linux_amd64.tar.gz" | tar xz
+          sudo mv kustomize /usr/local/bin/
+          kustomize build manifests/overlays/dev >/tmp/dev.yaml
+          kustomize build manifests/overlays/staging >/tmp/staging.yaml
+          kustomize build manifests/overlays/prod >/tmp/prod.yaml
+          grep -q InferenceService /tmp/prod.yaml
+          grep -q fraud-xgb /tmp/staging.yaml
+
+      - name: Upload compiled pipeline
+        uses: actions/upload-artifact@v4
+        with:
+          name: kfp-pipeline
+          path: ai-ml-factory/pipelines/compiled/ai-ml-factory-train-register.yaml

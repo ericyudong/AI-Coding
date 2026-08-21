@@ -1,0 +1,48 @@
+# Editable pipeline DAG (Scheme B)
+# Edit steps / params / enabled, then compile → pipelines/compiled/*.yaml
+
+name: ai-ml-factory-train-register
+description: Git→Kubeflow→Registry — versioned model artifact for KServe
+allow_skip_evaluate: false
+
+steps:
+  - id: prepare
+    component: prepare_data
+    enabled: true
+    needs: []
+    params:
+      n_samples: 5000
+    inputs: {}
+
+  - id: train
+    component: train_model
+    enabled: true
+    needs: [prepare]
+    params:
+      max_depth: 6
+      n_estimators: 120
+    inputs:
+      dataset: prepare.dataset
+
+  - id: evaluate
+    component: evaluate_model
+    enabled: true
+    needs: [prepare, train]
+    params:
+      min_auc: 0.90
+    inputs:
+      dataset: prepare.dataset
+      model: train.model
+
+  - id: register
+    component: register_artifact
+    enabled: true
+    needs: [train, evaluate]
+    params:
+      model_name: fraud-xgb
+      model_version: v1.0.0
+      s3_uri: s3://ai-factory/models
+      mlflow_tracking_uri: http://mlflow.ml-registry.svc.cluster.local:5000
+    inputs:
+      model: train.model
+      metrics: evaluate.metrics

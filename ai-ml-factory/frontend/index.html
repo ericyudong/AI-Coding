@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI/ML Factory Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #eef2f6;
+            --panel: #ffffff;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --line: #d8e0ea;
+            --gpu: #76B900;
+            --gpu-ink: #1a2e00;
+            --git: #F05032;
+            --ci: #326CE5;
+            --kf: #2563eb;
+            --reg: #7c3aed;
+            --ks: #db2777;
+            --ok: #059669;
+            --warn: #d97706;
+            --fail: #dc2626;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "IBM Plex Mono", ui-monospace, monospace;
+            color: var(--ink);
+            background:
+                linear-gradient(180deg, rgba(118,185,0,0.08), transparent 28%),
+                repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(15,23,42,0.03) 24px),
+                repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(15,23,42,0.03) 24px),
+                var(--bg);
+            min-height: 100vh;
+        }
+        .shell { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 22px;
+        }
+        @media (max-width: 960px) { .hero { grid-template-columns: 1fr; } }
+        .brand {
+            font-family: Syne, sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+        }
+        .brand em { font-style: normal; color: var(--gpu-ink); background: var(--gpu); padding: 0 8px; border-radius: 6px; }
+        .tagline { margin-top: 14px; color: var(--muted); font-size: 13px; line-height: 1.65; max-width: 40rem; }
+        .flow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; align-items: center; }
+        .flow b {
+            font-size: 11px; font-weight: 600;
+            background: var(--panel); border: 1px solid var(--line);
+            padding: 5px 9px; border-radius: 6px;
+        }
+        .flow span { color: var(--muted); font-size: 11px; }
+        .hero-art {
+            border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+            background: #0b0f14; min-height: 220px;
+        }
+        .hero-art img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+        .stats {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px;
+        }
+        @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+        .stat {
+            background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+            padding: 14px; text-align: center;
+        }
+        .stat b { display: block; font-family: Syne, sans-serif; font-size: 1.5rem; color: var(--gpu-ink); }
+        .stat span { color: var(--muted); font-size: 11px; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .tab {
+            border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+            padding: 8px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+        }
+        .tab.active { background: var(--gpu); color: var(--gpu-ink); border-color: var(--gpu); font-weight: 700; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .grid { display: grid; gap: 14px; }
+        .g2 { grid-template-columns: 1.1fr 0.9fr; }
+        .g3 { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 960px) { .g2, .g3 { grid-template-columns: 1fr; } }
+        .card {
+            background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+        }
+        .card h3 {
+            font-family: Syne, sans-serif; font-size: 15px; font-weight: 700;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .card h3::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--gpu); }
+        .muted { color: var(--muted); font-size: 12px; line-height: 1.55; }
+        .mono { font-family: inherit; }
+        button {
+            font: inherit; font-size: 12px; font-weight: 700; border: none; border-radius: 8px;
+            padding: 9px 14px; cursor: pointer; background: var(--gpu); color: var(--gpu-ink);
+        }
+        button.ghost { background: #f1f5f9; color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+        input, select, textarea {
+            width: 100%; background: #f8fafc; border: 1px solid var(--line); color: var(--ink);
+            border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 12px;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { color: var(--muted); font-weight: 500; }
+        .pill {
+            display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+        }
+        .p-ok { background: #d1fae5; color: var(--ok); }
+        .p-run { background: #dbeafe; color: var(--ci); }
+        .p-pend { background: #fef3c7; color: var(--warn); }
+        .p-fail { background: #fee2e2; color: var(--fail); }
+        .layer {
+            border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+            background: #fbfcfe; margin-bottom: 8px; border-left-width: 4px;
+        }
+        .layer .name { font-family: Syne, sans-serif; font-weight: 700; display: flex; justify-content: space-between; }
+        .arrow { text-align: center; color: var(--muted); font-size: 11px; margin: 2px 0 6px; letter-spacing: 0.18em; }
+        .principle {
+            border: 1px solid rgba(118,185,0,0.45); background: linear-gradient(135deg, rgba(118,185,0,0.16), #fff 55%);
+            border-radius: 14px; padding: 16px; margin-bottom: 14px;
+        }
+        .principle h2 { font-family: Syne, sans-serif; font-size: 1.1rem; line-height: 1.35; margin-bottom: 8px; }
+        .logs {
+            background: #0f172a; color: #cbd5e1; border-radius: 10px; padding: 12px;
+            max-height: 260px; overflow: auto; font-size: 11px; line-height: 1.55; white-space: pre-wrap;
+        }
+        .toast {
+            position: fixed; right: 18px; bottom: 18px; display: none; max-width: 360px;
+            background: #0f172a; color: #e2e8f0; border: 1px solid #334155;
+            padding: 12px 14px; border-radius: 10px; font-size: 12px; z-index: 30;
+        }
+        .cluster-banner {
+            margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12px;
+            border: 1px solid var(--line); background: #f8fafc;
+        }
+        .cluster-banner.ok { border-color: #a7f3d0; background: #ecfdf5; }
+        .step-card {
+            border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px;
+            background: #fbfcfe;
+        }
+        .step-card.off { opacity: 0.55; }
+        .step-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+        .step-head strong { font-family: Syne, sans-serif; }
+        .err-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 8px; padding: 10px; font-size: 11px; margin-top: 10px; white-space: pre-wrap; }
+        .ok-box { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; border-radius: 8px; padding: 10px; font-size: 11px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <header class="hero">
+        <div>
+            <div class="brand">AI/ML <em>Factory</em></div>
+            <p class="tagline">
+                生产级控制台：Git → Kubeflow → Model Registry → KServe → Runtime → NVIDIA GPU。
+                模型是版本化制品，不是容器。本地可训练 / 注册制品并试推理；集群探测为可选增强。
+            </p>
+            <div class="flow" id="flow"></div>
+        </div>
+        <div class="hero-art">
+            <img src="/architecture.png" alt="From Git Commit to NVIDIA GPU">
+        </div>
+    </header>
+
+    <div class="stats" id="stats"></div>
+    <div id="clusterBanner" class="cluster-banner"></div>
+
+    <div class="tabs">
+        <button type="button" class="tab active" data-p="factory" onclick="showPage('factory')">架构</button>
+        <button type="button" class="tab" data-p="pipeline" onclick="showPage('pipeline')">Pipeline 编辑</button>
+        <button type="button" class="tab" data-p="train" onclick="showPage('train')">训练 / Kubeflow</button>
+        <button type="button" class="tab" data-p="registry" onclick="showPage('registry')">Model Registry</button>
+        <button type="button" class="tab" data-p="serve" onclick="showPage('serve')">KServe</button>
+        <button type="button" class="tab" data-p="manifests" onclick="showPage('manifests')">清单</button>
+    </div>
+
+    <section id="factory" class="panel active"></section>
+    <section id="pipeline" class="panel"></section>
+    <section id="train" class="panel"></section>
+    <section id="registry" class="panel"></section>
+    <section id="serve" class="panel"></section>
+    <section id="manifests" class="panel"></section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+    let data = { layers: [], artifacts: [], services: [], jobs: [], stats: {}, cluster: {} };
+    let page = "factory";
+    let activeJob = null;
+    let poll = null;
+    let pipe = { specs: [], components: [], currentId: "fraud-default", spec: null, message: "", errors: [] };
+    let lastPredict = {};
+    let serveForm = { xgb: null, llm: null };
+
+    function toast(msg, err) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.style.borderColor = err ? "#f87171" : "#76B900";
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 2800);
+    }
+    async function api(path, options) {
+        const res = await fetch(path, options);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail || body));
+        return body;
+    }
+    function showPage(name) {
+        page = name;
+        document.querySelectorAll(".panel").forEach((el) => el.classList.toggle("active", el.id === name));
+        document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("active", el.dataset.p === name));
+        render();
+    }
+    function pill(status) {
+        const map = { Ready: "p-ok", succeeded: "p-ok", running: "p-run", pending: "p-pend", failed: "p-fail", Unknown: "p-pend" };
+        return `<span class="pill ${map[status] || "p-pend"}">${status}</span>`;
+    }
+
+    function renderStats() {
+        const s = data.stats || {};
+        document.getElementById("stats").innerHTML = `
+            <div class="stat"><b>${s.artifacts || 0}</b><span>Model artifacts</span></div>
+            <div class="stat"><b>${s.services || 0}</b><span>InferenceServices</span></div>
+            <div class="stat"><b>${s.runtimes || 0}</b><span>Runtimes</span></div>
+            <div class="stat"><b>${s.jobs || 0}</b><span>Train jobs</span></div>
+            <div class="stat"><b>${s.predictions || 0}</b><span>Predictions</span></div>`;
+        document.getElementById("flow").innerHTML = (data.flow || "")
+            .split("→").map((x) => `<b>${x.trim()}</b>`).join("<span>→</span>");
+        const c = data.cluster || {};
+        const banner = document.getElementById("clusterBanner");
+        if (c.connected) {
+            banner.className = "cluster-banner ok";
+            banner.textContent = `集群已连接 · kserve-demo InferenceServices: ${(c.inferenceservices || []).join(", ") || "(none)"}`;
+        } else {
+            banner.className = "cluster-banner";
+            banner.textContent = `本地模式 · ${c.error || "未探测到集群"}。仍可训练制品并模拟 KServe 推理。`;
+        }
+    }
+
+    function renderFactory() {
+        const layers = (data.layers || []).map((l, i) => `
+            ${i ? '<div class="arrow">↓</div>' : ""}
+            <div class="layer" style="border-left-color:${l.color}">
+                <div class="name"><span>${l.name}</span><span class="muted">${l.tech}</span></div>
+            </div>`).join("");
+        document.getElementById("factory").innerHTML = `
+            <div class="principle">
+                <h2>${data.principle || ""}</h2>
+                <p class="muted">训练产出版本化制品 → MinIO/MLflow/OCI → KServe 通过 storageUri / PVC 拉取 → 绑定 XGBoost / Triton / vLLM → 调度 A100 / H100 / H200。</p>
+            </div>
+            <div class="grid g2">
+                <div class="card"><h3>垂直流水线</h3>${layers}</div>
+                <div class="card">
+                    <h3>工程入口</h3>
+                    <table>
+                        <tr><td>Pipeline specs</td><td class="mono muted">${(data.repos||{}).pipeline || "-"}</td></tr>
+                        <tr><td>from_spec 编译器</td><td class="mono muted">${(data.repos||{}).compiler || "-"}</td></tr>
+                        <tr><td>Tekton CI</td><td class="mono muted">${(data.repos||{}).tekton || "-"}</td></tr>
+                        <tr><td>Argo CD</td><td class="mono muted">${(data.repos||{}).argocd || "-"}</td></tr>
+                        <tr><td>Deploy guide</td><td class="mono muted">${(data.repos||{}).deploy || "-"}</td></tr>
+                    </table>
+                    <p class="muted" style="margin-top:12px">Overlays: ${(data.overlays||[]).join(" · ")}</p>
+                </div>
+            </div>`;
+    }
+
+    function renderPipeline() {
+        const specs = pipe.specs || [];
+        const comps = pipe.components || [];
+        const spec = pipe.spec || { name: "", description: "", steps: [] };
+        const steps = spec.steps || [];
+        const stepCards = steps.map((s, i) => {
+            const meta = comps.find((c) => c.id === s.component) || {};
+            const params = meta.params || [];
+            const paramFields = params.map((p) => `
+                <div>
+                    <label>${p.label || p.name}</label>
+                    <input data-si="${i}" data-pk="${p.name}" value="${(s.params && s.params[p.name] != null) ? s.params[p.name] : (p.default ?? "")}"
+                        onchange="onStepParam(this)">
+                </div>`).join("");
+            return `
+            <div class="step-card ${s.enabled === false ? "off" : ""}">
+                <div class="step-head">
+                    <label style="margin:0;display:flex;gap:6px;align-items:center">
+                        <input type="checkbox" ${s.enabled !== false ? "checked" : ""} data-si="${i}" onchange="onStepEnabled(this)"> 启用
+                    </label>
+                    <strong>${s.id}</strong>
+                    <span class="pill p-run">${meta.label || s.component}</span>
+                    <span class="muted">needs: ${(s.needs || []).join(", ") || "—"}</span>
+                    <button type="button" class="ghost" style="margin-left:auto;padding:4px 8px" onclick="removeStep(${i})">删除</button>
+                </div>
+                <div class="muted" style="margin-bottom:8px;font-size:11px">${meta.description || ""}</div>
+                <div class="form-row">${paramFields || '<span class="muted">无参数</span>'}</div>
+                <div class="muted mono" style="font-size:10px">inputs: ${JSON.stringify(s.inputs || {})}</div>
+            </div>`;
+        }).join("");
+        const addOpts = comps.map((c) => `<option value="${c.id}">${c.label} (${c.id})</option>`).join("");
+        document.getElementById("pipeline").innerHTML = `
+            <div class="principle">
+                <h2>方案 B：组件库 + 可编辑 Spec → 编译 KFP IR</h2>
+                <p class="muted">改 steps / params / enabled → 校验 → 编译为 <span class="mono">pipelines/compiled/*.yaml</span>，再上传 Kubeflow。拓扑在 Spec 里改；组件实现在 <span class="mono">pipelines/components/</span>。</p>
+            </div>
+            <div class="grid g2">
+                <div class="card">
+                    <h3>Spec</h3>
+                    <div class="form-row">
+                        <div>
+                            <label>选择 / 新建 ID</label>
+                            <select id="specSelect" onchange="loadSpec(this.value)">
+                                ${specs.map((x) => `<option value="${x.id}" ${x.id === pipe.currentId ? "selected" : ""}>${x.id} · ${x.name || ""}</option>`).join("")}
+                            </select>
+                        </div>
+                        <div>
+                            <label>新 Spec ID</label>
+                            <input id="newSpecId" placeholder="my-pipeline">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div><label>name</label><input id="specName" value="${spec.name || ""}" onchange="pipe.spec.name=this.value"></div>
+                        <div><label>description</label><input id="specDesc" value="${spec.description || ""}" onchange="pipe.spec.description=this.value"></div>
+                    </div>
+                    <div class="row" style="margin-bottom:12px">
+                        <button type="button" onclick="validateSpec()">校验</button>
+                        <button type="button" onclick="saveSpec()">保存 YAML</button>
+                        <button type="button" onclick="compileSpec()">编译 KFP</button>
+                        <button type="button" class="ghost" onclick="loadPipelineData()">刷新</button>
+                    </div>
+                    ${pipe.errors && pipe.errors.length ? `<div class="err-box">${pipe.errors.join("\\n")}</div>` : ""}
+                    ${pipe.message ? `<div class="ok-box">${pipe.message}</div>` : ""}
+                    <div style="margin-top:14px">
+                        <div class="row" style="margin-bottom:8px">
+                            <select id="addComp">${addOpts}</select>
+                            <input id="addStepId" placeholder="step id" style="max-width:140px">
+                            <button type="button" class="ghost" onclick="addStep()">添加步骤</button>
+                        </div>
+                        ${stepCards || '<p class="muted">无步骤</p>'}
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>组件库</h3>
+                    <table>
+                        <thead><tr><th>ID</th><th>说明</th><th>I/O</th></tr></thead>
+                        <tbody>
+                            ${comps.map((c) => `<tr>
+                                <td class="mono">${c.id}</td>
+                                <td>${c.label}<div class="muted">${c.description || ""}</div></td>
+                                <td class="muted mono" style="font-size:10px">in:${(c.inputs||[]).map(x=>x.name).join(",")||"—"} → out:${(c.outputs||[]).map(x=>x.name).join(",")||"—"}</td>
+                            </tr>`).join("")}
+                        </tbody>
+                    </table>
+                    <p class="muted" style="margin-top:12px">CLI：<span class="mono">python -m pipelines.compiler fraud-default</span></p>
+                </div>
+            </div>`;
+    }
+
+    function syncSpecFromDom() {
+        if (!pipe.spec) return;
+        const name = document.getElementById("specName");
+        const desc = document.getElementById("specDesc");
+        if (name) pipe.spec.name = name.value;
+        if (desc) pipe.spec.description = desc.value;
+    }
+    function onStepEnabled(el) {
+        const i = Number(el.dataset.si);
+        pipe.spec.steps[i].enabled = el.checked;
+        renderPipeline();
+    }
+    function onStepParam(el) {
+        const i = Number(el.dataset.si);
+        const key = el.dataset.pk;
+        const meta = (pipe.components || []).find((c) => c.id === pipe.spec.steps[i].component);
+        const pmeta = (meta && meta.params || []).find((p) => p.name === key);
+        let val = el.value;
+        if (pmeta && pmeta.type === "int") val = Number(val);
+        if (pmeta && pmeta.type === "float") val = Number(val);
+        pipe.spec.steps[i].params = pipe.spec.steps[i].params || {};
+        pipe.spec.steps[i].params[key] = val;
+    }
+    function removeStep(i) {
+        pipe.spec.steps.splice(i, 1);
+        pipe.message = "";
+        renderPipeline();
+    }
+    function addStep() {
+        const cid = document.getElementById("addComp").value;
+        const sid = (document.getElementById("addStepId").value || cid).trim();
+        const meta = pipe.components.find((c) => c.id === cid);
+        if (!meta) return;
+        const params = {};
+        (meta.params || []).forEach((p) => { params[p.name] = p.default; });
+        const inputs = {};
+        const needs = [];
+        (meta.inputs || []).forEach((inp) => {
+            for (let j = pipe.spec.steps.length - 1; j >= 0; j--) {
+                const prev = pipe.spec.steps[j];
+                if (prev.enabled === false) continue;
+                const pm = pipe.components.find((c) => c.id === prev.component);
+                const outs = (pm && pm.outputs) || [];
+                const byName = outs.find((o) => o.name === inp.name);
+                const byType = outs.find((o) => o.type === inp.type);
+                const hit = byName || byType;
+                if (hit) {
+                    inputs[inp.name] = prev.id + "." + hit.name;
+                    if (!needs.includes(prev.id)) needs.push(prev.id);
+                    break;
+                }
+            }
+        });
+        pipe.spec.steps.push({
+            id: sid,
+            component: cid,
+            enabled: true,
+            needs,
+            params,
+            inputs,
+        });
+        renderPipeline();
+    }
+    async function loadSpec(id) {
+        try {
+            pipe.currentId = id;
+            const body = await api("/api/pipelines/specs/" + id);
+            pipe.spec = body.spec;
+            pipe.message = "";
+            pipe.errors = [];
+            renderPipeline();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function loadPipelineData() {
+        try {
+            pipe.specs = await api("/api/pipelines/specs");
+            pipe.components = await api("/api/pipelines/components");
+            if (!pipe.spec) {
+                const id = pipe.currentId || (pipe.specs[0] && pipe.specs[0].id) || "fraud-default";
+                await loadSpec(id);
+            } else {
+                renderPipeline();
+            }
+        } catch (err) { toast(err.message, true); }
+    }
+    async function validateSpec() {
+        syncSpecFromDom();
+        try {
+            const r = await api("/api/pipelines/validate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ spec: pipe.spec }),
+            });
+            pipe.errors = r.ok ? [] : (r.errors || []);
+            pipe.message = r.ok ? ("校验通过" + (r.warnings && r.warnings.length ? " · warnings: " + r.warnings.join("; ") : "")) : "";
+            if (!r.ok) pipe.message = "";
+            renderPipeline();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function saveSpec() {
+        syncSpecFromDom();
+        const newId = (document.getElementById("newSpecId").value || "").trim();
+        const id = newId || pipe.currentId;
+        try {
+            const r = await api("/api/pipelines/specs/" + id, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ spec: pipe.spec }),
+            });
+            pipe.currentId = r.id;
+            pipe.errors = (r.validation && !r.validation.ok) ? r.validation.errors : [];
+            pipe.message = `已保存 ${r.path}` + (r.validation && r.validation.ok ? "（结构合法）" : "（已写入，但校验有错误）");
+            pipe.specs = await api("/api/pipelines/specs");
+            document.getElementById("newSpecId").value = "";
+            renderPipeline();
+            toast("Spec 已保存");
+        } catch (err) { toast(err.message, true); }
+    }
+    async function compileSpec() {
+        syncSpecFromDom();
+        try {
+            const r = await api("/api/pipelines/compile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ spec: pipe.spec }),
+            });
+            pipe.errors = [];
+            pipe.message = `已编译 ${r.steps_compiled} 步 → ${r.package_path}`;
+            renderPipeline();
+            toast("编译成功");
+        } catch (err) {
+            const msg = err.message || String(err);
+            pipe.errors = [msg];
+            pipe.message = "";
+            renderPipeline();
+            toast(msg, true);
+        }
+    }
+
+    function renderTrain() {
+        const job = (data.jobs || []).find((j) => j.id === activeJob) || (data.jobs || [])[0];
+        document.getElementById("train").innerHTML = `
+            <div class="grid g2">
+                <div class="card">
+                    <h3>本地训练（对应 Kubeflow 步骤）</h3>
+                    <p class="muted" style="margin-bottom:12px">prepare → train → evaluate → register。成功后写入 <span class="mono">artifacts/&lt;name&gt;/&lt;version&gt;/</span>，URI 形如 s3://ai-factory/models/…</p>
+                    <div class="form-row">
+                        <div><label>模型名</label><input id="tName" value="fraud-xgb"></div>
+                        <div>
+                            <label>框架</label>
+                            <select id="tFw">
+                                <option value="xgboost">XGBoost / sklearn</option>
+                                <option value="pytorch">PyTorch → Triton</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div><label>版本（可空=自动）</label><input id="tVer" placeholder="v1.0.1"></div>
+                        <div><label>样本数</label><input id="tN" type="number" value="1000" min="200"></div>
+                    </div>
+                    <div class="row">
+                        <button type="button" onclick="startTrain()">Run train job</button>
+                        <button type="button" class="ghost" onclick="refresh()">刷新</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Job ${job ? pill(job.status) : ""}</h3>
+                    ${job ? `
+                        <div class="muted" style="margin-bottom:8px">${job.name} ${job.version} · ${job.framework} · stage=${job.stage}</div>
+                        <div class="logs">${(job.logs || []).join("\n") || "等待日志…"}</div>
+                    ` : '<p class="muted">还没有训练任务。</p>'}
+                </div>
+            </div>`;
+    }
+
+    function renderRegistry() {
+        const rows = (data.artifacts || []).map((a) => `
+            <tr>
+                <td><strong>${a.name}</strong><div class="muted mono">${a.version}</div></td>
+                <td>${a.framework}</td>
+                <td class="mono muted" style="font-size:11px">${a.uri}</td>
+                <td>${(a.files || []).join(", ")}</td>
+                <td class="muted">${a.metrics && a.metrics.auc != null ? "auc=" + Number(a.metrics.auc).toFixed(3) : JSON.stringify(a.metrics || {}).slice(0,40)}</td>
+            </tr>`).join("");
+        document.getElementById("registry").innerHTML = `
+            <div class="card" style="margin-bottom:14px">
+                <h3>版本化制品</h3>
+                <p class="muted">本地 <span class="mono">artifacts/</span> 镜像生产中的 MinIO/S3 布局：<span class="mono">s3://ai-factory/models/&lt;name&gt;/&lt;semver&gt;/</span>。上传脚本：<span class="mono">registry/scripts/upload_artifact.py</span></p>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>模型</th><th>框架</th><th>URI</th><th>文件</th><th>指标</th></tr></thead>
+                    <tbody>${rows || '<tr><td colspan="5" class="muted">暂无制品，先去「训练」页跑一次</td></tr>'}</tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderServe() {
+        const xgbEl = document.getElementById("xgbPayload");
+        const llmEl = document.getElementById("llmPrompt");
+        if (xgbEl) serveForm.xgb = xgbEl.value;
+        if (llmEl) serveForm.llm = llmEl.value;
+        const xgbVal = serveForm.xgb != null ? serveForm.xgb : "[[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]]";
+        const llmVal = serveForm.llm != null ? serveForm.llm : "比较把模型当容器 vs 当版本化制品";
+
+        const cards = (data.services || []).map((s) => {
+            const pred = lastPredict[s.id];
+            const outStyle = pred ? "margin-top:10px;max-height:180px" : "margin-top:10px;display:none;max-height:180px";
+            const outText = pred ? escapeHtml(pred) : "";
+            return `
+            <div class="card">
+                <div class="row" style="justify-content:space-between;margin-bottom:8px">
+                    <strong>${s.name}</strong>${pill(s.status)}
+                </div>
+                <div class="muted" style="margin-bottom:8px">${s.runtime} · ns/${s.namespace}${s.gpu ? " · GPU×" + s.gpu : ""}${s.gpu_product ? " · " + s.gpu_product : ""}</div>
+                <div class="mono muted" style="font-size:11px;margin-bottom:8px">${s.storageUri || s.image || "PVC / custom container"}</div>
+                <div class="muted" style="margin-bottom:10px;font-size:11px">${s.principle}</div>
+                <div class="row">
+                    <button type="button" onclick="doPredict('${s.id}','${s.runtime}')">试推理</button>
+                    <span class="muted mono">${s.manifest}</span>
+                </div>
+                <div class="logs" id="out-${s.id}" style="${outStyle}">${outText}</div>
+            </div>`;
+        }).join("");
+        document.getElementById("serve").innerHTML = `
+            <div class="card" style="margin-bottom:14px">
+                <h3>KServe InferenceServices</h3>
+                <p class="muted">清单来自 <span class="mono">serving/*/inferenceservice.yaml</span>。有本地制品时，XGBoost 路径会加载真实 joblib；Triton/vLLM 在无集群时返回协议兼容的模拟响应。</p>
+                <div class="form-row" style="margin-top:10px">
+                    <div><label>XGBoost instances JSON</label><textarea id="xgbPayload">${escapeHtml(xgbVal)}</textarea></div>
+                    <div><label>vLLM prompt</label><textarea id="llmPrompt">${escapeHtml(llmVal)}</textarea></div>
+                </div>
+            </div>
+            <div class="grid g3">${cards || '<div class="card muted">未找到 InferenceService 清单</div>'}</div>`;
+    }
+
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    async function renderManifests() {
+        const groups = await api("/api/manifests");
+        const blocks = Object.entries(groups).map(([k, files]) => `
+            <div class="card">
+                <h3>${k}</h3>
+                <ul class="muted" style="margin-left:1rem;line-height:1.8">
+                    ${(files || []).map((f) => `<li class="mono">${f}</li>`).join("")}
+                </ul>
+            </div>`).join("");
+        document.getElementById("manifests").innerHTML = `<div class="grid g2">${blocks}</div>`;
+    }
+
+    function render() {
+        renderStats();
+        if (page === "factory") renderFactory();
+        if (page === "pipeline") {
+            if (!pipe.components.length) loadPipelineData();
+            else renderPipeline();
+        }
+        if (page === "train") renderTrain();
+        if (page === "registry") renderRegistry();
+        if (page === "serve") renderServe();
+        if (page === "manifests") renderManifests();
+    }
+
+    async function refresh() {
+        data = await api("/api/overview");
+        if (activeJob) {
+            try {
+                const job = await api("/api/jobs/" + activeJob);
+                const idx = (data.jobs || []).findIndex((j) => j.id === activeJob);
+                if (idx >= 0) data.jobs[idx] = job;
+                else data.jobs = [job, ...(data.jobs || [])];
+                if (job.status === "running") schedulePoll();
+                else clearInterval(poll);
+            } catch (_) {}
+        }
+        render();
+    }
+    function schedulePoll() {
+        clearInterval(poll);
+        poll = setInterval(refresh, 900);
+    }
+    async function startTrain() {
+        try {
+            const body = {
+                name: document.getElementById("tName").value,
+                framework: document.getElementById("tFw").value,
+                version: document.getElementById("tVer").value || null,
+                n_samples: Number(document.getElementById("tN").value || 1000),
+            };
+            const job = await api("/api/train", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            activeJob = job.id;
+            toast("训练任务已启动");
+            schedulePoll();
+            await refresh();
+        } catch (err) { toast(err.message, true); }
+    }
+    async function doPredict(id, runtime) {
+        try {
+            let payload = {};
+            if (runtime === "xgboost") {
+                payload.instances = JSON.parse(document.getElementById("xgbPayload").value || "[]");
+            } else if (runtime === "vllm") {
+                payload.prompt = document.getElementById("llmPrompt").value;
+            } else {
+                payload.prompt = "triton-smoke";
+            }
+            const res = await api(`/api/services/${id}/predict`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            lastPredict[id] = JSON.stringify(res.output, null, 2) + "\n\n" + (res.note || "");
+            const box = document.getElementById("out-" + id);
+            if (box) {
+                box.style.display = "block";
+                box.textContent = lastPredict[id];
+            }
+            // 只刷新统计，不整页重绘以免结果框被清空
+            try {
+                const ov = await api("/api/overview");
+                data.stats = ov.stats || data.stats;
+                data.cluster = ov.cluster || data.cluster;
+                renderStats();
+            } catch (_) {}
+            toast("推理完成");
+        } catch (err) { toast(err.message, true); }
+    }
+
+    refresh();
+</script>
+</body>
+</html>

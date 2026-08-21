@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCM Multi-Cluster Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+        @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+        .sidebar {
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 20px 16px;
+            background: rgba(0,0,0,0.15);
+        }
+        .brand {
+            font-size: 1.15em;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+        .brand-sub { color: #777; font-size: 12px; margin-bottom: 18px; }
+        .side-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+        .nav-section { color: #666; font-size: 11px; letter-spacing: 0.08em; margin: 14px 0 8px; text-transform: uppercase; }
+        .cluster-nav { display: flex; flex-direction: column; gap: 8px; }
+        .nav-item {
+            text-align: left;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid transparent;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: #ddd;
+            width: 100%;
+        }
+        .nav-item.active { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.08); }
+        .nav-name { font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .nav-meta { color: #888; font-size: 12px; margin-top: 4px; }
+        .main { padding: 24px; max-width: 1500px; }
+        h1 {
+            font-size: 1.8em;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: #888; margin: 6px 0 18px; }
+        button, .file-btn {
+            padding: 9px 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #fff;
+            background: rgba(255,255,255,0.08);
+        }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #7c3aed); }
+        .btn-danger { background: #ff4757; }
+        .btn-ok { background: #2ed573; color: #102010; }
+        .btn-small { padding: 6px 10px; font-size: 12px; }
+        label { display: block; margin-bottom: 6px; color: #aaa; font-size: 13px; }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+        }
+        textarea { min-height: 140px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+        select option { background: #1a1a2e; }
+        .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px; }
+        @media (max-width: 1200px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.6em; font-weight: 700; }
+        .cyan { color: #00d4ff; } .green { color: #2ed573; } .purple { color: #b388ff; }
+        .orange { color: #ff9f43; } .pink { color: #ff6b9d; } .red { color: #ff6b7a; }
+        .stat-label { color: #888; font-size: 12px; margin-top: 4px; }
+        .resource-grid, .cluster-grid { display: grid; gap: 14px; margin-bottom: 18px; }
+        .resource-grid { grid-template-columns: repeat(3, 1fr); }
+        .cluster-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        @media (max-width: 900px) { .resource-grid { grid-template-columns: 1fr; } }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .card-title { font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .card-title::before {
+            content: ""; width: 4px; height: 16px;
+            background: linear-gradient(180deg, #00d4ff, #7c3aed); border-radius: 2px;
+        }
+        .bar-meta { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 6px; }
+        .bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+        .bar > span { display: block; height: 100%; background: linear-gradient(90deg, #00d4ff, #7c3aed); }
+        .bar.warn > span { background: linear-gradient(90deg, #ffc107, #ff9f43); }
+        .bar.danger > span { background: linear-gradient(90deg, #ff6b7a, #ff4757); }
+        .pill { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .h-healthy, .ready-true, .phase-Running, .cond-True { background: rgba(46,213,115,0.2); color: #2ed573; }
+        .h-degraded, .phase-Pending, .cond-Unknown { background: rgba(255,193,7,0.2); color: #ffc107; }
+        .h-offline, .ready-false, .phase-Failed, .phase-CrashLoopBackOff, .cond-False { background: rgba(255,71,87,0.2); color: #ff4757; }
+        .h-demo { background: rgba(0,212,255,0.2); color: #00d4ff; }
+        .h-pending { background: rgba(255,193,7,0.22); color: #ffc107; }
+        .env-production { background: rgba(255,71,87,0.18); color: #ff6b7a; }
+        .env-staging { background: rgba(255,193,7,0.18); color: #ffc107; }
+        .env-development { background: rgba(46,213,115,0.18); color: #2ed573; }
+        .env-edge { background: rgba(179,136,255,0.18); color: #b388ff; }
+        .toolbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tab { background: rgba(255,255,255,0.06); color: #ccc; padding: 8px 14px; border-radius: 20px; }
+        .tab.active { background: linear-gradient(135deg, #00d4ff, #7c3aed); color: #fff; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        th { color: #888; font-weight: 500; }
+        .node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+        .node-name { font-weight: 600; color: #00d4ff; }
+        .role { font-size: 11px; color: #b388ff; background: rgba(124,58,237,0.2); padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+        .muted { color: #888; } .mono { font-family: ui-monospace, Menlo, monospace; }
+        .empty { text-align: center; color: #777; padding: 36px 0; }
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+            display: none; align-items: center; justify-content: center; z-index: 20;
+        }
+        .modal {
+            width: min(640px, 92vw); background: #1b2340; border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px; padding: 20px; max-height: 90vh; overflow: auto;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 12px; }
+        .toast {
+            position: fixed; right: 20px; bottom: 20px; display: none;
+            background: #1f2a44; border: 1px solid rgba(255,255,255,0.15);
+            padding: 12px 16px; border-radius: 10px; max-width: 360px; z-index: 30;
+        }
+        .cluster-card { cursor: pointer; transition: 0.2s; }
+        .cluster-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.08); }
+        .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .event-Warning { color: #ff9f43; } .event-Normal { color: #2ed573; }
+        .file-btn { position: relative; overflow: hidden; display: inline-block; }
+        .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .claim-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .arch {
+            display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: center;
+            margin-bottom: 18px;
+        }
+        .arch-box { text-align: center; padding: 14px; }
+        .arch-arrow { color: #7c3aed; font-size: 22px; }
+        .hint { color: #888; font-size: 12px; line-height: 1.5; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">OCM Hub</div>
+            <div class="brand-sub">Open Cluster Management · Hub-Spoke</div>
+            <div class="side-actions">
+                <button type="button" class="btn-primary btn-small" onclick="openModal('join')">Join</button>
+                <button type="button" class="btn-small" onclick="loadDemo()">演示</button>
+            </div>
+            <div class="cluster-nav" id="clusterNav"></div>
+        </aside>
+        <main class="main">
+            <div class="row-between">
+                <div>
+                    <h1 id="pageTitle">Hub 总览</h1>
+                    <p class="subtitle" id="pageSub">CNCF Open Cluster Management 控制面</p>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="display:flex; gap:6px; align-items:center; margin:0; color:#aaa;">
+                        <input id="autoRefresh" type="checkbox" checked style="width:auto"> 10s 刷新
+                    </label>
+                    <button type="button" onclick="refreshAll()">刷新</button>
+                    <button type="button" class="btn-danger btn-small" id="removeBtn" style="display:none" onclick="removeCluster()">移除</button>
+                </div>
+            </div>
+            <div class="stats" id="stats"></div>
+            <div class="resource-grid" id="resources"></div>
+            <div id="fleetBoard"></div>
+            <div class="card" id="detailCard" style="display:none">
+                <div class="toolbar">
+                    <div class="tabs">
+                        <button type="button" class="tab active" data-tab="status" onclick="switchTab('status')">OCM 状态</button>
+                        <button type="button" class="tab" data-tab="nodes" onclick="switchTab('nodes')">节点</button>
+                        <button type="button" class="tab" data-tab="pods" onclick="switchTab('pods')">Pods</button>
+                        <button type="button" class="tab" data-tab="workloads" onclick="switchTab('workloads')">工作负载</button>
+                        <button type="button" class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
+                        <button type="button" class="tab" data-tab="events" onclick="switchTab('events')">事件</button>
+                    </div>
+                    <select id="nsFilter" onchange="reloadTab()" style="width:180px">
+                        <option value="">全部命名空间</option>
+                    </select>
+                </div>
+                <div id="tabContent"></div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-mask" id="modal">
+        <div class="modal" id="modalBody"></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let selectedId = null;
+        let currentPage = "hub";
+        let currentTab = "status";
+        let lastCluster = null;
+        let timer = null;
+        const healthText = { healthy: "Available", degraded: "降级", offline: "离线", demo: "演示", pending: "待接受" };
+
+        function toast(msg, err) {
+            const el = document.getElementById("toast");
+            el.textContent = msg;
+            el.style.borderColor = err ? "rgba(255,71,87,.5)" : "rgba(46,213,115,.4)";
+            el.style.display = "block";
+            setTimeout(() => el.style.display = "none", 2800);
+        }
+        async function api(path, options) {
+            const res = await fetch(path, options);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : (data.detail && JSON.stringify(data.detail)) || res.statusText);
+            return data;
+        }
+        function barClass(p) { return p >= 90 ? "bar danger" : p >= 75 ? "bar warn" : "bar"; }
+        function resourceCard(title, text, percent) {
+            const p = percent || 0;
+            return `<div class="card"><div class="card-title">${title}</div>
+                <div class="bar-meta"><span>${text}</span><span>${p}%</span></div>
+                <div class="${barClass(p)}"><span style="width:${Math.min(p,100)}%"></span></div></div>`;
+        }
+        function formatBytes(num) {
+            if (!num) return "0 B";
+            const units = ["B","KiB","MiB","GiB","TiB"];
+            let i = 0, value = num;
+            while (value >= 1024 && i < units.length - 1) { value /= 1024; i += 1; }
+            return value.toFixed(i ? 1 : 0) + " " + units[i];
+        }
+        function phaseClass(phase) {
+            return ["Running","Pending","Failed","Succeeded","CrashLoopBackOff"].includes(phase) ? "phase-" + phase : "phase-Pending";
+        }
+        function condClass(status) {
+            return status === "True" ? "cond-True" : status === "False" ? "cond-False" : "cond-Unknown";
+        }
+
+        function renderNav(clusters) {
+            const pages = [
+                { id: "hub", name: "Hub 总览", meta: "ClusterManager" },
+                { id: "works", name: "ManifestWork", meta: "Work agent pull" },
+                { id: "placements", name: "Placement", meta: "PlacementDecision" },
+            ];
+            const items = pages.map((p) => `<button type="button" class="nav-item${currentPage === p.id && !selectedId ? " active" : ""}" onclick="selectPage('${p.id}')">
+                <div class="nav-name">${p.name}</div><div class="nav-meta">${p.meta}</div></button>`);
+            items.push('<div class="nav-section">ManagedCluster</div>');
+            clusters.forEach((c) => {
+                const h = (c.status || {}).health || "offline";
+                items.push(`<button type="button" class="nav-item${selectedId === c.id ? " active" : ""}" onclick="selectCluster('${c.id}')">
+                    <div class="nav-name"><span>${c.name}</span><span class="pill h-${h}">${healthText[h] || h}</span></div>
+                    <div class="nav-meta"><span class="pill env-${c.environment}">${c.environment}</span> ${c.region || ""}</div>
+                </button>`);
+            });
+            document.getElementById("clusterNav").innerHTML = items.join("");
+        }
+
+        function renderResources(r) {
+            const cpu = r.cpu || {}, mem = r.memory || {}, gpu = r.gpu || {};
+            document.getElementById("resources").innerHTML =
+                resourceCard("CPU 请求 / 可分配", (cpu.requested_text || 0) + " / " + (cpu.allocatable_text || 0) + " cores", cpu.percent) +
+                resourceCard("内存请求 / 可分配", (mem.requested_text || 0) + " / " + (mem.allocatable_text || 0), mem.percent) +
+                resourceCard("GPU 请求 / 总量", (gpu.requested || 0) + " / " + (gpu.capacity || 0), gpu.percent);
+        }
+
+        function renderHub(data) {
+            const totals = data.totals || {};
+            const hub = data.hub || {};
+            const counts = hub.counts || {};
+            document.getElementById("pageTitle").textContent = "Hub 总览";
+            document.getElementById("pageSub").textContent = `${hub.hub || "local-hub"} · ${hub.architecture || "hub-spoke"} · modules: ${(hub.modules || []).join(", ")}`;
+            document.getElementById("removeBtn").style.display = "none";
+            document.getElementById("detailCard").style.display = "none";
+            document.getElementById("stats").innerHTML = `
+                <div class="stat-card"><div class="stat-value cyan">${counts.managedClusters || 0}</div><div class="stat-label">ManagedCluster</div></div>
+                <div class="stat-card"><div class="stat-value green">${counts.accepted || 0}</div><div class="stat-label">已接受</div></div>
+                <div class="stat-card"><div class="stat-value orange">${counts.pending || 0}</div><div class="stat-label">待握手</div></div>
+                <div class="stat-card"><div class="stat-value purple">${counts.available || 0}</div><div class="stat-label">Available</div></div>
+                <div class="stat-card"><div class="stat-value pink">${counts.manifestWorks || 0}</div><div class="stat-label">ManifestWork</div></div>
+                <div class="stat-card"><div class="stat-value cyan">${counts.placements || 0}</div><div class="stat-label">Placement</div></div>
+            `;
+            renderResources(data.resources || {});
+            const pending = (data.clusters || []).filter((c) => !c.hubAcceptsClient);
+            const cards = (data.clusters || []).map((c) => {
+                const h = (c.status || {}).health || "offline";
+                const cpu = (c.resources || {}).cpu || {};
+                return `<div class="card cluster-card" onclick="selectCluster('${c.id}')">
+                    <div class="row-between">
+                        <strong>${c.name}</strong>
+                        <span class="pill h-${h}">${healthText[h] || h}</span>
+                    </div>
+                    <div class="muted" style="margin:8px 0 12px; font-size:12px;">
+                        <span class="pill env-${c.environment}">${c.environment}</span>
+                        ns/${c.clusterNamespace || c.name} · ${(c.status || {}).version || "-"}
+                    </div>
+                    ${(c.clusterClaims || []).slice(0,4).map((cl) => `<span class="pill">${cl.name.split(".")[0]}=${cl.value}</span>`).join(" ")}
+                    ${c.hubAcceptsClient ? `<div class="bar-meta" style="margin-top:12px"><span>CPU ${cpu.requested_text || 0} / ${cpu.allocatable_text || 0}</span><span>${cpu.percent || 0}%</span></div>
+                    <div class="${barClass(cpu.percent || 0)}"><span style="width:${Math.min(cpu.percent||0,100)}%"></span></div>` : `<div class="hint">Klusterlet 已提交 CSR，等待 Hub 设置 spec.hubAcceptsClient</div>
+                    <div style="margin-top:10px; display:flex; gap:8px;">
+                        <button type="button" class="btn-ok btn-small" onclick="event.stopPropagation(); acceptCluster('${c.name}')">Accept</button>
+                        <button type="button" class="btn-danger btn-small" onclick="event.stopPropagation(); denyCluster('${c.name}')">Deny</button>
+                    </div>`}
+                </div>`;
+            }).join("");
+            document.getElementById("fleetBoard").innerHTML = `
+                <div class="arch">
+                    <div class="card arch-box"><strong>Klusterlet</strong><div class="hint">spoke 上 pull 注册与 Work</div></div>
+                    <div class="arch-arrow">→ CSR</div>
+                    <div class="card arch-box"><strong>${hub.hub || "local-hub"}</strong><div class="hint">registration · work · placement</div></div>
+                    <div class="arch-arrow">→ Accept</div>
+                    <div class="card arch-box"><strong>ManagedCluster</strong><div class="hint">${pending.length} 个待批准</div></div>
+                </div>
+                <div class="cluster-grid">${cards || '<div class="empty">还没有 ManagedCluster</div>'}</div>`;
+        }
+
+        async function renderWorks() {
+            document.getElementById("pageTitle").textContent = "ManifestWork";
+            document.getElementById("pageSub").textContent = "Hub 写入 cluster namespace，spoke work-agent pull 并 Applied";
+            document.getElementById("removeBtn").style.display = "none";
+            document.getElementById("detailCard").style.display = "none";
+            document.getElementById("resources").innerHTML = "";
+            const works = await api("/api/manifestworks");
+            const clusters = await api("/api/managedclusters");
+            document.getElementById("stats").innerHTML = `
+                <div class="stat-card"><div class="stat-value cyan">${works.length}</div><div class="stat-label">ManifestWork</div></div>
+                <div class="stat-card"><div class="stat-value green">${works.filter(w => ((w.status||{}).conditions||[])[0]?.status==="True").length}</div><div class="stat-label">Applied</div></div>
+                <div class="stat-card"><div class="stat-value orange">${works.filter(w => ((w.status||{}).conditions||[])[0]?.status!=="True").length}</div><div class="stat-label">Pending</div></div>
+                <div class="stat-card"><div class="stat-value purple">${clusters.filter(c=>c.hubAcceptsClient).length}</div><div class="stat-label">可下发集群</div></div>
+                <div class="stat-card"><div class="stat-value pink">pull</div><div class="stat-label">分发模型</div></div>
+                <div class="stat-card"><div class="stat-value cyan">v1</div><div class="stat-label">work API</div></div>
+            `;
+            const rows = works.map((w) => {
+                const cond = ((w.status || {}).conditions || [])[0] || {};
+                const manifests = (((w.spec || {}).workload || {}).manifests || []).map((m) => `${m.kind}/${(m.metadata||{}).name}`).join(", ");
+                return `<tr>
+                    <td class="mono">${w.metadata.namespace}</td>
+                    <td>${w.metadata.name}</td>
+                    <td>${manifests || "-"}</td>
+                    <td><span class="pill ${condClass(cond.status)}">${cond.reason || cond.status || "-"}</span></td>
+                    <td class="muted">${cond.message || ""}</td>
+                    <td>
+                        <button type="button" class="btn-small" onclick="reconcileWork('${w.metadata.namespace}','${w.metadata.name}')">Reconcile</button>
+                        <button type="button" class="btn-danger btn-small" onclick="deleteWork('${w.metadata.namespace}','${w.metadata.name}')">删除</button>
+                    </td>
+                </tr>`;
+            }).join("");
+            const options = clusters.filter((c) => c.hubAcceptsClient).map((c) => `<option value="${c.name}">${c.name}</option>`).join("");
+            document.getElementById("fleetBoard").innerHTML = `
+                <div class="card" style="margin-bottom:14px">
+                    <div class="card-title">创建 ManifestWork</div>
+                    <div class="form-row">
+                        <div><label>目标 ManagedCluster</label><select id="mwCluster">${options}</select></div>
+                        <div><label>名称</label><input id="mwName" placeholder="demo-config"></div>
+                    </div>
+                    <div class="form-group"><label>Manifests JSON 数组</label>
+                        <textarea id="mwManifests">[{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"ocm-demo","namespace":"default"},"data":{"from":"hub"}}]</textarea>
+                    </div>
+                    <button type="button" class="btn-primary" onclick="createWork()">下发到 spoke</button>
+                    <p class="hint">对应 OCM work.open-cluster-management.io/v1。Klusterlet work-agent 从 Hub 上该集群的 namespace pull，而不是 Hub push。</p>
+                </div>
+                <div class="card"><table><thead><tr><th>cluster ns</th><th>名称</th><th>Manifests</th><th>状态</th><th>消息</th><th></th></tr></thead>
+                <tbody>${rows || '<tr><td class="empty" colspan="6">暂无 ManifestWork</td></tr>'}</tbody></table></div>`;
+        }
+
+        async function renderPlacements() {
+            document.getElementById("pageTitle").textContent = "Placement";
+            document.getElementById("pageSub").textContent = "按 labelSelector / claimSelector 选择 ManagedCluster，生成 PlacementDecision";
+            document.getElementById("removeBtn").style.display = "none";
+            document.getElementById("detailCard").style.display = "none";
+            document.getElementById("resources").innerHTML = "";
+            const placements = await api("/api/placements");
+            document.getElementById("stats").innerHTML = `
+                <div class="stat-card"><div class="stat-value cyan">${placements.length}</div><div class="stat-label">Placement</div></div>
+                <div class="stat-card"><div class="stat-value green">${placements.reduce((n,p)=>n+(((p.decision||{}).status||{}).decisions||[]).length,0)}</div><div class="stat-label">已选集群</div></div>
+                <div class="stat-card"><div class="stat-value purple">label</div><div class="stat-label">Selector</div></div>
+                <div class="stat-card"><div class="stat-value pink">claim</div><div class="stat-label">Selector</div></div>
+                <div class="stat-card"><div class="stat-value orange">v1beta1</div><div class="stat-label">cluster API</div></div>
+                <div class="stat-card"><div class="stat-value cyan">default</div><div class="stat-label">ClusterSet</div></div>
+            `;
+            const cards = placements.map((p) => {
+                const decisions = (((p.decision || {}).status || {}).decisions || []);
+                const pred = ((p.spec || {}).predicates || [])[0] || {};
+                const labels = (((pred.requiredClusterSelector || {}).labelSelector || {}).matchLabels) || {};
+                const claims = (((pred.requiredClusterSelector || {}).claimSelector || {}).matchExpressions) || [];
+                return `<div class="card">
+                    <div class="row-between">
+                        <strong>${p.metadata.name}</strong>
+                        <button type="button" class="btn-danger btn-small" onclick="deletePlacement('${p.metadata.name}')">删除</button>
+                    </div>
+                    <div class="hint">labels: ${JSON.stringify(labels)} · claims: ${claims.map(c=>c.key+"∈"+c.values).join(", ") || "{}"}</div>
+                    <div style="margin-top:10px">${decisions.length ? decisions.map((d) => `<span class="pill h-healthy">${d.clusterName}</span>`).join(" ") : '<span class="muted">无匹配集群</span>'}</div>
+                </div>`;
+            }).join("");
+            document.getElementById("fleetBoard").innerHTML = `
+                <div class="card" style="margin-bottom:14px">
+                    <div class="card-title">创建 Placement</div>
+                    <div class="form-row">
+                        <div><label>名称</label><input id="plName" placeholder="gpu-west"></div>
+                        <div><label>matchLabels JSON</label><input id="plLabels" placeholder='{"environment":"production"}'></div>
+                    </div>
+                    <div class="form-group"><label>claimEquals JSON</label><input id="plClaims" placeholder='{"gpu.open-cluster-management.io":"true"}'></div>
+                    <button type="button" class="btn-primary" onclick="createPlacement()">计算 PlacementDecision</button>
+                </div>
+                <div class="cluster-grid">${cards || '<div class="empty">暂无 Placement</div>'}</div>`;
+        }
+
+        async function renderDetail(cluster) {
+            lastCluster = cluster;
+            const h = (cluster.status || {}).health || "offline";
+            document.getElementById("pageTitle").textContent = cluster.name;
+            document.getElementById("pageSub").innerHTML =
+                `<span class="pill h-${h}">${healthText[h] || h}</span>
+                 <span class="pill env-${cluster.environment}">${cluster.environment}</span>
+                 cluster ns/${cluster.clusterNamespace || cluster.name} · ${(cluster.status||{}).version || "-"}`;
+            document.getElementById("removeBtn").style.display = "inline-block";
+            document.getElementById("detailCard").style.display = "block";
+            const counts = cluster.counts || {};
+            document.getElementById("stats").innerHTML = `
+                <div class="stat-card"><div class="stat-value cyan">${cluster.hubAcceptsClient ? "True" : "False"}</div><div class="stat-label">hubAcceptsClient</div></div>
+                <div class="stat-card"><div class="stat-value green">${cluster.joined ? "True" : "False"}</div><div class="stat-label">Joined</div></div>
+                <div class="stat-card"><div class="stat-value purple">${cluster.available ? "True" : "False"}</div><div class="stat-label">Available</div></div>
+                <div class="stat-card"><div class="stat-value orange">${counts.nodes_ready||0}/${counts.nodes||0}</div><div class="stat-label">就绪节点</div></div>
+                <div class="stat-card"><div class="stat-value pink">${counts.pods||0}</div><div class="stat-label">Pods</div></div>
+                <div class="stat-card"><div class="stat-value cyan">${counts.deployments||0}</div><div class="stat-label">Deployments</div></div>
+            `;
+            if (cluster.hubAcceptsClient) renderResources(cluster.resources || {});
+            else document.getElementById("resources").innerHTML = "";
+            if (!cluster.hubAcceptsClient) {
+                document.getElementById("fleetBoard").innerHTML = `<div class="card">
+                    <div class="card-title">双向 opt-in 握手</div>
+                    <p class="hint">Klusterlet 已创建 ManagedCluster 与 CSR（${cluster.csr || "-"}）。Hub 管理员必须设置 spec.hubAcceptsClient=true 后，spoke 才会加入并上报 ClusterClaim。</p>
+                    <div style="margin-top:12px; display:flex; gap:8px;">
+                        <button type="button" class="btn-ok" onclick="acceptCluster('${cluster.name}')">Accept</button>
+                        <button type="button" class="btn-danger" onclick="denyCluster('${cluster.name}')">Deny</button>
+                    </div>
+                </div>`;
+            } else {
+                document.getElementById("fleetBoard").innerHTML = "";
+            }
+            if (cluster.hubAcceptsClient) await loadNamespaces();
+            await reloadTab();
+        }
+
+        function renderOcmStatus(cluster) {
+            const conds = (cluster.conditions || []).map((c) => `
+                <tr><td>${c.type}</td><td><span class="pill ${condClass(c.status)}">${c.status}</span></td>
+                <td>${c.reason || ""}</td><td class="muted">${c.message || ""}</td></tr>`).join("");
+            const claims = (cluster.clusterClaims || []).map((c) => `<span class="pill">${c.name}=${c.value}</span>`).join(" ");
+            const cap = cluster.capacity || {};
+            document.getElementById("tabContent").innerHTML = `
+                <div class="form-row" style="margin-bottom:16px">
+                    <div class="card"><div class="card-title">ClusterClaims</div><div>${claims || '<span class="muted">尚无 claim</span>'}</div></div>
+                    <div class="card"><div class="card-title">Capacity</div><div class="mono">${Object.keys(cap).map(k=>k+"="+cap[k]).join(" · ") || "-"}</div></div>
+                </div>
+                <table><thead><tr><th>Condition</th><th>Status</th><th>Reason</th><th>Message</th></tr></thead>
+                <tbody>${conds || '<tr><td class="empty" colspan="4">无</td></tr>'}</tbody></table>
+                <p class="hint">labels: ${JSON.stringify(cluster.labels || {})} · 生产 OCM 中 Hub 不保存 spoke kubeconfig，inventory 由 cluster-proxy addon 提供。</p>`;
+        }
+
+        async function loadNamespaces() {
+            if (!selectedId) return;
+            try {
+                const namespaces = await api(`/api/clusters/${selectedId}/namespaces`);
+                const select = document.getElementById("nsFilter");
+                const current = select.value;
+                select.innerHTML = '<option value="">全部命名空间</option>';
+                namespaces.forEach((ns) => {
+                    const opt = document.createElement("option");
+                    opt.value = ns.name; opt.textContent = ns.name; select.appendChild(opt);
+                });
+                select.value = current;
+            } catch (err) { /* pending cluster */ }
+        }
+        function nsQuery() {
+            const ns = document.getElementById("nsFilter").value;
+            return ns ? `?namespace=${encodeURIComponent(ns)}` : "";
+        }
+        function renderTable(headers, rows) {
+            document.getElementById("tabContent").innerHTML = `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+                <tbody>${rows || '<tr><td class="empty" colspan="8">暂无数据</td></tr>'}</tbody></table>`;
+        }
+        function renderNodes(nodes) {
+            if (!nodes.length) { document.getElementById("tabContent").innerHTML = '<div class="empty">暂无节点</div>'; return; }
+            document.getElementById("tabContent").innerHTML = `<div class="node-grid">${nodes.map((n) => `
+                <div class="card">
+                    <div class="row-between">
+                        <div><span class="node-name">${n.name}</span>${(n.roles||[]).map(r=>`<span class="role">${r}</span>`).join("")}</div>
+                        <span class="pill ${n.ready ? "ready-true":"ready-false"}">${n.ready ? "Ready":"NotReady"}</span>
+                    </div>
+                    <div class="muted" style="margin:8px 0;font-size:12px">${n.internal_ip||"-"} · ${n.kubelet_version||"-"} · Pods ${n.pods}/${n.pod_capacity}</div>
+                    <div class="bar-meta"><span>CPU ${n.cpu_requested.toFixed(2)} / ${n.cpu_allocatable.toFixed(2)}</span><span>${n.cpu_percent}%</span></div>
+                    <div class="${barClass(n.cpu_percent)}" style="margin-bottom:8px"><span style="width:${Math.min(n.cpu_percent,100)}%"></span></div>
+                    <div class="bar-meta"><span>内存 ${formatBytes(n.memory_requested)} / ${formatBytes(n.memory_allocatable)}</span><span>${n.memory_percent}%</span></div>
+                    <div class="${barClass(n.memory_percent)}"><span style="width:${Math.min(n.memory_percent,100)}%"></span></div>
+                    ${n.gpu_capacity ? `<div class="muted" style="margin-top:8px;font-size:12px">GPU ${n.gpu_requested}/${n.gpu_capacity}</div>` : ""}
+                </div>`).join("")}</div>`;
+        }
+        async function reloadTab() {
+            if (!selectedId) return;
+            const box = document.getElementById("tabContent");
+            box.innerHTML = '<div class="empty">加载中...</div>';
+            const q = nsQuery();
+            try {
+                if (currentTab === "status") {
+                    const cluster = lastCluster || await api(`/api/managedclusters/${selectedId}`);
+                    renderOcmStatus(cluster);
+                    return;
+                }
+                if (currentTab === "nodes") renderNodes(await api(`/api/clusters/${selectedId}/nodes`));
+                if (currentTab === "pods") {
+                    const pods = await api(`/api/clusters/${selectedId}/pods` + q);
+                    renderTable(["命名空间","名称","节点","状态","Ready","重启","CPU","内存","GPU","Age"], pods.map(p => `
+                        <tr><td class="mono">${p.namespace}</td><td>${p.name}</td><td>${p.node||"-"}</td>
+                        <td><span class="pill ${phaseClass(p.phase)}">${p.phase}</span></td>
+                        <td>${p.ready}</td><td>${p.restarts}</td><td>${p.cpu_request_text}</td>
+                        <td>${p.memory_request_text}</td><td>${p.gpu_request||0}</td><td class="muted">${p.age}</td></tr>`).join(""));
+                }
+                if (currentTab === "workloads") {
+                    const data = await api(`/api/clusters/${selectedId}/workloads` + q);
+                    const all = [].concat(data.deployments||[], data.statefulsets||[], data.daemonsets||[]);
+                    renderTable(["类型","命名空间","名称","Ready/Desired","Available","Age"], all.map(w => `
+                        <tr><td>${w.kind}</td><td class="mono">${w.namespace}</td><td>${w.name}</td>
+                        <td>${w.ready} / ${w.desired}</td><td>${w.available ?? "-"}</td><td class="muted">${w.age}</td></tr>`).join(""));
+                }
+                if (currentTab === "services") {
+                    const items = await api(`/api/clusters/${selectedId}/services` + q);
+                    renderTable(["命名空间","名称","类型","ClusterIP","ExternalIP","Ports","Age"], items.map(s => `
+                        <tr><td class="mono">${s.namespace}</td><td>${s.name}</td><td>${s.type}</td>
+                        <td class="mono">${s.cluster_ip||"-"}</td><td>${s.external_ip||"-"}</td>
+                        <td>${s.ports||"-"}</td><td class="muted">${s.age}</td></tr>`).join(""));
+                }
+                if (currentTab === "events") {
+                    const items = await api(`/api/clusters/${selectedId}/events` + q);
+                    renderTable(["类型","原因","命名空间","对象","消息","次数","Age"], items.map(e => `
+                        <tr><td class="event-${e.type}">${e.type}</td><td>${e.reason}</td><td class="mono">${e.namespace}</td>
+                        <td>${e.object}</td><td>${e.message}</td><td>${e.count}</td><td class="muted">${e.age}</td></tr>`).join(""));
+                }
+            } catch (err) {
+                box.innerHTML = `<div class="empty">${err.message}</div>`;
+            }
+        }
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("active", el.dataset.tab === tab));
+            reloadTab();
+        }
+        async function selectPage(page) {
+            currentPage = page;
+            selectedId = null;
+            await refreshAll();
+        }
+        async function selectCluster(id) {
+            selectedId = id;
+            currentPage = "cluster";
+            currentTab = "status";
+            document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("active", el.dataset.tab === currentTab));
+            await refreshAll();
+        }
+        async function refreshAll() {
+            try {
+                const fleet = await api("/api/fleet");
+                renderNav(fleet.clusters || []);
+                if (selectedId) {
+                    const cluster = (fleet.clusters || []).find((c) => c.id === selectedId);
+                    if (!cluster) { selectedId = null; currentPage = "hub"; renderHub(fleet); }
+                    else await renderDetail(cluster);
+                    return;
+                }
+                if (currentPage === "works") await renderWorks();
+                else if (currentPage === "placements") await renderPlacements();
+                else renderHub(fleet);
+            } catch (err) { toast(err.message, true); }
+        }
+        function closeModal() { document.getElementById("modal").style.display = "none"; }
+        function openModal() {
+            document.getElementById("modalBody").innerHTML = `
+                <div class="row-between" style="margin-bottom:14px">
+                    <h2 style="font-size:18px">clusteradm join</h2>
+                    <button type="button" onclick="closeModal()">关闭</button>
+                </div>
+                <p class="hint" style="margin-bottom:12px">在 spoke 用 kubeconfig 发起注册，创建未接受的 ManagedCluster（模拟 CSR）。Hub 管理员再 Accept。</p>
+                <div class="form-row">
+                    <div><label>集群名</label><input id="fName" placeholder="prod-shanghai"></div>
+                    <div>
+                        <label>环境</label>
+                        <select id="fEnv">
+                            <option value="production">production</option>
+                            <option value="staging">staging</option>
+                            <option value="development">development</option>
+                            <option value="edge">edge</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div><label>区域</label><input id="fRegion" placeholder="cn-shanghai"></div>
+                    <div><label>Context</label><select id="fContext"><option value="">自动 / 当前 context</option></select></div>
+                </div>
+                <div class="form-group"><label>kubeconfig 路径（仅 join bootstrap）</label>
+                    <input id="fPath" placeholder="~/.kube/config" value="~/.kube/config"></div>
+                <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                    <input id="fAccept" type="checkbox" style="width:auto"> 同时设置 hubAcceptsClient（跳过人工批准）
+                </label>
+                <div class="row-between">
+                    <label class="file-btn">上传 kubeconfig<input type="file" onchange="uploadFile(event)"></label>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="importAll()">导入全部 context</button>
+                        <button type="button" class="btn-primary" onclick="registerOne()">Join</button>
+                    </div>
+                </div>`;
+            document.getElementById("modal").style.display = "flex";
+            loadContexts();
+            document.getElementById("fPath").addEventListener("change", loadContexts);
+        }
+        async function loadContexts() {
+            const path = document.getElementById("fPath")?.value.trim();
+            if (!path) return;
+            try {
+                const data = await api("/api/contexts?kubeconfig_path=" + encodeURIComponent(path));
+                const select = document.getElementById("fContext");
+                select.innerHTML = '<option value="">自动 / 当前 context</option>';
+                (data.contexts || []).forEach((ctx) => {
+                    const opt = document.createElement("option");
+                    opt.value = ctx.name;
+                    opt.textContent = ctx.name + (ctx.current ? " (current)" : "");
+                    select.appendChild(opt);
+                });
+            } catch (err) { /* 路径尚未就绪时忽略 */ }
+        }
+        async function registerOne() {
+            try {
+                await api("/api/managedclusters/join", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.getElementById("fName").value,
+                        kubeconfig_path: document.getElementById("fPath").value,
+                        context: document.getElementById("fContext").value || null,
+                        environment: document.getElementById("fEnv").value,
+                        region: document.getElementById("fRegion").value,
+                        auto_accept: document.getElementById("fAccept").checked,
+                    }),
+                });
+                toast("已提交 join，等待 Hub Accept");
+                closeModal();
+                await refreshAll();
+            } catch (err) { toast(err.message, true); }
+        }
+        async function importAll() {
+            try {
+                const result = await api("/api/managedclusters/import", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        kubeconfig_path: document.getElementById("fPath").value,
+                        environment: document.getElementById("fEnv").value,
+                        region: document.getElementById("fRegion").value,
+                        auto_accept: document.getElementById("fAccept").checked,
+                    }),
+                });
+                toast(`已发起 ${result.count} 个 join`);
+                closeModal();
+                await refreshAll();
+            } catch (err) { toast(err.message, true); }
+        }
+        async function uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const form = new FormData();
+            form.append("file", file);
+            form.append("name", document.getElementById("fName").value);
+            form.append("context", document.getElementById("fContext").value);
+            form.append("environment", document.getElementById("fEnv").value);
+            form.append("region", document.getElementById("fRegion").value);
+            form.append("import_all", "true");
+            form.append("auto_accept", document.getElementById("fAccept").checked ? "true" : "false");
+            try {
+                const result = await api("/api/managedclusters/upload", { method: "POST", body: form });
+                toast(`已从文件 join ${result.count} 个集群`);
+                closeModal();
+                await refreshAll();
+            } catch (err) { toast(err.message, true); }
+            event.target.value = "";
+        }
+        async function loadDemo() {
+            await api("/api/managedclusters/demo", { method: "POST" });
+            toast("已加载 OCM 演示 Hub");
+            await refreshAll();
+        }
+        async function acceptCluster(name) {
+            await api(`/api/managedclusters/${name}/accept`, { method: "POST" });
+            toast(name + " 已接受");
+            await refreshAll();
+        }
+        async function denyCluster(name) {
+            await api(`/api/managedclusters/${name}/deny`, { method: "POST" });
+            toast(name + " 已拒绝");
+            await refreshAll();
+        }
+        async function removeCluster() {
+            if (!selectedId || !confirm("确定从 Hub 移除该 ManagedCluster？")) return;
+            await api("/api/managedclusters/" + selectedId, { method: "DELETE" });
+            selectedId = null;
+            currentPage = "hub";
+            toast("已移除");
+            await refreshAll();
+        }
+        async function createWork() {
+            try {
+                const manifests = JSON.parse(document.getElementById("mwManifests").value || "[]");
+                await api("/api/manifestworks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        cluster: document.getElementById("mwCluster").value,
+                        name: document.getElementById("mwName").value || "demo-work",
+                        manifests,
+                    }),
+                });
+                toast("ManifestWork 已创建并由 work-agent reconcile");
+                await renderWorks();
+            } catch (err) { toast(err.message, true); }
+        }
+        async function reconcileWork(cluster, name) {
+            await api(`/api/manifestworks/${cluster}/${name}/reconcile`, { method: "POST" });
+            toast("已 reconcile");
+            await renderWorks();
+        }
+        async function deleteWork(cluster, name) {
+            await api(`/api/manifestworks/${cluster}/${name}`, { method: "DELETE" });
+            toast("已删除");
+            await renderWorks();
+        }
+        async function createPlacement() {
+            try {
+                const match_labels = JSON.parse(document.getElementById("plLabels").value || "{}");
+                const claim_equals = JSON.parse(document.getElementById("plClaims").value || "{}");
+                await api("/api/placements", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.getElementById("plName").value || "placement-" + Date.now(),
+                        match_labels,
+                        claim_equals,
+                    }),
+                });
+                toast("PlacementDecision 已计算");
+                await renderPlacements();
+            } catch (err) { toast(err.message, true); }
+        }
+        async function deletePlacement(name) {
+            await api("/api/placements/" + name, { method: "DELETE" });
+            toast("已删除 Placement");
+            await renderPlacements();
+        }
+        timer = setInterval(() => { if (document.getElementById("autoRefresh").checked) refreshAll(); }, 10000);
+        refreshAll();
+    </script>
+</body>
+</html>

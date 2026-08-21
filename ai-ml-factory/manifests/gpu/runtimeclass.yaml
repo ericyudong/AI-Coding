@@ -1,0 +1,45 @@
+# NVIDIA device plugin + GPU product labels expected by InferenceServices.
+# Install NVIDIA GPU Operator separately in production clusters.
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-capacity-profile
+  namespace: ai-factory
+data:
+  a100.yaml: |
+    product: NVIDIA-A100-SXM4-40GB
+    memory: 40Gi
+    interconnect: NVLink
+    cuda_stack: [CUDA Cores, Tensor Cores, HBM2, NVLink]
+    tagline: High Throughput
+  h100.yaml: |
+    product: NVIDIA-H100-80GB-HBM3
+    memory: 80Gi
+    interconnect: NVLink
+    cuda_stack: [CUDA Cores, Tensor Cores, HBM3, NVLink]
+    tagline: Maximum Performance
+  h200.yaml: |
+    product: NVIDIA-H200
+    memory: 141Gi
+    interconnect: NVLink
+    cuda_stack: [CUDA Cores, Tensor Cores, HBM3e, NVLink]
+    tagline: Next-Gen Performance
+---
+# Example ResourceQuota for multi-tenant GPU FinOps attribution.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-team-quota
+  namespace: kserve-demo
+spec:
+  hard:
+    requests.nvidia.com/gpu: "8"
+    limits.nvidia.com/gpu: "8"
+    requests.cpu: "64"
+    requests.memory: 256Gi

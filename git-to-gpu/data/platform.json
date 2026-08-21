@@ -1,0 +1,169 @@
+{
+  "artifacts": [
+    {
+      "id": "59257d72ac",
+      "name": "fraud-xgb",
+      "version": "v1.0.0",
+      "kind": "ModelArtifact",
+      "framework": "xgboost",
+      "preferred_runtime": "xgboost",
+      "preferred_gpu": null,
+      "storage": "s3",
+      "uri": "s3://ai-factory/models/fraud-xgb/v1.0.0/model.bin",
+      "commit": "c7ddb77",
+      "metrics": {
+        "auc": 0.941,
+        "f1": 0.89
+      },
+      "status": "registered",
+      "lineage": {
+        "git": "main@c7ddb77",
+        "pipeline": "kf-run-59257d",
+        "trained_on": "kubeflow-cluster",
+        "evaluated": true
+      },
+      "created_at": "2026-08-20T15:04:56.891998+00:00",
+      "note": "Versioned artifact — not a container image"
+    },
+    {
+      "id": "493080b2a4",
+      "name": "vision-resnet",
+      "version": "v1.0.0",
+      "kind": "ModelArtifact",
+      "framework": "pytorch",
+      "preferred_runtime": "triton",
+      "preferred_gpu": "a100",
+      "storage": "s3",
+      "uri": "s3://ai-factory/models/vision-resnet/v1.0.0/model.bin",
+      "commit": "e48fd35",
+      "metrics": {
+        "top1": 0.782,
+        "latency_ms": 12.4
+      },
+      "status": "registered",
+      "lineage": {
+        "git": "main@e48fd35",
+        "pipeline": "kf-run-493080",
+        "trained_on": "kubeflow-cluster",
+        "evaluated": true
+      },
+      "created_at": "2026-08-20T15:04:56.892100+00:00",
+      "note": "Versioned artifact — not a container image"
+    },
+    {
+      "id": "0a7138d059",
+      "name": "assist-llm",
+      "version": "v1.0.0",
+      "kind": "ModelArtifact",
+      "framework": "transformers",
+      "preferred_runtime": "vllm",
+      "preferred_gpu": "h100",
+      "storage": "oci",
+      "uri": "oci://registry.local/models/assist-llm:v1.0.0",
+      "commit": "75fc1e1",
+      "metrics": {
+        "perplexity": 8.2,
+        "tokens_per_s": 1840
+      },
+      "status": "registered",
+      "lineage": {
+        "git": "main@75fc1e1",
+        "pipeline": "kf-run-0a7138",
+        "trained_on": "kubeflow-cluster",
+        "evaluated": true
+      },
+      "created_at": "2026-08-20T15:04:56.892111+00:00",
+      "note": "Versioned artifact — not a container image"
+    },
+    {
+      "id": "5fced67fc5",
+      "name": "demo-llm",
+      "version": "v1.0.0",
+      "kind": "ModelArtifact",
+      "framework": "transformers",
+      "preferred_runtime": "vllm",
+      "preferred_gpu": "h200",
+      "storage": "s3",
+      "uri": "s3://ai-factory/models/demo-llm/v1.0.0/model.bin",
+      "commit": "c89e640",
+      "metrics": {
+        "perplexity": 7.9,
+        "tokens_per_s": 1920
+      },
+      "status": "registered",
+      "lineage": {
+        "git": "main@c89e640",
+        "pipeline": "kf-run-5fced6",
+        "trained_on": "kubeflow-cluster",
+        "evaluated": true
+      },
+      "created_at": "2026-08-20T15:04:59.744436+00:00",
+      "note": "Versioned artifact — not a container image",
+      "migrated_at": "2026-08-20T15:05:01.995537+00:00"
+    }
+  ],
+  "services": [
+    {
+      "id": "5a7bf4d03e",
+      "name": "fraud-xgb-isvc",
+      "kind": "InferenceService",
+      "artifact_id": "59257d72ac",
+      "artifact_uri": "s3://ai-factory/models/fraud-xgb/v1.0.0/model.bin",
+      "artifact_version": "v1.0.0",
+      "runtime": "xgboost",
+      "gpu": null,
+      "endpoint": "http://fraud-xgb.kserve.svc/v1/models/fraud-xgb:predict",
+      "status": "Ready",
+      "replicas": 1,
+      "created_at": "2026-08-20T15:04:56.892088+00:00"
+    },
+    {
+      "id": "7440e3dd39",
+      "name": "vision-resnet-isvc",
+      "kind": "InferenceService",
+      "artifact_id": "493080b2a4",
+      "artifact_uri": "s3://ai-factory/models/vision-resnet/v1.0.0/model.bin",
+      "artifact_version": "v1.0.0",
+      "runtime": "triton",
+      "gpu": "a100",
+      "endpoint": "http://vision-resnet.kserve.svc/v1/models/vision-resnet:predict",
+      "status": "Ready",
+      "replicas": 2,
+      "created_at": "2026-08-20T15:04:56.892104+00:00"
+    },
+    {
+      "id": "fc356ab3cc",
+      "name": "assist-llm-isvc",
+      "kind": "InferenceService",
+      "artifact_id": "0a7138d059",
+      "artifact_uri": "oci://registry.local/models/assist-llm:v1.0.0",
+      "artifact_version": "v1.0.0",
+      "runtime": "vllm",
+      "gpu": "h100",
+      "endpoint": "http://assist-llm.kserve.svc/v1/models/assist-llm:predict",
+      "status": "Ready",
+      "replicas": 2,
+      "created_at": "2026-08-20T15:04:56.892114+00:00"
+    },
+    {
+      "id": "6705a8035f",
+      "name": "demo-llm-isvc",
+      "kind": "InferenceService",
+      "artifact_id": "5fced67fc5",
+      "artifact_uri": "oci://registry.local/models/demo-llm:v1.0.0",
+      "artifact_version": "v1.0.0",
+      "runtime": "vllm",
+      "gpu": "h200",
+      "endpoint": "http://demo-llm.kserve.svc/v1/models/demo-llm:predict",
+      "status": "Ready",
+      "replicas": 2,
+      "created_at": "2026-08-20T15:05:00.297855+00:00"
+    }
+  ],
+  "stats": {
+    "commits": 13,
+    "pipeline_runs": 4,
+    "artifacts": 4,
+    "inferences": 0
+  }
+}
