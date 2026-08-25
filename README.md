@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-23-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-26-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -164,6 +164,23 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 - **Description**: Open-source AI agent framework supporting tool calling, multimodal interaction, and adaptive learning.
 - **Key Features**: Tool ecosystem, custom agent creation, extensible architecture
 
+### OpenAI Codex 🧩
+- **Description**: Local coding agent (Codex CLI / app-server) — model-driven command execution, file editing, MCP tools, and sandboxing; distributed via npm with a Rust core.
+- **Key Features**:
+  - Layered architecture: npm CLI → app-server (JSON-RPC) → codex-core → model / sandbox / MCP
+  - TUI, exec (headless), IDE, and TypeScript/Python SDKs
+  - MCP server/client integration for external tools
+  - Platform sandbox + exec policy + user approval
+- **Docs**: [codex/docs/architecture-analysis/](./codex/docs/architecture-analysis/)
+
+### DeepSeek Harness 🔌
+- **Description**: Cordis-based agent harness (DeepSeek Harness) with plugins, skills, MCP client, and headless CLI profiles — used to host vertical agents such as recruit-agent.
+- **Key Features**:
+  - Plugin system: tools, skills, MCP client (`@deepseek-ai/dsh-mcp-client`)
+  - Headless profile for non-interactive agent runs
+  - Example plugins including Recruit Agent (`@deepseek-ai/dsh-recruit-agent`)
+- **Path**: [deepseek-harness-master/](./deepseek-harness-master/)
+
 ---
 
 ## 🤖 2.2 Multi-Agent Collaboration Systems
@@ -198,12 +215,13 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 - **Tech Stack**: FastAPI, Vue 3, PostgreSQL, Redis, Docker, Kubernetes
 
 ### RecruitOS + HR Agent 👥
-- **Description**: Recruitment management system (RecruitOS) with an integrated HR Agent AI service providing understanding, generation, and recommendation capabilities. RecruitOS depends on the HR Agent for all AI features.
+- **Description**: Recruitment management system (RecruitOS) with an integrated HR Agent AI service providing understanding, generation, and recommendation capabilities. Also packaged as a DeepSeek Harness plugin (`@deepseek-ai/dsh-recruit-agent`) with skills and tools for headless agent runs.
 - **Key Features**:
   - Full recruitment workflow: data, rules, permissions, execution, and audit
   - HR Agent with LLM-powered drafting, parsing, dialogue, and analysis
   - JWT authentication with role-based permissions (8 demo roles)
   - Offline mock mode when no API key is configured
+  - DeepSeek Harness plugin: skills (`hr-recruitment`, JD/resume/interview/offer) + RecruitOS/HR Agent HTTP tools
 - **Tech Stack**: React + TypeScript + Vite + Ant Design + Recharts, Express + TypeScript + Prisma + SQLite
 
 ### JIRA System 👔
@@ -230,6 +248,16 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
   - Contract drafting with multiple drafting styles
   - Q&A AI for labor law, financial compliance, and enterprise globalization
 - **Tech Stack**: Vue 3 + TypeScript + Vite + Element Plus + Pinia, FastAPI + SQLAlchemy + SQLite, OpenAI-compatible API
+
+### Legal Agent MCP 🔗
+- **Description**: MCP Server that exposes Legal Agent capabilities to AI hosts (Cursor, Codex, DeepSeek Harness) over stdio. Thin adapter: MCP protocol ↔ HTTP + JWT ↔ Legal Agent backend (`:8010`).
+- **Key Features**:
+  - Six MCP tools: `legal_search`, `legal_chat`, `contract_draft`, `contract_review_file`, `contract_compare_files`, `legal_capabilities`
+  - Lazy JWT auth (`LEGAL_AGENT_TOKEN` or username/password login)
+  - Integrates with Cursor (`mcp.json`), Codex (`config.toml`), and DeepSeek Harness MCP client
+  - Architecture docs + PPT: [legal-agent-mcp/docs/](./legal-agent-mcp/docs/)
+- **Tech Stack**: TypeScript, Node.js ≥ 20, `@modelcontextprotocol/sdk`, Zod
+- **Path**: [legal-agent-mcp/](./legal-agent-mcp/)
 
 ---
 
@@ -263,7 +291,9 @@ Eric's AI Project Collection
 └── 🤖 AI Agent
     ├── 🧠 Open-Source Agent Frameworks
     │   ├── openakita/                # Open-source multi-agent AI assistant
-    │   └── openclaw-main/            # AI agent framework
+    │   ├── openclaw-main/            # AI agent framework
+    │   ├── codex/                    # OpenAI Codex CLI / app-server
+    │   └── deepseek-harness-master/  # Cordis agent harness + MCP client
     │
     ├── 🤖 Multi-Agent Collaboration
     │   ├── agent-model-system/       # Three-agent collaboration system
@@ -271,13 +301,14 @@ Eric's AI Project Collection
     │
     ├── 🏢 Enterprise AI Platforms
     │   ├── e-claw/                   # Enterprise AI agent platform
-    │   ├── recruit-agent/            # RecruitOS + HR Agent
+    │   ├── recruit-agent/            # RecruitOS + HR Agent (+ DSH plugin)
     │   └── jira-system/              # Project management system
     │
     └── 💬 Intelligent Q&A & Vertical Agents
         ├── deepseek-qa-system/       # DeepSeek Q&A system
         ├── ai-qa-system/             # Intelligent Q&A system
-        └── legal-agent/              # Intelligent legal agent platform
+        ├── legal-agent/              # Intelligent legal agent platform
+        └── legal-agent-mcp/          # MCP Server for Legal Agent (Cursor/Codex/DSH)
 ```
 
 ---
@@ -378,6 +409,19 @@ python console/main.py
 | **8005** | [git-to-gpu](./git-to-gpu/) | Narrative Git→GPU demo console |
 | **8006** | [ai-ml-factory](./ai-ml-factory/) | Production scaffold console + editable Pipeline editor |
 
+### ⚖️ Launch Legal Agent + MCP Server
+
+```bash
+# 1) Start Legal Agent backend
+cd legal-agent/backend
+uvicorn app.main:app --host 127.0.0.1 --port 8010
+
+# 2) Build & run MCP Server (stdio; usually spawned by Cursor/Codex)
+cd ../../legal-agent-mcp
+npm install && npm run build
+# Configure in ~/.cursor/mcp.json — see legal-agent-mcp/README.md
+```
+
 ---
 
 ## 📖 Detailed Documentation
@@ -412,7 +456,10 @@ python console/main.py
 | **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
 | **AI QA System** | [ai-qa-system/README.md](./ai-qa-system/README.md) |
 | **Legal Agent** | [legal-agent/README.md](./legal-agent/README.md) |
-| **RecruitOS + HR Agent** | [recruit-agent/README.md](./recruit-agent/README.md) |
+| **Legal Agent MCP** | [legal-agent-mcp/README.md](./legal-agent-mcp/README.md) · [架构文档](./legal-agent-mcp/docs/architecture.md) · [PPT](./legal-agent-mcp/docs/architecture.pptx) |
+| **RecruitOS + HR Agent** | [recruit-agent/README.md](./recruit-agent/README.md) · [Harness 插件说明](./recruit-agent/docs/deepseek-harness-plugin.md) |
+| **DeepSeek Harness** | [deepseek-harness-master/](./deepseek-harness-master/) |
+| **OpenAI Codex** | [codex/](./codex/) · [架构分析](./codex/docs/architecture-analysis/) |
 | **JIRA System** | [jira-system/](./jira-system/) |
 
 ---
@@ -429,7 +476,8 @@ python console/main.py
 
 ### AI-Related Technologies
 - **Vector Databases**: ChromaDB, FAISS
-- **Agent Frameworks**: LangChain, OpenClaw
+- **Agent Frameworks**: LangChain, OpenClaw, OpenAI Codex, DeepSeek Harness (Cordis)
+- **Agent Protocols**: Model Context Protocol (MCP) — stdio / tools/list · tools/call
 - **AI Safety & Guardrails**: Presidio, Lakera, LlamaGuard, Bedrock, policy-as-code
 - **Model Training & Serving**: Kubeflow Pipelines v2, KServe, Triton, vLLM, XGBoost, MLflow, MinIO/S3
 - **Model Deployment / Gateways**: LiteLLM, Ollama, OpenAI-compatible cluster gateway
@@ -444,7 +492,8 @@ python console/main.py
 - Customer service automation
 - Document processing and analysis (OCR, contract review)
 - Knowledge management and legal research
-- Recruitment management and HR AI assistance
+- Legal Agent via MCP in Cursor / Codex / DeepSeek Harness
+- Recruitment management and HR AI assistance (including Harness headless plugin)
 - Workflow automation
 - Issue tracking and management
 - GPU resource allocation
@@ -512,12 +561,12 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 23
-- **Categories**: AI Infra (13), AI Agent (10)
-- **Language Support**: Python, TypeScript, JavaScript, Go
+- **Total Projects**: 26
+- **Categories**: AI Infra (13), AI Agent (13)
+- **Language Support**: Python, TypeScript, JavaScript, Go, Rust (Codex)
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
-- **Highlights**: AI/ML Factory (editable KFP specs → KServe → GPU), ClawManager (Kubernetes-native virtual desktop + AI Gateway), OpenAkita (multi-agent), AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
+- **Highlights**: Legal Agent MCP (Cursor/Codex/DSH), DeepSeek Harness + Recruit Agent plugin, OpenAI Codex architecture, AI/ML Factory (KFP → KServe → GPU), ClawManager, OpenAkita, AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
 
 ---
 
@@ -529,6 +578,6 @@ Special thanks to all contributors in the open-source community, especially:
 
   Made with ❤️ by Eric
 
-  Last updated: 2026-08-21
+  Last updated: 2026-08-25
 
 </div>
