@@ -92,3 +92,4 @@ recruit-agent/
 - 外部渠道/消息/电子签/日历为可运行模拟实现。
 - 附件目录：`backend/uploads/`
 - 重置演示数据：`npm --prefix backend run db:reset`
+- **DeepSeek Harness 插件**：见 [docs/deepseek-harness-plugin.md](docs/deepseek-harness-plugin.md)

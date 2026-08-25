@@ -775,7 +775,8 @@
     },
     "packages/bundle/headless": {
       "ignoreDependencies": [
-        "@deepseek-ai/dsh-code-runtime-worker-thread"
+        "@deepseek-ai/dsh-code-runtime-worker-thread",
+        "@deepseek-ai/dsh-recruit-agent"
       ]
     },
     "packages/bundle/web-app": {

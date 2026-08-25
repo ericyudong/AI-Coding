@@ -8,6 +8,8 @@
   config:
     persona: >-
       You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+      When recruitment tasks involve RecruitOS or HR workflows, load the hr-recruitment skill
+      and use recruitos_* / hr_agent_invoke tools (requires RECRUITOS_JWT when calling APIs).
 
 # The shared module-reload HMR row stays off; the launcher's watch-only
 # fallback still keeps the user patch layers live until the run exits.
@@ -33,3 +35,10 @@
       inject: [headlessStartup]
       config:
         task: !!js ctx.headlessStartup.task
+
+    # RecruitOS / HR Agent integration (optional auth via RECRUITOS_JWT at tool call).
+    - id: recruit-agent
+      name: '@deepseek-ai/dsh-recruit-agent'
+      config:
+        recruitosBaseUrl: http://127.0.0.1:3001
+        hrAgentBaseUrl: http://127.0.0.1:3002

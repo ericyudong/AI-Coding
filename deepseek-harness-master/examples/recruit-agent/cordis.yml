@@ -1,0 +1,88 @@
+# HR recruiting agent over RecruitOS + HR Agent.
+# Requires RECRUITOS_JWT and a running recruit-agent stack (backend :3001, hr-agent :3002).
+
+- id: settings
+  name: '@deepseek-ai/dsh-settings-file'
+
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    thinking: enabled
+    reasoningEffort: high
+    models:
+      - id: deepseek-v4-flash
+        contextWindow: 128000
+
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+
+- id: bash
+  name: '@deepseek-ai/dsh-bash-local'
+  config:
+    timeoutMs: 60000
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: main
+        provider: deepseek-official
+        model: deepseek-v4-flash
+        cwd: !!js process.cwd()
+    workspaceContext:
+      maxBytes: 32768
+    persona: |
+      你是 RecruitOS 招聘 AI 助手（HR Agent），协助招聘 HR、用人经理完成 JD、初筛、面试与 Offer 工作。
+      优先使用 `skill` 加载 hr-recruitment 等技能，并通过 recruitos_* 与 hr_agent_invoke 工具访问系统。
+      高风险业务动作只生成草稿或提议，由用户在 RecruitOS 中确认。
+    toolOrder:
+      - skill
+      - recruitos_query
+      - recruitos_search
+      - hr_agent_invoke
+      - recruitos_save_draft
+      - recruitos_propose_action
+      - bash
+
+- id: recruit-agent
+  name: '@deepseek-ai/dsh-recruit-agent'
+  config:
+    recruitosBaseUrl: http://127.0.0.1:3001
+    hrAgentBaseUrl: http://127.0.0.1:3002
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: none
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  config:
+    thresholdRatio: 0.8
+    retainRatio: 0.16
+    maxTokens: 8192
+    compactionRetries: 1
+
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+
+- id: fs-local
+  name: '@deepseek-ai/dsh-fs-local'
+  config:
+    cwd: !!js process.cwd()
+
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
