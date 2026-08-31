@@ -1,0 +1,138 @@
+from bisheng.common.errcode.base import BaseErrorCode
+
+
+class FileUploadError(BaseErrorCode):
+    __doc__ = "LinsightFailed to upload documents"
+    Code: int = 11020
+    Msg: str = "Upload Failed"
+
+
+# Your Idea has run out of uses, please use the new invite code to activate the Idea feature
+class LinsightUseUpError(BaseErrorCode):
+    Code: int = 11030
+    Msg: str = "Your Idea has run out of uses, please use the new invite code to activate the Idea feature"
+
+
+# Failed to submit Idea User Issue
+class LinsightQuestionError(BaseErrorCode):
+    Code: int = 11040
+    Msg: str = "Failed to submit Idea User Issue"
+
+
+# Failed to initialize the Inspiration Workbench tool
+class LinsightToolInitError(BaseErrorCode):
+    Code: int = 11080
+    Msg: str = "Failed to initialize the Inspiration Workbench tool"
+
+
+# InspirationBisheng LLMRelated Errors
+class LinsightBishengLLMError(BaseErrorCode):
+    Code: int = 11090
+    Msg: str = "InspirationBisheng LLMRelated Errors"
+
+
+# The Inspiration session version has been completed or is being executed and cannot be executed again
+class LinsightSessionVersionRunningError(BaseErrorCode):
+    Code: int = 11120
+    Msg: str = "The Inspiration session version has been completed or is being executed and cannot be executed again"
+
+
+# Failed to start the Ideas task
+class LinsightStartTaskError(BaseErrorCode):
+    Code: int = 11130
+    Msg: str = "Failed to start the Ideas task"
+
+
+# Failed to get Ideas queue queue status
+class LinsightQueueStatusError(BaseErrorCode):
+    Code: int = 11140
+    Msg: str = "Failed to get Ideas queue queue status"
+
+
+class InviteCodeInvalidError(BaseErrorCode):
+    Code: int = 11180
+    Msg: str = "The invite code you entered is invalid"
+
+
+class InviteCodeBindError(BaseErrorCode):
+    Code: int = 11190
+    Msg: str = "Additional invite codes bound"
+
+
+# ---------------------------------------------------------------------------
+# F035 灵思任务模式 · Skill 管理错误码（段位 11050–11069）
+#
+# 契约 release-contract 表 3 将 Skill 管理分配在 11050–11069 段。原占用该段的存量
+# SOP 检索/管理错误码（LinsightVectorModelError 11050 / LinsightDocSearchError 11060
+# / LinsightDocNotFoundError 11070，design §8.6「计划下线的 SOP 动态生成链路」）已
+# 随 SOP 残留代码整体移除（2026-06-17，sop_manage.py 等已删，段位腾空）。
+# Skill 错误码沿用已发布编号 11051–11058，不回迁到腾空的 11050（已发布编码不重编）。
+# ---------------------------------------------------------------------------
+
+
+# Skill frontmatter / name validation failed
+class SkillValidationError(BaseErrorCode):
+    Code: int = 11051
+    Msg: str = "Skill validation failed: invalid frontmatter or name"
+
+
+# Uploaded skill file (the .md / .zip / .skill payload itself) exceeds the 10MB limit
+class SkillFileTooLargeError(BaseErrorCode):
+    Code: int = 11052
+    Msg: str = "Skill file exceeds the 10MB size limit"
+
+
+# Skill not found in the current tenant
+class SkillNotFoundError(BaseErrorCode):
+    Code: int = 11053
+    Msg: str = "Skill not found"
+
+
+# No permission to operate on this skill
+class SkillPermissionError(BaseErrorCode):
+    Code: int = 11054
+    Msg: str = "No permission to operate on this skill"
+
+
+# A skill with the same name already exists in the current tenant
+# NOTE: contract originally allocated 11050 for duplicate-name; shipped as 11055
+# (11050 was occupied by a since-removed SOP code). Kept at 11055 — released error
+# codes are not renumbered.
+class SkillNameDuplicateError(BaseErrorCode):
+    Code: int = 11055
+    Msg: str = "A skill with the same name already exists"
+
+
+# ---------------------------------------------------------------------------
+# Skill import-from-GitHub errors (11056–11058). Transport/parse concerns only;
+# the downloaded directory then flows through the same create chain as upload,
+# so frontmatter/size/duplicate failures still reuse 11051/11052/11055.
+# ---------------------------------------------------------------------------
+
+
+# The pasted URL is not a parseable public GitHub directory link
+class SkillGitHubUrlInvalidError(BaseErrorCode):
+    Code: int = 11056
+    Msg: str = "Invalid GitHub URL: expecting https://github.com/{owner}/{repo}/tree/{branch}/{path}"
+
+
+# Repo/branch/path not found, network error or timeout while fetching from GitHub
+class SkillGitHubFetchError(BaseErrorCode):
+    Code: int = 11057
+    Msg: str = "Failed to fetch skill from GitHub (repo/branch/path not found or network error)"
+
+
+# GitHub API rate limit exceeded (anonymous access is capped at 60 requests/hour)
+class SkillGitHubRateLimitError(BaseErrorCode):
+    Code: int = 11058
+    Msg: str = "GitHub API rate limit exceeded, please retry later"
+
+
+# Bundle contents exceed the unpacked-size limit: sum of the extracted files (upload)
+# or of the downloaded files (GitHub import). Distinct from 11052 — that one is about
+# the uploaded payload itself, and a 7MB archive can still expand past this line, so
+# the two must not share one message ("file exceeds 10MB" on a 7MB file reads as a bug).
+# Numbered after the GitHub block to keep this file in ascending code order.
+class SkillBundleTooLargeError(BaseErrorCode):
+    Code: int = 11059
+    Msg: str = "Skill bundle contents exceed the 100MB unpacked size limit"

@@ -1,0 +1,547 @@
+// @ts-strict-ignore
+// src/hooks/useLinsightManager.ts
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    useRecoilCallback,
+    useRecoilState,
+    useRecoilValue,
+    useSetRecoilState
+} from 'recoil';
+import { SSE } from 'sse.js';
+import { continueLinsight, startLinsight } from '~/api/linsight';
+import { ConversationData, QueryKeys } from '~/types/chat';
+import { useToastContext } from '~/Providers';
+import store from '~/store';
+import { activeSessionIdState, LinsightInfo, linsightMapState, SopStatus, submissionState, SubmissionState } from '~/store/linsight';
+import {
+    addConversation,
+    formatTime,
+    toggleNav
+} from '~/utils';
+
+
+export const useLinsightManager = () => {
+    const [linsightMap, setLinsightMap] = useRecoilState(linsightMapState);
+    const setActiveSessionId = useSetRecoilState(activeSessionIdState);
+
+    // 创建新会话信息
+    const createLinsight = useCallback((versionId: string, initialData: Omit<LinsightInfo, 'id'>) => {
+        const newLinsight: LinsightInfo = {
+            id: versionId,
+            ...initialData
+        };
+
+        setLinsightMap(prevMap => {
+            const newMap = new Map(prevMap);
+            newMap.set(versionId, newLinsight);
+            return newMap;
+        });
+
+        setActiveSessionId(versionId);
+        return versionId;
+    }, [setLinsightMap, setActiveSessionId]);
+
+    // 更新会话信息
+    const updateLinsight = useCallback((versionId: string, update: Partial<LinsightInfo> | ((current: LinsightInfo) => Partial<LinsightInfo>)) => {
+        setLinsightMap(prevMap => {
+            if (!prevMap.has(versionId)) return prevMap;
+
+            const newMap = new Map(prevMap);
+            const current = newMap.get(versionId)!;
+
+            // 处理update为函数的情况
+            const updatedValue = typeof update === 'function'
+                ? update(current)
+                : update;
+
+            newMap.set(versionId, {
+                ...current,
+                ...updatedValue
+            });
+            return newMap;
+        });
+    }, [setLinsightMap]);
+
+    // 获取会话信息
+    const getLinsight = (versionId: string) => {
+        return linsightMap.get(versionId) || null;
+    };
+
+    // F035 多轮对话：在已完成的同一会话里追加新一轮。
+    // 复用同一 session_version (versionId) + 同一 agent thread，后端保留全部上下文；
+    // 前端把当前轮快照进 history，再清空顶层字段开新轮，WS 事件继续更新顶层（=当前轮）。
+    const continueConversation = useCallback(async (versionId: string, question: string) => {
+        updateLinsight(versionId, (prev) => ({
+            history: [
+                ...(prev.history || []),
+                {
+                    // Stable id for React keys: position-derived but never reused
+                    // (history is append-only, so the length is monotonic).
+                    roundId: `${versionId}_round_${(prev.history || []).length}`,
+                    question: prev.question,
+                    tasks: prev.tasks || [],
+                    sessionSteps: prev.sessionSteps || [],
+                    output_result: prev.output_result,
+                    file_list: prev.file_list || [],
+                    // Carry the finished round's terminal state so ConversationRound
+                    // can render its own stopped/error banner in history.
+                    status: prev.status,
+                    taskError: prev.taskError,
+                    taskErrorInfo: prev.taskErrorInfo,
+                },
+            ],
+            question,
+            tasks: [],
+            sessionSteps: [],
+            output_result: null,
+            file_list: [],
+            taskError: '',
+            status: SopStatus.Running,
+        }));
+        try {
+            await continueLinsight(versionId, question);
+        } catch (e) {
+            console.error('continueLinsight failed :>> ', e);
+            updateLinsight(versionId, { status: SopStatus.Stoped, taskError: String(e) });
+        }
+    }, [updateLinsight]);
+
+    // 切换当前会话
+    const switchSession = useCallback((versionId: string) => {
+        setActiveSessionId(versionId);
+    }, [setActiveSessionId]);
+
+    // 切换会话，更新会话信息
+    const switchAndUpdateLinsight = useCallback((versionId: string, update: any, customTask?: boolean) => {
+        const linsight = getLinsight(versionId)
+        if (linsight) return updateLinsight(versionId, { inputSop: false }); // 恢复用户未输入状态
+
+        const { status, sop, execute_feedback, output_result, tasks, files, ...params } = update
+        const newStatus = mapSessionVersionStatus(status, execute_feedback);
+        const data = {
+            ...params,
+            output_result,
+            execute_feedback,
+            // summary: output_result?.answer,
+            status: newStatus,
+            files: files?.map(file => ({ ...file, file_name: decodeURIComponent(file.original_filename) })) || [],
+            tasks: customTask ? tasks : buildTaskTree(tasks),
+            taskError: 'failed' === status ? output_result?.error_message : '',
+            file_list: output_result?.final_files || [],
+            sop: 'sop_generation_failed' === status ? '' : sop,
+            sopError: 'sop_generation_failed' === status ? sop : '',
+            queueCount: 0
+        }
+
+        createLinsight(versionId, data);
+    }, [linsightMap])
+
+    return {
+        createLinsight,
+        updateLinsight,
+        getLinsight,
+        switchSession,
+        switchAndUpdateLinsight,
+        continueConversation,
+        linsightMap
+    };
+};
+
+// 获取当前活动会话的Hook
+export const useActiveLinsight = () => {
+    const activeSessionId = useRecoilValue(activeSessionIdState);
+    const linsightMap = useRecoilValue(linsightMapState);
+
+    return activeSessionId
+        ? linsightMap.get(activeSessionId) || null
+        : null;
+};
+
+
+export const useLinsightSessionManager = (versionId: string) => {
+    const linsightSubmission = useRecoilValue(submissionState(versionId));
+    // 添加或更新会话状态
+    const setLinsightSubmission = useRecoilCallback(({ set }) =>
+        (versionId: string, state: SubmissionState) => {
+            set(submissionState(versionId), state);
+        },
+        []
+    );
+
+    // 清空指定会话状态
+    const clearLinsightSubmission = useRecoilCallback(({ set }) =>
+        (versionId: string) => {
+            set(submissionState(versionId), null);
+        },
+        []
+    );
+
+    return {
+        linsightSubmission,
+        setLinsightSubmission,
+        clearLinsightSubmission
+    };
+};
+
+
+/**
+ * F035 Track H (P5): submit pipeline for a new task-mode session.
+ * Watches submissionState(versionId) and drives the workbench submit SSE,
+ * then starts execution directly (no SOP generation step anymore).
+ * sessionId规则说明: 新建会话 [new]
+ */
+export const useLinsightSubmit = (versionId, setVersionId, setVersions) => {
+    const [loading, setLoading] = useState(false); // 多会话共用
+    // F035: a new round always submits under the 'new' key (the next version has
+    // no id yet). Watch 'new' fixed — NOT `versionId` — otherwise follow-up rounds
+    // after the first one (versionId is a real id by then) never fire and
+    // "continue conversation" looks dead.
+    const { linsightSubmission, clearLinsightSubmission } = useLinsightSessionManager('new')
+    const { createLinsight, updateLinsight } = useLinsightManager()
+    const queryClient = useQueryClient();
+    const { showToast } = useToastContext();
+    const [error, setError] = useState(false);
+    const { setConversation } = store.useCreateConversationAtom(0);
+    // 使用 ref 存储当前活跃版本 ID
+    const activeVersionIdRef = useRef(versionId);
+    // 同步最新活跃版本 ID
+    useEffect(() => {
+        activeVersionIdRef.current = versionId;
+    }, [versionId]);
+
+    // 切换非新建会话不展示loading
+    useEffect(() => {
+        if (versionId !== 'new') setTimeout(() => {
+            setLoading(false)
+        }, 2000);
+    }, [versionId])
+
+    useEffect(() => {
+        if (linsightSubmission) {
+            console.log('linsightSubmission :>> ', linsightSubmission);
+
+            // 新建会话获取详情
+            if (linsightSubmission.isNew) {
+                setLoading(true)
+                toggleNav(false)
+
+                const { org_knowledge_enabled, personal_knowledge_enabled, tools } = convertTools(linsightSubmission.tools)
+                const payload = {
+                    question: linsightSubmission.question,
+                    org_knowledge_enabled,
+                    personal_knowledge_enabled,
+                    files: linsightSubmission.files,
+                    tools,
+                    // F035: per-task model selection; null lets the backend fall back
+                    // to the tenant's linsight default model
+                    model: linsightSubmission.model || null,
+                    // F035 Track H: user-picked skill names (forward-compatible —
+                    // the submit schema does not consume this field yet)
+                    skills: linsightSubmission.skills || [],
+                    // F035: continue an existing session (follow-up round) so the
+                    // backend appends a version instead of creating a new 会话.
+                    session_id: linsightSubmission.sessionId || null,
+                }
+
+                const sse = new SSE(`${__APP_ENV__.BASE_URL}/api/v1/linsight/workbench/submit`, {
+                    payload: JSON.stringify(payload),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                });
+
+                let versionId = ''
+                sse.addEventListener('linsight_workbench_submit', (e: MessageEvent) => {
+                    const data = JSON.parse(e.data);
+                    const { linsight_session_version, message_session } = data;
+
+                    versionId = linsight_session_version.id
+                    setVersionId(versionId)
+                    setVersions((prevVersions) => [{
+                        id: versionId,
+                        name: formatTime(linsight_session_version.version, true)
+                    }, ...prevVersions])
+
+                    // replaceUrl
+                    window.history.replaceState({}, '', `${__APP_ENV__.BASE_URL}/linsight/${linsight_session_version.session_id}`);
+
+                    createLinsight(versionId, {
+                        status: SopStatus.SopGenerating, //linsight_session_version.status,
+                        tools: tools,
+                        files: linsight_session_version.files?.map(file => ({ ...file, file_name: decodeURIComponent(file.original_filename) })) || [],
+                        user_id: linsight_session_version.user_id,
+                        question: linsightSubmission.question,
+                        org_knowledge_enabled,
+                        personal_knowledge_enabled,
+                        sop: '',
+                        execute_feedback: null,
+                        version: versionId,
+                        create_time: linsight_session_version.create_time.rep,
+                        session_id: linsight_session_version.session_id,
+                        output_result: null,
+                        score: null,
+                        has_reexecute: false,
+                        update_time: linsight_session_version.update_time,
+                        title: message_session.flow_name,
+                        tasks: [],
+                        summary: '',
+                        file_list: [],
+                        inputSop: false,
+                        sopError: '',
+                        taskError: '',
+                        queueCount: 0
+                    })
+                })
+
+                sse.addEventListener('linsight_workbench_title_generate', (e: MessageEvent) => {
+                    const data = JSON.parse(e.data);
+                    // 新建会话
+                    queryClient.setQueryData<ConversationData>([QueryKeys.allConversations], (convoData) => {
+                        if (!convoData) {
+                            return convoData;
+                        }
+                        updateLinsight(versionId, {
+                            title: data.task_title
+                        })
+                        setConversation((prevState: any) => {
+                            return {
+                                ...prevState,
+                                conversationId: data.chat_id
+                            }
+                        })
+                        return addConversation(convoData, {
+                            conversationId: data.chat_id,
+                            createdAt: "",
+                            endpoint: null,
+                            endpointType: null,
+                            model: "",
+                            flowType: 20,
+                            title: data.task_title,
+                            tools: [],
+                            updatedAt: ""
+                        });
+                    });
+                    // F035 deepagents: no SOP generation step anymore — kick off
+                    // execution right after the session is created; the WS stream
+                    // (task-message-stream) takes over from here.
+                    startLinsight(versionId).then(() => {
+                        updateLinsight(versionId, { status: SopStatus.Running })
+                        setLoading(false)
+                    }).catch((err) => {
+                        console.error('start-execute failed :>> ', err);
+                        if (versionId === activeVersionIdRef.current) {
+                            showToast({ message: '任务启动失败，请联系管理员检查灵思任务执行模型状态', status: 'error' });
+                            setError(true)
+                            setLoading(false)
+                        }
+                        updateLinsight(versionId, { taskError: String(err), status: SopStatus.Stoped })
+                    })
+                })
+
+                sse.addEventListener('open', () => {
+                    console.log('connection is opened');
+                });
+
+                sse.addEventListener('error', async (e: MessageEvent) => {
+                    console.error('object :>> ', e);
+                    if (versionId === activeVersionIdRef.current) { // 只有当前活跃会话才展示错误
+                        showToast({
+                            message: 'SOP 生成失败，请联系管理员检查灵思任务执行模型状态',
+                            status: 'error',
+                        });
+                        setError(true)
+                        setLoading(false)
+                    }
+                    updateLinsight(versionId, {
+                        sopError: e.data,
+                        status: SopStatus.SopGenerated,
+                    })
+                })
+                sse.stream();
+            }
+            // F035 Track H (P5): the legacy non-isNew branch (re-execute via the
+            // removed generate-sop SSE) is gone together with SOPEditor/TaskFlow.
+
+            updateLinsight(versionId, {
+                status: SopStatus.SopGenerating,
+                taskError: '',
+                sopError: '',
+                sop: ''
+            })
+            clearLinsightSubmission('new')
+            setError(false)
+        }
+    }, [linsightSubmission])
+
+    return [loading, error]
+}
+
+
+
+// 工具转换数据结构  筛选 -> sop二级列表
+const convertTools = (tools) => {
+    let org_knowledge_enabled = false
+    let personal_knowledge_enabled = false
+
+    const sopTools: any = []
+    tools.forEach(tool => {
+        if (tool.checked && tool.id === 'pro_knowledge') {
+            org_knowledge_enabled = true
+        } else if (tool.checked && tool.id === 'knowledge') {
+            personal_knowledge_enabled = true
+        } else if (tool.checked) {
+            const { id, name, is_preset, description, children } = tool.data
+            sopTools.push({
+                id,
+                name,
+                is_preset,
+                description,
+                children: children.map(api => {
+                    return {
+                        id: api.id,
+                        name: api.name,
+                        tool_key: api.tool_key,
+                        desc: api.desc
+                    }
+                })
+            })
+        }
+    });
+
+    return {
+        org_knowledge_enabled,
+        personal_knowledge_enabled,
+        tools: sopTools
+    }
+}
+
+
+/**
+ * Map a backend session-version status (SessionVersionStatusEnum) to the
+ * frontend SopStatus used by the store. Centralised so the reload path
+ * (switchAndUpdateLinsight) agrees with the live WS pump on what "running" means.
+ *
+ * `not_started` means the session has been submitted + enqueued but the Linsight
+ * worker has not picked it up yet (it flips to `in_progress` only on dequeue, in
+ * task_exec._execute_workflow) — i.e. it is QUEUED. The F035 client has no manual
+ * "start" affordance, so `not_started` is never a resting SOP state here; it must
+ * map to Running so the queue polling stays enabled and <QueueCard> survives a
+ * refresh / session switch (otherwise `running` is false and the 排队中 badge is
+ * lost). A genuinely non-queued not_started degrades gracefully: queue-status
+ * returns index 0, so no phantom card shows.
+ *
+ * `waiting_for_user_input` is a dedicated backend state (park-and-release HITL):
+ * the run is parked on an ask_user interrupt, not finished. The live flow never
+ * leaves SopStatus.Running while parked (the WS `user_input` event only changes
+ * the task's status, not the session's), so on reload it MUST also map to Running
+ * — otherwise `running` is false, the ClarifyCard / waiting input is gated off,
+ * and the user sees no input prompt after a refresh.
+ */
+export function mapSessionVersionStatus(status: string, executeFeedback?: string | null): string {
+    switch (status) {
+        case 'sop_generation_failed':
+            return SopStatus.SopGenerated;
+        case 'not_started':
+        case 'in_progress':
+        case 'waiting_for_user_input':
+            return SopStatus.Running;
+        case 'completed':
+            return executeFeedback ? SopStatus.FeedbackCompleted : SopStatus.completed;
+        case 'terminated':
+        case 'failed':
+            return SopStatus.Stoped;
+        default:
+            return status; // unknown status passes through unchanged
+    }
+}
+
+function buildTaskTree(tasks) {
+    let hasTerminated = false
+    const newTasks = tasks.map(task => {
+        const taskTree = {
+            id: task.id,
+            // F035 deepagents tasks carry the title at task_data.name; tolerate a
+            // flat name / legacy display_target too. MUST match the live WS
+            // task_generate mapping (Websocket/index.tsx) or history-loaded turns
+            // render blank task rows (structure present, names empty).
+            name: task.name || task.task_data?.name || task.task_data?.display_target || '',
+            status: hasTerminated ? 'not_started' : task.status === 'waiting_for_user_input' ? 'user_input' : task.status,
+            history: task.history || [],
+            event_type: task.status === 'waiting_for_user_input' ? 'user_input' : '',
+            call_reason: task.input_prompt || '',
+            errorMsg: task.result?.answer || '',
+            // Preserve task_data so splitSessionPseudoTask / PinnedTaskPanel can
+            // recognize the session-global "执行准备" pseudo task (is_session_global)
+            // on reload and lift its steps out, instead of rendering it as a task row.
+            task_data: task.task_data,
+            children: task.children?.map(child => {
+                return {
+                    id: child.id,
+                    name: child.name || child.task_data?.name || child.task_data?.display_target || '',
+                    status: child.status === 'waiting_for_user_input' ? 'user_input' : child.status,
+                    history: child.history || [],
+                    event_type: child.status === 'waiting_for_user_input' ? 'user_input' : '',
+                    call_reason: '',
+                    task_data: child.task_data
+                }
+            }) || []
+        }
+
+        // 处理终止后的任务全部为not_started（隐藏）
+        if (['terminated', 'failed'].includes(task.status)) {
+            hasTerminated = true
+        }
+
+        return taskTree
+    })
+    return newTasks
+
+    // 创建任务ID到任务的映射
+    // const taskMap = new Map();
+    // tasks.forEach(task => taskMap.set(task.id, task));
+
+    // // 存储根任务（一级任务）
+    // const rootTasks: any[] = [];
+    // // 存储二级任务（按parent_task_id分组）
+    // const childTasksMap = new Map();
+
+    // // 第一次遍历：分离一级和二级任务
+    // tasks.forEach(task => {
+    //     if (task.parent_task_id === null) {
+    //         // 一级任务
+    //         rootTasks.push({
+    //             id: task.id,
+    //             name: task.task_data?.target || '',
+    //             status: task.status,
+    //             history: task.history || [],
+    //             event_type: task.status === 'waiting_for_user_input' ? 'user_input' : '',
+    //             call_reason: '',
+    //             children: []  // 初始化子任务数组
+    //         });
+    //     } else {
+    //         // 二级任务（按父ID分组）
+    //         const parentId = task.parent_task_id;
+    //         if (!childTasksMap.has(parentId)) {
+    //             childTasksMap.set(parentId, []);
+    //         }
+    //         childTasksMap.get(parentId).push({
+    //             id: task.id,
+    //             name: task.task_data?.target || '',
+    //             status: task.status,
+    //             history: task.history || [],
+    //             event_type: task.status === 'waiting_for_user_input' ? 'user_input' : '',
+    //             call_reason: ''
+    //             // 二级任务没有children字段
+    //         });
+    //     }
+    // });
+
+    // // 第二次遍历：将二级任务挂载到一级任务
+    // rootTasks.forEach(rootTask => {
+    //     const children = childTasksMap.get(rootTask.id) || [];
+    //     rootTask.children = children;
+    // });
+
+    // return rootTasks;
+}

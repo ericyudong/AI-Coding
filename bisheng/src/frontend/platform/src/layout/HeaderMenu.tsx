@@ -1,0 +1,71 @@
+// @ts-strict-ignore
+import { TabIcon } from "@/components/bs-icons";
+import { userContext } from "@/contexts/userContext";
+import { canManageWorkbenchConfig } from "@/pages/ModelPage/manage/permissions";
+import { useContext, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { NavLink, useLocation } from "react-router-dom";
+
+export default function HeaderMenu({ }) {
+    const { t } = useTranslation()
+    const location = useLocation();
+
+    const { user } = useContext(userContext);
+    // 系统管理员(超管、组超管)
+    const isAdmin = useMemo(() => {
+        return user.role === 'admin'
+    }, [user])
+    const canOpenBuild = isAdmin
+        || Boolean(user.is_child_admin)
+        || Boolean(user.web_menu?.includes('build'))
+        || Boolean(user.web_menu?.includes('create_app'))
+    const canManageWorkbench = canManageWorkbenchConfig(user)
+
+    if (['/build/apps', '/build/tools', '/build/client'].includes(location.pathname.replace(__APP_ENV__.BASE_URL, ''))) {
+        return <div className="build-tab flex justify-center h-[65px] items-center relative">
+            {/* <div className="px-4">
+                <NavLink to={'build/assist'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('build.assistant')}</span>
+                </NavLink>
+            </div> */}
+            {canOpenBuild && <div className="px-4">
+                <NavLink to={'build/apps'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('build.app')}</span>
+                </NavLink>
+            </div>}
+            {canOpenBuild && <div className="px-4">
+                <NavLink to={'build/tools'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('build.tools')}</span>
+                </NavLink>
+            </div>}
+            {canManageWorkbench && <div className="px-4">
+                <NavLink to={'build/client'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('build.workbench')}</span>
+                </NavLink>
+            </div>}
+        </div>
+    }
+
+    if (['/model/management', '/model/finetune'].includes(location.pathname.replace(__APP_ENV__.BASE_URL, ''))) {
+        return <div className="build-tab flex justify-center h-[65px] items-center relative">
+            <div className="px-4">
+                <NavLink to={'model/management'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('model.modelManagement')}</span>
+                </NavLink>
+            </div>
+            <div className="px-4">
+                <NavLink to={'model/finetune'} className="group flex gap-2 items-center px-8 py-2 rounded-md navlink">
+                    <TabIcon className="text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]"></TabIcon>
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-primary dark:group-hover:text-[#fff]">{t('model.modelFineTune')}</span>
+                </NavLink>
+            </div>
+        </div>
+    }
+
+    return null;
+};

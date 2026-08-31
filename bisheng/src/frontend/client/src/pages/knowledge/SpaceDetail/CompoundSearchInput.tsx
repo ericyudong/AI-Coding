@@ -1,0 +1,349 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { X, ChevronDown } from 'lucide-react';
+import { Outlined } from 'bisheng-icons';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem
+} from '~/components/ui/DropdownMenu';
+import { knowledgeSpaceDropdownSurfaceClassName } from '~/components/SidebarListMoreMenu';
+import { cn } from '~/utils';
+import { SpaceTag, getSpaceTagsApi } from '~/api/knowledge';
+import { useLocalize } from "~/hooks";
+
+export interface SearchParams {
+    scope: 'current' | 'all';
+    tagIds: number[];
+    keyword: string;
+}
+
+export interface CompoundSearchInputProps {
+    spaceId: string;
+    isRoot?: boolean;
+    onSearch?: (params: SearchParams) => void;
+    className?: string;
+    /** Render as a single search-icon button that expands into the full field on click. */
+    collapsible?: boolean;
+    /**
+     * `collapsible` variant used inside the file-list toolbar (Figma 13198:75851):
+     * collapsed it is a borderless icon+label button matching its 筛选 / 排序 /
+     * 视图 siblings; expanded it becomes the normal bordered search field.
+     */
+    toolbarMode?: boolean;
+    /** Full-page search: scope + tags always visible, tags rendered inline below the box. */
+    pageMode?: boolean;
+    /** pageMode only: element rendered to the right of the search box inside the 64px header row. */
+    trailing?: React.ReactNode;
+}
+
+export function CompoundSearchInput({ spaceId, isRoot = false, onSearch, className, collapsible = false, toolbarMode = false, pageMode = false, trailing }: CompoundSearchInputProps) {
+    const localize = useLocalize();
+    const [scope, setScope] = useState<'current' | 'all'>('current');
+    const [selectedTags, setSelectedTags] = useState<SpaceTag[]>([]);
+    const [keyword, setKeyword] = useState('');
+    const [isFocused, setIsFocused] = useState(false);
+    const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
+    const [spaceTags, setSpaceTags] = useState<SpaceTag[]>([]);
+
+    // The search field is "expanded" whenever the user is interacting with it,
+    // either via input focus / tag dropdown or the scope DropdownMenu. The parent
+    // toolbar reads this via has-[[data-expanded=true]] to keep its width stable
+    // even when Radix portals the menu out of the focus tree.
+    const isExpanded = isFocused || isScopeMenuOpen || pageMode;
+
+    const containerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const debounceTimerRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        setScope(isRoot ? 'all' : 'current');
+    }, [isRoot]);
+
+    // Fetch space tags from API
+    const refreshTags = useCallback(() => {
+        if (!spaceId) return;
+        getSpaceTagsApi(spaceId).then(setSpaceTags).catch(() => { });
+    }, [spaceId]);
+
+    // Reset search state when switching to a different space
+    useEffect(() => {
+        setSelectedTags([]);
+        setKeyword('');
+        setIsFocused(false);
+        setSpaceTags([]);
+        refreshTags();
+    }, [spaceId, refreshTags]);
+
+    // Handle clicking outside to close the dropdown.
+    // While the scope DropdownMenu is open its portaled content lives outside
+    // containerRef — skip the reset so the search field doesn't collapse.
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isScopeMenuOpen) return;
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsFocused(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isScopeMenuOpen]);
+
+    const isSearching = selectedTags.length > 0 || keyword.trim().length > 0;
+
+    // Collapsed: show only the search icon until the user focuses it or has an active query.
+    const collapsed = collapsible && !isExpanded && !isSearching;
+
+    const fireSearch = (tags: SpaceTag[], kw: string) => {
+        onSearch?.({
+            scope: isRoot ? 'all' : scope,
+            tagIds: tags.map((t) => t.id),
+            keyword: kw,
+        });
+    };
+
+    useEffect(() => {
+        if (debounceTimerRef.current) {
+            window.clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
+        // Keep clear behavior immediate when keyword is empty and no tags.
+        if (keyword.trim() === '' && selectedTags.length === 0) {
+            return;
+        }
+        debounceTimerRef.current = window.setTimeout(() => {
+            fireSearch(selectedTags, keyword);
+            debounceTimerRef.current = null;
+        }, 300);
+        return () => {
+            if (debounceTimerRef.current) {
+                window.clearTimeout(debounceTimerRef.current);
+                debounceTimerRef.current = null;
+            }
+        };
+    }, [keyword, scope, isRoot]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fireSearch(selectedTags, keyword);
+            setIsFocused(false);
+            inputRef.current?.blur();
+        }
+    };
+
+    // Click a tag in the dropdown → select it and immediately search
+    const handleAddTag = (tag: SpaceTag) => {
+        if (selectedTags.length >= 5 || selectedTags.some((t) => t.id === tag.id)) return;
+        const newTags = [...selectedTags, tag];
+        setSelectedTags(newTags);
+        fireSearch(newTags, keyword);
+        inputRef.current?.focus();
+        setIsFocused(true);
+    };
+
+    const handleRemoveTag = (tagId: number) => {
+        const newTags = selectedTags.filter((t) => t.id !== tagId);
+        setSelectedTags(newTags);
+        fireSearch(newTags, keyword);
+        inputRef.current?.focus();
+    };
+
+    const handleClearAll = () => {
+        setSelectedTags([]);
+        setKeyword('');
+        setIsFocused(false);
+        onSearch?.({ scope: isRoot ? 'all' : scope, tagIds: [], keyword: '' });
+    };
+
+    const scopeLabel = scope === 'current' ? localize("com_knowledge.current_location") : localize("com_knowledge.current_space");
+
+    // Toolbar variant, collapsed: a borderless icon+label button that matches the
+    // 筛选 / 排序 / 视图 buttons beside it. Any other state keeps the field skin.
+    const toolbarCollapsed = toolbarMode && collapsed;
+
+    const searchField = (
+        <div
+            className={cn(
+                "flex flex-nowrap items-center w-full overflow-hidden rounded-md",
+                toolbarCollapsed
+                    ? "h-7 min-h-7 max-h-7 gap-1 px-[5px] cursor-pointer text-sm text-text-2 transition-colors hover:bg-fill-1"
+                    : "h-8 min-h-8 max-h-8 bg-white border",
+                !toolbarCollapsed && (collapsible
+                    ? cn(
+                        // Animate gap so icon → input transition feels continuous, not snapped.
+                        "transition-[gap,background-color,border-color,box-shadow] duration-200 ease-out px-2",
+                        collapsed ? "gap-0 cursor-pointer" : "gap-1"
+                    )
+                    : "gap-1 px-2 sm:px-3 transition-[border-color,box-shadow]"),
+                // Active state per Figma 11495:16479 — gray border + gray ring (not blue).
+                // Collapsed = behaves like the sibling icon buttons (bg change on hover, border steady);
+                // expanded = behaves like an input field (border darkens on hover before focus).
+                !toolbarCollapsed && (isFocused
+                    ? "border-[#ddd] shadow-[0_0_0_2px_#f1f5f9]"
+                    : collapsed
+                        ? "border-border-base hover:bg-fill-1"
+                        : "border-border-base hover:border-[#ddd]")
+            )}
+            onClick={() => {
+                inputRef.current?.focus();
+                if (!isFocused) refreshTags();
+                setIsFocused(true);
+            }}
+        >
+                <Outlined.Search className={cn("size-4 shrink-0", toolbarCollapsed ? "text-current" : "text-text-3")} />
+                {toolbarCollapsed && (
+                    <span className="whitespace-nowrap">{localize("com_ui_search")}</span>
+                )}
+
+                {/* 范围选择：仅在输入框聚焦（或菜单已打开）时显示，高亮表示已选范围；仅文案随 current / all 切换 */}
+                {!isRoot && isExpanded && (
+                    <DropdownMenu open={isScopeMenuOpen} onOpenChange={setIsScopeMenuOpen}>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-1 h-6 max-w-[min(120px,40vw)] shrink-0 rounded px-2 text-sm outline-none transition-colors bg-[#F7F7F7] text-text-1 hover:bg-[#F1F1F1]"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <span className="truncate">{scopeLabel}</span>
+                                <ChevronDown className="size-3 shrink-0 opacity-80" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="start"
+                            className={cn('min-w-[120px]', knowledgeSpaceDropdownSurfaceClassName)}
+                        >
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setScope('current'); inputRef.current?.focus(); setIsFocused(true); }}>{localize("com_knowledge.current_location")}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setScope('all'); inputRef.current?.focus(); setIsFocused(true); }}>{localize("com_knowledge.current_space")}</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={keyword}
+                    onChange={(e) => {
+                        const newVal = e.target.value;
+                        setKeyword(newVal);
+                        // Auto-exit search mode when input is cleared and no tags are selected
+                        if (newVal === '' && selectedTags.length === 0) {
+                            fireSearch([], '');
+                        }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    maxLength={100}
+                    placeholder={collapsed ? "" : localize("com_knowledge.search_in_current_space")}
+                    className={cn(
+                        "min-w-0 bg-transparent outline-none text-[13px] text-text-1 placeholder:text-text-3 h-[22px]",
+                        collapsed ? "w-0 flex-none p-0" : "flex-1 min-w-[50px]"
+                    )}
+                    onFocus={() => { if (!isFocused) refreshTags(); setIsFocused(true); }}
+                />
+
+            {/* Clear button */}
+            {isSearching && (
+                <button
+                    className="ml-auto w-4 h-4 rounded-full bg-fill-2 flex items-center justify-center hover:bg-fill-3 shrink-0 transition-colors"
+                    onMouseDown={(e) => {
+                        // Keep input focused to avoid focus-within width flicker.
+                        e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearAll();
+                    }}
+                    type="button"
+                >
+                    <X className="size-3 text-text-3" />
+                </button>
+            )}
+        </div>
+    );
+
+    const tagsPanel = (pageMode || (isFocused && !isScopeMenuOpen)) ? (
+        <div className={cn(
+            pageMode
+                ? "w-full"
+                : "absolute top-full left-0 mt-1 min-w-[320px] max-w-full bg-white shadow-[0_4px_10px_rgba(0,0,0,0.1)] rounded-md z-50 p-3 max-[767px]:min-w-0 max-[767px]:w-full",
+        )}>
+            <div className="text-sm font-medium text-gray-800 mb-2">{localize("com_knowledge.existing_tags")}</div>
+            <div className="flex flex-wrap gap-2">
+                {spaceTags.length === 0 && (
+                    <span className="text-sm text-text-3">{localize("com_knowledge.no_tags")}</span>
+                )}
+                {spaceTags.map((tag) => {
+                    const isSelected = selectedTags.some((t) => t.id === tag.id);
+                    const atLimit = !isSelected && selectedTags.length >= 5;
+                    return (
+                        <button
+                            key={tag.id}
+                            className={cn(
+                                "px-2 rounded text-sm transition-colors border outline-none",
+                                // Hover is restricted to fine-pointer (mouse) devices so that
+                                // touch taps don't leave the chip stuck in a hover/selected-looking
+                                // in-between state. On touch we only show default vs selected.
+                                isSelected
+                                    ? "bg-primary/10 text-primary border-transparent fine-pointer:hover:bg-primary/15"
+                                    : "bg-fill-2 text-text-2 border-fill-2 fine-pointer:hover:bg-fill-3",
+                                atLimit && "opacity-50 cursor-not-allowed fine-pointer:hover:bg-fill-2"
+                            )}
+                            onMouseDown={(e) => {
+                                // Keep focus on input to avoid focus-within width flicker.
+                                e.preventDefault();
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (isSelected) {
+                                    handleRemoveTag(tag.id);
+                                } else if (!atLimit) {
+                                    handleAddTag(tag);
+                                }
+                            }}
+                            disabled={atLimit}
+                            type="button"
+                        >
+                            {tag.name}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    ) : null;
+
+    // Page mode: search field + trailing slot sit in a fixed 64px row, with tags flowing immediately below.
+    if (pageMode) {
+        return (
+            <div ref={containerRef} data-expanded="true" className={cn("w-full", className)}>
+                <div className="flex h-16 items-center gap-3">
+                    <div className="min-w-0 flex-1">{searchField}</div>
+                    {trailing}
+                </div>
+                {tagsPanel}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            ref={containerRef}
+            data-expanded={isExpanded ? 'true' : 'false'}
+            className={cn(
+                "relative",
+                collapsible
+                    ? cn(
+                        "shrink-0 transition-[width] duration-200 ease-out",
+                        collapsed
+                            ? (toolbarMode ? "w-[58px]" : "w-8")
+                            : "w-[min(340px,60vw)] sm:w-[340px]"
+                    )
+                    : "w-full",
+                className
+            )}
+        >
+            {searchField}
+            {tagsPanel}
+        </div>
+    );
+}

@@ -1,0 +1,150 @@
+knowledges: # 知识库相关配置
+  loader_provider: "etl4lm" # 文档解析模型提供商，支持etl4lm、mineru、paddle_ocr三种选项，默认为etl4lm
+  etl4lm:
+    # 文档解析模型服务配置，包括OCR、版式分析、表格识别、公式识别等
+    url: ""  # http://192.168.106.12:8180/v1/etl4llm/predict
+    timeout: 600
+    # OCR SDK服务地址，默认为空则使用ETL4LM自带的轻量OCR模型（速度快，对于困难场景效果一般），若填写OCR SDK服务地址则使用高精度的OCR模型。
+    ocr_sdk_url: ""
+  mineru:
+    # 文档地址 https://opendatalab.github.io/MinerU/zh/reference/output_files/#_15
+    url: "http://192.168.106.20:8033/file_parse"
+    timeout: 60
+    headers:
+      x-api-key: "11"
+    request_kwargs:
+      backend: "pipeline"
+  paddle_ocr:
+    # 文档地址 https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma
+    url: "https://xxx.aistudio-app.com/layout-parsing"
+    auth_token: ''
+    timeout: 60
+    headers:
+      x-api-key: "11"
+    request_kwargs:
+      useChartRecognition: false
+  version_management:
+    enabled: false
+    simhash_similarity_threshold: 0.85
+
+llm_request:
+  # 控制技能 LLM 组件模型访问的超时配置, 以下是默认值
+  request_timeout: 600
+  max_retries: 1
+
+default_operator:
+  # 使用免登录链接的方式需要配置，因为免登录链接相当于不知道用户信息，我们系统会自动把这些行为记录到某个用户头上，这里用来配置该用户的id
+  user: 1
+  enable_guest_access: true # 免登录链接是否可访问
+
+# 密码安全相关配置
+password_conf:
+  # 密码超过X天必须进行修改, 登录提示重新修改密码。大于0策略才生效
+  password_valid_period: 200
+  # 登录错误时间窗口,单位分钟。在错误时间窗口内超过最大错误次数会封禁用户，password_valid_period和login_error_time_window都大于0才生效
+  login_error_time_window: 5
+  # 最大错误次数，超过后会封禁用户，大于0时生效
+  max_error_times: 0
+
+system_login_method:
+  # 是否允许多点登录
+  allow_multi_login: true
+  # sso系统登录配置（毕昇商业扩展套件功能，开源版无需配置）
+  gateway_login: false # 是否开启sso登录
+  admin_username: admin # 从 SSO/LDAP 注册的管理员用户名
+
+# 登陆页面是否需要输入验证码，可设置为True或False
+use_captcha: True
+
+# 会话窗口底部提示文案
+dialog_tips:
+  "内容由AI生成，仅供参考！"
+
+env:
+  # 聊天窗口快捷搜索功能使用的搜索引擎，默认为百度，可以配置为内部文档搜索
+  # dialog_quick_search: http://www.baidu.com/s?wd=
+  # 当用户的环境前面的网关，不能在同一个端口上既有http又有socket时，需要这个配置，将两个请求区分开，默认可以不用
+  # websocket_url: 192.168.106.120:3003
+  office_url: http://IP:8701 # onlyoffice 组件地址，需要浏览器能直接访问
+  # 是否展示前端界面上的github和帮助链接
+  show_github_and_help: true
+  # 是否开启注册
+  enable_registration: true
+  # 前端上传文件的最大限制，单位MB
+  uploaded_files_maximum_size: 50
+  # 知识库/知识空间音视频上传最大限制，单位MB（其余文件仍用 uploaded_files_maximum_size）
+  uploaded_media_maximum_size: 1024
+  # 工作台「无菜单权限」占位页（/menu-unavailable）展示的纯文案，可在系统配置中修改；不配置则使用前端默认文案
+  workbench_menu_unavailable_message: "暂无使用过的应用，可以前往应用广场探索更多应用"
+
+workflow:
+  # 节点运行最大步数
+  max_steps: 50
+  # 等待用户输入的超时时间，单位分钟
+  timeout: 5
+
+# 日常聊天（Agent 模式）相关配置
+daily_chat:
+  # Agent function-calling 循环最大迭代次数（LangGraph recursion_limit）。
+  # 默认 50；配置缺失 / 类型错误 / <= 0 时也使用 50。
+  agent_max_iterations: 50
+  # 送入模型的历史消息合计 token 上限；超出会从最旧一条开始丢弃，直到总量不超过。
+  # 需要按目标模型的 context window 调整：
+  #   - 200k 长上下文模型（GPT-5.1 / Claude 4.x）：可放大到 20000~30000
+  #   - 32k context 模型（GPT-4 Turbo 等）：建议 6000~10000
+  #   - 8k context 小模型：建议 2000~4000
+  # 默认 8000；配置缺失 / 类型错误 / <= 0 时也使用 8000。
+  history_max_tokens: 8000
+
+# 灵思模块相关配置
+linsight:
+  # 历史记录中工具消息的最大token，超过后需要总结下历史记录
+  tool_buffer: 100000
+  # 单个任务最大执行步骤数（LangGraph recursion_limit），防止死循环。
+  # ⚠️ 这里的“步骤”是 LangGraph super-step，不是模型轮次：一轮模型调用约消耗 4 个 super-step
+  #   （model → 工具循环熔断器 after_model → TodoList after_model → tools）。
+  #   另外「只产出 write_todos」的空转轮会退还预算（每个预算桶最多退 10 轮），
+  #   所以实际模型调用可能超过 max_model_turns，保险丝要留出这部分余量：
+  #   (115 + 10) × 4 + 20 = 520，取 600 留头。
+  #   它是跑飞时的保险丝，真正的业务上限请调 max_model_turns。
+  #   若本值低于所需，后端会自动抬高并打 warning 日志。
+  max_steps: 600
+  # 主图轮次预算：一次任务运行最多允许多少次模型调用，到顶前会提示模型收尾（软着陆）。
+  # ask_user 打断恢复后重新计数（中间件随 agent 重建）。
+  max_model_turns: 115
+  # 子代理（researcher）轮次预算。⚠️ 按「每次 task 调用」独立计数，不是整次任务共享：
+  # 主图并行委派 2 个子代理时，每个各得完整一份，互不抢额度。
+  max_model_turns_subagent: 30
+  # 距离预算耗尽还剩多少轮时开始提示模型收尾；最后 2 轮只保留写文件/导出工具，
+  # 归零时不再提供任何工具，模型只能输出文本，图正常结束
+  soft_landing_turns: 8
+  # 灵思任务执行过程中模型调用重试次数
+  retry_num: 3
+  # 灵思任务执行过程中模型调用重试间隔时间（秒）
+  retry_sleep: 5
+  # 生成SOP时，prompt里放的用户上传文件信息的数量
+  max_file_num: 5
+  # 生成SOP时，prompt里放的组织知识库的最大数量
+  max_knowledge_num: 20
+  # 拆分二级任务时读取文件内容的字符数，超过后会截断
+  file_content_length: 5000
+  # 灵思模型默认温度
+  default_temperature: 0
+  # 模型json格式失败重试时的温度
+  retry_temperature: 1
+
+information_conf:
+  # 情报订阅服务的接口地址
+  base_url: ""
+  # 情报订阅服务的api_key
+  api_key: ""
+  kwargs: # 发送给情报订阅服务额外参数
+    timeout: 3600  # 请求情报订阅服务的超时时间，单位秒
+
+mcp:
+  enable_stdio: true
+
+knowledge_space:
+  # 知识空间左侧目录树展示开关（仅前端读取，后端 API 不变）
+  # 默认 true；中粮场内部署改为 false 走原 Tab 布局
+  tree_structured_directory_display: true

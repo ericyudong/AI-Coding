@@ -1,0 +1,203 @@
+// @ts-strict-ignore
+import {LinsightInfo} from "~/store/linsight";
+import request from "./request";
+
+// 获取灵思会话信息
+export function getLinsightSessionVersionList(ConversationId: string, shareToken: string): Promise<any> {
+    const headers = shareToken ? {'share-token': shareToken} : {}
+    return request.get('/api/v1/linsight/workbench/session-version-list', {
+        params: {
+            session_id: ConversationId
+        },
+        headers
+    }).then(res => {
+        return res.data.map(item => {
+                return {
+                    ...item,
+                    sop: item.sop?.replace(/^---/, '')?.replace(/\`\`\`markdown/g, '```') ?? '' // strip markdown fences from legacy SOP text for plain rendering
+                }
+            }
+        )
+    });
+}
+
+// 获取灵思任务信息
+export function getLinsightTaskList(versionId: string, linsight: LinsightInfo, shareToken: string): Promise<any> {
+    const headers = shareToken ? {'share-token': shareToken} : {}
+    return request.get('/api/v1/linsight/workbench/execute-task-detail', {
+        params: {
+            session_version_id: versionId
+        },
+        headers
+    }).then(res => {
+        if (linsight.status === 'terminated') {
+            // 任务手动终止后，后端返回的数据status为in_progress的任务，需要修改为terminated
+            return res.data.map(item => ({
+                ...item,
+                status: item.status === 'in_progress' ? 'terminated' : item.status
+            }))
+        }
+        return res.data
+    });
+}
+
+
+// 开始执行灵思
+export function startLinsight(versionId: string): Promise<any> {
+    return request.post('/api/v1/linsight/workbench/start-execute', {
+        linsight_session_version_id: versionId
+    });
+}
+
+// F035 多轮对话：在已完成的同一会话里追加新一轮（复用同一 session_version + agent thread，保留上下文）
+export function continueLinsight(session_version_id: string, question: string): Promise<any> {
+    return request.post('/api/v1/linsight/workbench/continue', {
+        session_version_id,
+        question
+    });
+}
+
+// 用户任务中输入事件
+export function userInputLinsightEvent(session_version_id: string, linsight_execute_task_id: string, input_content: string, files: any[]): Promise<any> {
+    return request.post('/api/v1/linsight/workbench/user-input', {
+        session_version_id,
+        linsight_execute_task_id,
+        input_content,
+        files
+    });
+}
+
+// 用户终止任务事件
+export function userStopLinsightEvent(linsight_session_version_id: string): Promise<any> {
+    return request.post('/api/v1/linsight/workbench/terminate-execute', {
+        linsight_session_version_id
+    });
+}
+
+// 获取灵思工具
+export function getLinsightTools(): Promise<any> {
+    return request.get('/api/v1/tool/linsight/preset');
+}
+
+/** F035 Track H: enabled skills for the end-user picker (plain login auth). */
+export interface SelectableSkill {
+    name: string;
+    display_name: string;
+    description: string;
+}
+
+export function getSelectableSkills(): Promise<SelectableSkill[]> {
+    return request.get('/api/v1/linsight/skill/selectable').then((res: any) => res?.data || []);
+}
+
+/**
+ * F035 Track H: workbench model config for the task-mode model selector.
+ * Returns the daily-chat model list plus `linsight_default_model_id`
+ * (admin-marked default execution model for Linsight).
+ */
+export interface LinsightModelConfig {
+    models?: { id: string | number; name?: string; displayName?: string }[];
+    linsight_default_model_id?: string | null;
+}
+
+export function getLinsightModelConfig(): Promise<LinsightModelConfig> {
+    return request.get('/api/v1/llm/workbench').then((res: any) => {
+        const body = res?.data ?? {};
+        // F022 wraps the config as {data, inherited_from_root, fallback_blocked};
+        // unwrap defensively so both shapes keep working.
+        const cfg = body && typeof body.data === 'object' && body.data !== null ? body.data : body;
+        return cfg || {};
+    });
+}
+
+
+// 获取个人知识库信息
+export function getPersonalKnowledgeInfo(): Promise<any> {
+    return request.get('/api/v1/knowledge/personal_knowledge_info');
+}
+
+// 获取组织知识库
+export function getKnowledgeInfo({page = 1, name = '', page_size = 200, sort_by = 'update_time', preferred_ids = ''}: {
+    page?: number,
+    name?: string,
+    page_size?: number,
+    sort_by?: string,
+    /** Comma-separated ids pinned to the top of the global sort (admin-configured orgKbs). */
+    preferred_ids?: string,
+}): Promise<any> {
+    const base = `/api/v1/knowledge?page_num=${page}&page_size=${page_size}&type=0&name=${encodeURIComponent(name)}&sort_by=${sort_by}`;
+    const pinned = preferred_ids ? `&preferred_ids=${encodeURIComponent(preferred_ids)}` : '';
+    return request.get(`${base}${pinned}`);
+}
+
+// 获取linsight剩余次数
+export function inviteCode() {
+    return request.get('/api/v1/invite/code');
+};
+
+// 绑定邀请码
+export function bindInviteCode(code: string) {
+    return request.post('/api/v1/invite/bind', {code});
+}
+
+// 批量下载
+export async function batchDownload(data: {
+    fileName: string,
+    files: { file_name: string, file_url: string }[]
+}) {
+    const res = await request.post('/api/v1/linsight/workbench/batch-download-files', {
+        zip_name: data.fileName,
+        file_info_list: data.files
+    }, {
+        responseType: 'blob'
+    })
+
+    console.log('res :>> ', res);
+    const url = window.URL.createObjectURL(new Blob([res]));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.fileName || 'downloadFile.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// 检查文件解析状态
+export function checkFileParseStatus(ids: string[]) {
+    return request.post('/api/v1/linsight/workbench/file-parsing-status', {
+        file_ids: ids
+    })
+}
+
+// 检查sop排队状态
+export function checkSopQueueStatus(id: string) {
+    return request.get('/api/v1/linsight/workbench/queue-status', {
+        params: {
+            session_version_id: id
+        }
+    })
+}
+
+// Get case details based on SOP ID
+// LEGACY (F035): kept only for the /linsight/case share page (read-only).
+export function getCaseDetail(sop_id: string): Promise<any> {
+    return request.get('/api/v1/linsight/sop/showcase/result', {
+        params: {
+            sop_id
+        }
+    })
+}
+
+export function getMdDownload(file_info: {
+    file_url: string;
+    file_name: string
+}, to_type: 'pdf' | 'docx'): Promise<any> {
+    return request.post('/api/v1/linsight/workbench/download-md-to-pdf-or-docx', {
+            file_info: file_info,
+            to_type: to_type
+        }
+        , {
+            responseType: 'blob' // 确保这里设置了 responseType
+        })
+}

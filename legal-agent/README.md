@@ -60,6 +60,21 @@ OPENAI_MODEL=gpt-4o-mini
 
 未配置 API Key 时，系统自动使用演示模式返回示例回答，便于 UI 联调。
 
+## AgentScope 集成
+
+通过 MCP（`legal-agent-mcp`）在 AgentScope 2.x 上运行法务 Agent：
+
+```bash
+# 后端 :8010 已启动、legal-agent-mcp 已 build 后
+cd agentscope
+pip install -e ../../agentscope httpx   # 或 pip install -r requirements.txt
+export DASHSCOPE_API_KEY=sk-...
+python main.py
+# 或：python main.py --once "检索：劳动合同到期补偿"
+```
+
+详见 [agentscope/README.md](./agentscope/README.md)。
+
 ## 生产部署
 
 ```bash
@@ -75,6 +90,7 @@ cd ..\backend && python run.py
 ```
 legal-agent/
 ├── pics/              # UI 设计参考图
+├── agentscope/        # AgentScope + MCP 可运行示例
 ├── backend/           # FastAPI 后端
 │   ├── app/
 │   │   ├── api/v1/    # REST API

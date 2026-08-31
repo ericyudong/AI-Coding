@@ -1,0 +1,467 @@
+from datetime import datetime
+from enum import Enum
+
+from loguru import logger
+from sqlalchemy import Integer
+from sqlmodel import (
+    Column,
+    DateTime,
+    Field,
+    String,
+    Text,
+    case,
+    col,
+    delete,
+    func,
+    not_,
+    or_,
+    select,
+    text,
+    update,
+)
+
+from bisheng.common.models.base import SQLModelSerializable
+from bisheng.core.database import get_async_db_session, get_sync_db_session
+from bisheng.core.database.dialect_helpers import UPDATE_TIME_SERVER_DEFAULT, JsonType, LargeText
+from bisheng.core.database.retry import retry_on_transient_db_conflict
+
+
+class LikedType(Enum):
+    UNRATED = 0  # Not assessed
+    LIKED = 1  # Love
+    DISLIKED = 2  # don't like}
+
+
+class MessageBase(SQLModelSerializable):
+    is_bot: bool = Field(index=False, description="Chat Role")
+    source: int | None = Field(default=None, index=False, description="Whether traceability is supported")
+    mark_status: int | None = Field(index=False, default=1, description="Tag status")
+    mark_user: int | None = Field(default=None, index=False, description="Flagging User")
+    mark_user_name: str | None = Field(default=None, index=False, description="Flagging User")
+    message: str | None = Field(default=None, sa_column=Column(LargeText), description="Chat Message")
+    extra: str | None = Field(default=None, sa_column=Column(LargeText), description="Connection information, etc.")
+    type: str = Field(index=False, description="Type of Message")
+    category: str = Field(index=False, max_length=32, description="Message category, questionetc.")
+    flow_id: str = Field(index=True, description="Corresponding Skillsid")
+    chat_id: str | None = Field(default=None, index=True, description="chat_id, Frontend Generation")
+    user_id: int | None = Field(default=None, index=True, description="Usersid")
+    # F017 INV-T13: derived data tenant_id = user leaf (not resource tenant).
+    # DB column + idx_chatmessage_tenant_id exist since v2.5.0/F001; this
+    # ORM declaration lets ChatMessageService.acreate write it explicitly
+    # (SQLAlchemy `before_flush` also fills it when implicit, but derived-
+    # data writers must fail loudly when the context is missing).
+    tenant_id: int | None = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            nullable=False,
+            server_default=text("1"),
+            index=True,
+            comment="F017: user leaf tenant for INV-T13 derived-data attribution",
+        ),
+    )
+    liked: int | None = Field(
+        index=False, default=0, description="Whether the user likes it or 0Not assessed/1 Love/2 don't like}"
+    )
+    solved: int | None = Field(
+        index=False, default=0, description="Whether the user likes it or 0Not assessed/1 Solution/2 Unresolve"
+    )
+    copied: int | None = Field(index=False, default=0, description="Is the user copying 0: Not copied 1Copied: ")
+    sensitive_status: int | None = Field(
+        index=False, default=1, description="Sensitive Word Status 1Pass 2violates regulation"
+    )
+    sender: str | None = Field(index=False, default="", description="autogen Sender")
+    receiver: dict | None = Field(index=False, default=None, description="autogen Sender")
+    intermediate_steps: str | None = Field(default=None, sa_column=Column(Text), description="Process Log")
+    files: str | None = Field(default=None, sa_column=Column(LargeText), description="Uploaded documents, etc.")
+    remark: str | None = Field(
+        default=None,
+        sa_column=Column(String(length=4096)),
+        description="Note. break_answer: Interrupted response inactionhistoryPass to Model",
+    )
+    create_time: datetime | None = Field(
+        default=None, sa_column=Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    )
+    update_time: datetime | None = Field(
+        default=None, sa_column=Column(DateTime, nullable=False, server_default=UPDATE_TIME_SERVER_DEFAULT)
+    )
+
+
+class ChatMessage(MessageBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    receiver: dict | None = Field(default=None, sa_column=Column(JsonType))
+
+    # Key: Set table level character set to utf8mb4
+    __table_args__ = {"mysql_charset": "utf8mb4", "mysql_collate": "utf8mb4_unicode_ci"}
+
+
+class ChatMessageRead(MessageBase):
+    id: int | None = None
+
+
+class ChatMessageQuery(MessageBase):
+    id: int | None = None
+    receiver: dict | None = None
+
+
+class ChatMessageCreate(MessageBase):
+    pass
+
+
+class MessageDao(MessageBase):
+    @classmethod
+    def static_msg_liked(cls, liked: int, flow_id: str, create_time_begin: datetime, create_time_end: datetime):
+        base_condition = select(func.count(ChatMessage.id)).where(ChatMessage.liked == liked)
+
+        if flow_id:
+            base_condition = base_condition.where(ChatMessage.flow_id == flow_id)
+
+        if create_time_begin and create_time_end:
+            base_condition = base_condition.where(
+                ChatMessage.create_time > create_time_begin, ChatMessage.create_time < create_time_end
+            )
+
+        with get_sync_db_session() as session:
+            return session.scalar(base_condition)
+
+    @classmethod
+    def app_list_group_by_chat_id(
+        cls,
+        page_size: int,
+        page_num: int,
+        flow_ids: list[str] | None,
+        user_ids: list[int] | None,
+    ) -> tuple[list[dict], int]:
+        with get_sync_db_session() as session:
+            count_stat = select(func.count(func.distinct(ChatMessage.chat_id)))
+            sql = select(
+                ChatMessage.chat_id,
+                ChatMessage.user_id,
+                ChatMessage.flow_id,
+                func.max(ChatMessage.create_time).label("create_time"),
+                func.sum(case((ChatMessage.liked == 1, 1), else_=0)),
+                func.sum(case((ChatMessage.liked == 2, 1), else_=0)),
+                func.sum(case((ChatMessage.copied == 1, 1), else_=0)),
+            )
+
+            if flow_ids:
+                count_stat = count_stat.where(ChatMessage.flow_id.in_(flow_ids))
+                sql = sql.where(ChatMessage.flow_id.in_(flow_ids))
+            if user_ids:
+                count_stat = count_stat.where(
+                    or_(
+                        ChatMessage.mark_user.in_(user_ids),
+                        ChatMessage.mark_status == 1,
+                    )
+                )
+                sql = sql.where(or_(ChatMessage.mark_user.in_(user_ids), ChatMessage.mark_status == 1))
+            sql = (
+                sql.group_by(ChatMessage.chat_id, ChatMessage.user_id, ChatMessage.flow_id)
+                .order_by(func.max(ChatMessage.create_time).desc())
+                .offset(page_size * (page_num - 1))
+                .limit(page_size)
+            )
+
+            res_list = session.exec(sql).all()
+            total_count = session.scalar(count_stat)
+
+            dict_res = [
+                {
+                    "chat_id": chat_id,
+                    "user_id": user_id,
+                    "flow_id": flow_id,
+                    "like_count": like_num,
+                    "dislike_count": dislike_num,
+                    "copied_count": copied_num,
+                    "create_time": create_time,
+                }
+                for chat_id, user_id, flow_id, create_time, like_num, dislike_num, copied_num in res_list
+            ]
+            logger.info(res_list)
+            return dict_res, total_count
+
+
+class ChatMessageDao(MessageBase):
+    @classmethod
+    def get_latest_message_by_chatid(cls, chat_id: str):
+        statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id).order_by(ChatMessage.id.desc()).limit(1)
+        with get_sync_db_session() as session:
+            res = session.exec(statement).all()
+            if res:
+                return res[0]
+            else:
+                return None
+
+    @classmethod
+    async def aget_latest_message_by_chatid(cls, chat_id: str):
+        statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id).order_by(ChatMessage.id.desc()).limit(1)
+        async with get_async_db_session() as session:
+            res = await session.exec(statement)
+            res = res.all()
+            if res:
+                return res[0]
+            else:
+                return None
+
+    @classmethod
+    def get_latest_message_by_chat_ids(cls, chat_ids: list[str], category: str = None, exclude_category: str = None):
+        """
+        Get the most recent message content for each session
+        """
+        statement = select(ChatMessage.chat_id, func.max(ChatMessage.id)).where(ChatMessage.chat_id.in_(chat_ids))
+        if category:
+            statement = statement.where(ChatMessage.category == category)
+        if exclude_category:
+            statement = statement.where(ChatMessage.category != exclude_category)
+        statement = statement.group_by(ChatMessage.chat_id)
+        with get_sync_db_session() as session:
+            # Get the latestidVertical
+            res = session.exec(statement).all()
+            ids = [one[1] for one in res]
+            # Get the details of your message
+            statement = select(ChatMessage).where(ChatMessage.id.in_(ids))
+            return session.exec(statement).all()
+
+    @classmethod
+    def get_messages_by_chat_id(cls, chat_id: str, category_list: list = None, limit: int = 10) -> list[ChatMessage]:
+        with get_sync_db_session() as session:
+            statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id)
+            if category_list:
+                statement = statement.where(ChatMessage.category.in_(category_list))
+            statement = statement.limit(limit).order_by(ChatMessage.create_time.desc())
+            return session.exec(statement).all()
+
+    @classmethod
+    async def aget_messages_by_chat_id(
+        cls, chat_id: str, category_list: list = None, limit: int = 10
+    ) -> list[ChatMessage]:
+        """Return the MOST RECENT `limit` messages for a chat, in chronological
+        order (oldest → newest).
+
+        Previous implementation used ``ORDER BY create_time ASC LIMIT N`` which
+        always returned the OLDEST N rows, so long conversations saw only the
+        first few turns and dropped the freshest context — breaking history
+        passed to the LLM. We now select DESC LIMIT N and reverse in Python so
+        callers always get the latest window in time-ascending order.
+
+        ``id`` is the secondary sort key: ``create_time`` is second-precision, so
+        a question and its task/answer turn inserted in the same second tie on
+        ``create_time`` alone, and the reverse() flips their order — rendering the
+        reply above the question after a refresh. Ordering by ``id`` (monotonic
+        insertion order) DESC then reversing keeps each turn's question before its
+        reply regardless of clock granularity.
+        """
+        async with get_async_db_session() as session:
+            statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id)
+            if category_list:
+                statement = statement.where(ChatMessage.category.in_(category_list))
+            statement = statement.order_by(ChatMessage.create_time.desc(), ChatMessage.id.desc()).limit(limit)
+            result = await session.exec(statement)
+            rows = list(result.all())
+            rows.reverse()
+            return rows
+
+    @classmethod
+    def get_last_msg_by_flow_id(cls, flow_id: list[str], chat_id: list[str]):
+        with get_sync_db_session() as session:
+            statement = (
+                select(ChatMessage.chat_id, ChatMessage.flow_id)
+                .where(ChatMessage.flow_id.in_(flow_id))
+                .where(not_(ChatMessage.chat_id.in_(chat_id)))
+                .group_by(ChatMessage.chat_id, ChatMessage.flow_id)
+            )
+            return session.exec(statement).all()
+
+    @classmethod
+    def get_msg_by_chat_id(cls, chat_id: str):
+        with get_sync_db_session() as session:
+            statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id)
+            return session.exec(statement).all()
+
+    @classmethod
+    def get_msg_by_flow(cls, flow_id: str):
+        with get_sync_db_session() as session:
+            # sql = text("select chat_id,count(*) as chat_count from chatmessage where flow_id=:flow_id group by chat_id")
+            st = select(ChatMessage.chat_id).where(ChatMessage.flow_id == flow_id).group_by(ChatMessage.chat_id)
+            return session.exec(st).all()
+
+    @classmethod
+    def get_msg_by_flows(cls, flow_id: list[str]):
+        with get_sync_db_session() as session:
+            st = select(ChatMessage.chat_id).where(ChatMessage.flow_id.in_(flow_id)).group_by(ChatMessage.chat_id)
+            return session.exec(st).all()
+
+    @classmethod
+    def delete_by_user_chat_id(cls, user_id: int, chat_id: str):
+        if user_id is None or chat_id is None:
+            logger.info("delete_param_error user_id={} chat_id={}", user_id, chat_id)
+            return False
+
+        statement = delete(ChatMessage).where(ChatMessage.chat_id == chat_id, ChatMessage.user_id == user_id)
+
+        with get_sync_db_session() as session:
+            session.exec(statement)
+            session.commit()
+        return True
+
+    @classmethod
+    async def adelete_by_user_chat_id(cls, user_id: int, chat_id: str):
+        if user_id is None or chat_id is None:
+            logger.info("delete_param_error user_id={} chat_id={}", user_id, chat_id)
+            return False
+        statement = delete(ChatMessage).where(ChatMessage.chat_id == chat_id, ChatMessage.user_id == user_id)
+        async with get_async_db_session() as session:
+            await session.exec(statement)
+            await session.commit()
+            return True
+
+    @classmethod
+    def delete_by_message_id(cls, user_id: int, message_id: str):
+        if user_id is None or message_id is None:
+            logger.info("delete_param_error user_id={} chat_id={}", user_id, message_id)
+            return False
+
+        statement = delete(ChatMessage).where(ChatMessage.id == message_id, ChatMessage.user_id == user_id)
+
+        with get_sync_db_session() as session:
+            session.exec(statement)
+            session.commit()
+        return True
+
+    @classmethod
+    def insert_one(cls, message: ChatMessage) -> ChatMessage:
+        with get_sync_db_session() as session:
+            session.add(message)
+            session.commit()
+            session.refresh(message)
+        return message
+
+    @classmethod
+    @retry_on_transient_db_conflict()
+    async def ainsert_one(cls, message: ChatMessage) -> ChatMessage:
+        async with get_async_db_session() as session:
+            session.add(message)
+            await session.commit()
+            await session.refresh(message)
+        return message
+
+    @classmethod
+    def insert_batch(cls, messages: list[ChatMessage]):
+        with get_sync_db_session() as session:
+            session.add_all(messages)
+            session.commit()
+            ret = []
+            for one in messages:
+                session.refresh(one)
+                ret.append(one)
+            return ret
+
+    @classmethod
+    async def ainsert_batch(cls, messages: list[ChatMessage]):
+        async with get_async_db_session() as session:
+            session.add_all(messages)
+            await session.commit()
+
+    @classmethod
+    def get_message_by_id(cls, message_id: int) -> ChatMessage | None:
+        with get_sync_db_session() as session:
+            return session.exec(select(ChatMessage).where(ChatMessage.id == message_id)).first()
+
+    @classmethod
+    async def aget_message_by_id(cls, message_id: int) -> ChatMessage | None:
+        async with get_async_db_session() as session:
+            result = await session.exec(select(ChatMessage).where(ChatMessage.id == message_id))
+            return result.first()
+
+    @classmethod
+    async def aget_messages_by_ids(
+        cls,
+        message_ids: list[int],
+        user_id: int,
+        chat_id: str,
+    ) -> list[ChatMessage]:
+        """Bulk fetch ChatMessage rows by id list, fenced by (user_id, chat_id).
+
+        Used by F028 conversation export/import. The (user_id, chat_id)
+        compound predicate is the anti-IDOR guard: even if callers pass an
+        attacker-supplied message_id list, rows owned by another user or
+        living in another chat session never come back.
+
+        Ordering: ascending by primary key so the caller sees a chronologically
+        stable list (chat_message.id is monotonic per-session in practice).
+        """
+        if not message_ids:
+            return []
+        statement = (
+            select(ChatMessage)
+            .where(
+                ChatMessage.id.in_(message_ids),
+                ChatMessage.user_id == user_id,
+                ChatMessage.chat_id == chat_id,
+            )
+            .order_by(ChatMessage.id.asc())
+        )
+        async with get_async_db_session() as session:
+            result = await session.exec(statement)
+            return list(result.all())
+
+    @classmethod
+    def update_message(cls, message_id: int, user_id: int, message: str):
+        with get_sync_db_session() as session:
+            statement = (
+                update(ChatMessage)
+                .where(ChatMessage.id == message_id)
+                .where(ChatMessage.user_id == user_id)
+                .values(message=message)
+            )
+            session.exec(statement)
+            session.commit()
+
+    @classmethod
+    def update_message_model(cls, message: ChatMessage):
+        with get_sync_db_session() as session:
+            session.add(message)
+            session.commit()
+            session.refresh(message)
+        return message
+
+    @classmethod
+    async def aupdate_message_model(cls, message: ChatMessage):
+        async with get_async_db_session() as session:
+            session.add(message)
+            await session.commit()
+            await session.refresh(message)
+        return message
+
+    @classmethod
+    def update_message_copied(cls, message_id: int, copied: int):
+        with get_sync_db_session() as session:
+            statement = update(ChatMessage).where(ChatMessage.id == message_id).values(copied=copied)
+            session.exec(statement)
+            session.commit()
+
+    @classmethod
+    def update_message_mark(cls, chat_id: str, status: int):
+        with get_sync_db_session() as session:
+            statement = update(ChatMessage).where(ChatMessage.chat_id == chat_id).values(mark_status=status)
+            session.exec(statement)
+            session.commit()
+
+    @classmethod
+    async def get_all_message_by_chat_ids(cls, chat_ids: list[str]) -> list[ChatMessage]:
+        statement = select(ChatMessage).where(ChatMessage.chat_id.in_(chat_ids)).order_by(ChatMessage.create_time.asc())
+        async with get_async_db_session() as session:
+            result = await session.exec(statement)
+            return result.all()
+
+    @classmethod
+    async def afilter_message_by_chat_id(
+        cls, chat_id: str, flow_id: str, message_id: int = None, page_size: int = 20
+    ) -> list[ChatMessage]:
+        statement = select(ChatMessage).where(ChatMessage.chat_id == chat_id).where(ChatMessage.flow_id == flow_id)
+        if message_id:
+            statement = statement.where(ChatMessage.id < message_id)
+        statement = statement.order_by(col(ChatMessage.id).desc()).limit(page_size)
+        async with get_async_db_session() as session:
+            result = await session.exec(statement)
+            return result.all()

@@ -1,0 +1,132 @@
+import time
+from functools import cached_property
+
+from langchain_core.documents import BaseDocumentTransformer
+
+from bisheng.api.v1.schemas import FileProcessBase
+from bisheng.knowledge.domain.schemas.knowledge_rag_schema import Metadata
+from bisheng.knowledge.domain.services.knowledge_utils import KnowledgeUtils
+from bisheng.knowledge.rag.base_file_pipeline import BaseFilePipeline
+from bisheng.knowledge.rag.pipeline.transformer.abstract import AbstractTransformer
+from bisheng.knowledge.rag.pipeline.transformer.direct_chunk import DirectChunkTransformer
+from bisheng.knowledge.rag.pipeline.transformer.extra_file import ExtraFileTransformer
+from bisheng.knowledge.rag.pipeline.transformer.hierarchical_splitter import HierarchicalSplitterTransformer
+from bisheng.knowledge.rag.pipeline.transformer.image_upload import ImageUploadTransformer
+from bisheng.knowledge.rag.pipeline.transformer.splitter import SplitterTransformer
+from bisheng.user.domain.models.user import UserDao
+from bisheng.utils import generate_uuid
+
+
+class PreviewFilePipeline(BaseFilePipeline):
+    """
+    Pipeline for generating file preview chunks prior to knowledge base ingestion.
+
+    This pipeline loads a locally available file, applies splitting transformers,
+    and returns the resulting document chunks. It does NOT perform summarisation,
+    thumbnail generation, or vector-store operations — those belong to
+    ``KnowledgeFilePipeline`` which is invoked only after the user confirms the
+    preview and triggers the actual ingest.
+
+    The resulting chunks are stored in Redis by the calling service so that the
+    user can review and edit them before confirming upload.
+    """
+
+    def __init__(
+            self,
+            invoke_user_id: int,
+            local_file_path: str,
+            file_name: str,
+            knowledge_id: int,
+            file_rule: FileProcessBase = None,
+            **kwargs,
+    ):
+        super().__init__(
+            invoke_user_id,
+            file_name,
+            file_rule or FileProcessBase(knowledge_id=0),
+            **kwargs,
+        )
+        self.local_file_path = local_file_path
+        self.knowledge_id = knowledge_id
+
+    @cached_property
+    def _preview_doc_id(self) -> str:
+        # Memoised so the loader (image upload destination) and ExtraFileTransformer
+        # (bbox file destination) can both be tied to the same scratch id within one
+        # pipeline run.
+        return generate_uuid()
+
+    def _get_image_object_dir(self) -> str | None:
+        return KnowledgeUtils.get_knowledge_file_image_dir(
+            self._preview_doc_id, self.knowledge_id
+        )
+
+    @cached_property
+    def file_metadata(self) -> dict:
+        uploader = UserDao.get_user(self.invoke_user_id)
+        uploader_name = uploader.user_name if uploader else None
+
+        now = int(time.time())
+        return Metadata(
+            document_id=0,
+            document_name=self.file_name,
+            knowledge_id=self.file_split_rule.knowledge_id,
+            upload_time=now,
+            update_time=now,
+            uploader=uploader_name,
+            updater=uploader_name,
+            user_metadata={},
+        ).model_dump(exclude_none=True)
+
+    def _init_abstract_transformers(self) -> list[BaseDocumentTransformer]:
+        return [AbstractTransformer(self.invoke_user_id, file_metadata=self.file_metadata)]
+
+    def _init_common_transformers(self) -> list[BaseDocumentTransformer]:
+        transformers = self._init_abstract_transformers()
+        preview_doc_id = generate_uuid()
+        transformers.append(ExtraFileTransformer(
+            loader=self.loader,
+            document_id=preview_doc_id,
+            knowledge_id=self.knowledge_id,
+            knowledge_file=None,
+            source_file_path=self.local_file_path,
+        ))
+        transformers.append(ImageUploadTransformer(
+            loader=self.loader,
+            document_id=preview_doc_id,
+            knowledge_id=self.knowledge_id,
+            retain_images=self.file_split_rule.retain_images == 1,
+        ))
+        if self.should_use_ppt_page_split():
+            transformers.append(DirectChunkTransformer())
+        elif self.should_use_hierarchical_split():
+            transformers.append(HierarchicalSplitterTransformer(
+                hierarchy_level=self.file_split_rule.hierarchy_level,
+                append_title=self.file_split_rule.append_title,
+                max_chunk_size=self.file_split_rule.max_chunk_size,
+                fallback_separator=self.file_split_rule.separator,
+                fallback_separator_rule=self.file_split_rule.separator_rule,
+                fallback_chunk_size=self.file_split_rule.chunk_size,
+                fallback_chunk_overlap=self.get_splitter_kwargs()["chunk_overlap"],
+            ))
+        else:
+            transformers.append(SplitterTransformer(**self.get_splitter_kwargs()))
+        return transformers
+
+    def _init_excel_transformers(self) -> list[BaseDocumentTransformer]:
+        transformers = self._init_abstract_transformers()
+        preview_doc_id = generate_uuid()
+        transformers.append(ExtraFileTransformer(
+            loader=self.loader,
+            document_id=preview_doc_id,
+            knowledge_id=self.knowledge_id,
+            knowledge_file=None,
+            source_file_path=self.local_file_path,
+        ))
+        transformers.append(ImageUploadTransformer(
+            loader=self.loader,
+            document_id=preview_doc_id,
+            knowledge_id=self.knowledge_id,
+            retain_images=self.file_split_rule.retain_images == 1,
+        ))
+        return transformers

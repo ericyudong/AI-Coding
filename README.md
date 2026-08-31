@@ -259,6 +259,18 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 - **Tech Stack**: TypeScript, Node.js ≥ 20, `@modelcontextprotocol/sdk`, Zod
 - **Path**: [legal-agent-mcp/](./legal-agent-mcp/)
 
+### AgentScope 🧩
+- **Description**: Alibaba AgentScope multi-agent framework (vendored source) plus a Legal Agent runnable example that connects via MCP.
+- **Key Features**:
+  - Framework source under [agentscope/](./agentscope/)
+  - Legal Agent on AgentScope 2.x: [legal-agent/agentscope/](./legal-agent/agentscope/) (`MCPClient` + `legal-agent-mcp`)
+- **Tech Stack**: Python 3.10+, AgentScope 2.x, MCP stdio
+
+### BiSheng (毕昇) 🏭
+- **Description**: DataElem BiSheng enterprise LLM application platform (workflow / RAG / multi-tenant), runnable via Docker Compose.
+- **Key Features**: Frontend `:3001`, backend API `:7860`, MySQL / Redis / Milvus / ES / OpenFGA
+- **Path**: [bisheng/](./bisheng/) · start: `cd bisheng/docker && docker compose -f docker-compose.yml -p bisheng up -d`
+
 ---
 
 ## 🗂️ Project Architecture Overview
@@ -292,6 +304,7 @@ Eric's AI Project Collection
     ├── 🧠 Open-Source Agent Frameworks
     │   ├── openakita/                # Open-source multi-agent AI assistant
     │   ├── openclaw-main/            # AI agent framework
+    │   ├── agentscope/               # Alibaba AgentScope multi-agent framework
     │   ├── codex/                    # OpenAI Codex CLI / app-server
     │   └── deepseek-harness-master/  # Cordis agent harness + MCP client
     │
@@ -302,12 +315,13 @@ Eric's AI Project Collection
     ├── 🏢 Enterprise AI Platforms
     │   ├── e-claw/                   # Enterprise AI agent platform
     │   ├── recruit-agent/            # RecruitOS + HR Agent (+ DSH plugin)
+    │   ├── bisheng/                  # BiSheng LLM app platform (Docker)
     │   └── jira-system/              # Project management system
     │
     └── 💬 Intelligent Q&A & Vertical Agents
         ├── deepseek-qa-system/       # DeepSeek Q&A system
         ├── ai-qa-system/             # Intelligent Q&A system
-        ├── legal-agent/              # Intelligent legal agent platform
+        ├── legal-agent/              # Intelligent legal agent (+ AgentScope demo)
         └── legal-agent-mcp/          # MCP Server for Legal Agent (Cursor/Codex/DSH)
 ```
 
@@ -455,8 +469,10 @@ npm install && npm run build
 | **E-Claw** | [e-claw/README.md](./e-claw/README.md) |
 | **DeepSeek QA System** | [deepseek-qa-system/README.md](./deepseek-qa-system/README.md) |
 | **AI QA System** | [ai-qa-system/README.md](./ai-qa-system/README.md) |
-| **Legal Agent** | [legal-agent/README.md](./legal-agent/README.md) |
+| **Legal Agent** | [legal-agent/README.md](./legal-agent/README.md) · [AgentScope 示例](./legal-agent/agentscope/) |
 | **Legal Agent MCP** | [legal-agent-mcp/README.md](./legal-agent-mcp/README.md) · [架构文档](./legal-agent-mcp/docs/architecture.md) · [PPT](./legal-agent-mcp/docs/architecture.pptx) |
+| **AgentScope** | [agentscope/](./agentscope/) |
+| **BiSheng** | [bisheng/](./bisheng/) · [README_CN](./bisheng/README_CN.md) |
 | **RecruitOS + HR Agent** | [recruit-agent/README.md](./recruit-agent/README.md) · [Harness 插件说明](./recruit-agent/docs/deepseek-harness-plugin.md) |
 | **DeepSeek Harness** | [deepseek-harness-master/](./deepseek-harness-master/) |
 | **OpenAI Codex** | [codex/](./codex/) · [架构分析](./codex/docs/architecture-analysis/) |
@@ -561,12 +577,12 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 26
-- **Categories**: AI Infra (13), AI Agent (13)
+- **Total Projects**: 28
+- **Categories**: AI Infra (13), AI Agent (15)
 - **Language Support**: Python, TypeScript, JavaScript, Go, Rust (Codex)
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
-- **Highlights**: Legal Agent MCP (Cursor/Codex/DSH), DeepSeek Harness + Recruit Agent plugin, OpenAI Codex architecture, AI/ML Factory (KFP → KServe → GPU), ClawManager, OpenAkita, AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
+- **Highlights**: Legal Agent MCP + AgentScope demo, BiSheng platform, DeepSeek Harness + Recruit Agent plugin, OpenAI Codex architecture, AI/ML Factory (KFP → KServe → GPU), ClawManager, OpenAkita, AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
 
 ---
 
@@ -578,6 +594,6 @@ Special thanks to all contributors in the open-source community, especially:
 
   Made with ❤️ by Eric
 
-  Last updated: 2026-08-25
+  Last updated: 2026-08-31
 
 </div>

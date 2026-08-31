@@ -1,0 +1,474 @@
+/**
+ * Message list for the AI assistant panel.
+ * Renders messages as a tree structure with sibling paging.
+ * Each node with multiple children shows SiblingSwitch for navigation.
+ */
+import { ArrowDownIcon, CornerDownRightIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSetRecoilState } from "recoil";
+import { Button } from "~/components";
+import type { CitationReferencesDesktopPayload } from "./Messages/Content/CitationReferencesDrawer";
+import type { ArtifactFile } from "~/components/Linsight/Artifacts/artifactUtils";
+import { cn } from "~/utils";
+import AiMessageBubble from "./AiMessageBubble";
+import { SelectionMessagesProvider, SelectAllBelowBanner } from "./MessageSelection";
+import { useMessageSelection } from "~/hooks/useMessageSelection";
+import type { ChatMessage } from "~/api/chatApi";
+import { buildMessageTree } from "~/api/chatApi";
+import { useLocalize, usePrefersMobileLayout, useScrollRevealRef } from "~/hooks";
+import { ArticleQAIllustration } from "~/components/illustrations";
+import store from "~/store";
+import HeaderTitle from "./HeaderTitle";
+import { QueryKeys } from "~/types/chat";
+import type { ConversationData } from "~/types/chat/queries";
+
+interface AiChatMessagesProps {
+    messages: ChatMessage[];
+    conversationId?: string;
+    title?: string;
+    isLoading?: boolean;
+    isStreaming?: boolean;
+    presetQuestions?: string[];
+    shareToken?: string;
+    /** When true, hides the share button in the header */
+    hideShare?: boolean;
+    /** When true, hides the sticky header title bar */
+    hideHeaderTitle?: boolean;
+    /** When true, renders messages as a flat list without tree/sibling navigation */
+    flatMode?: boolean;
+    /** Knowledge space AI panel: full-width column, 14px body, gray user / borderless assistant */
+    knowledgeChatLayout?: boolean;
+    /** Show the export-session entry under assistant messages. The full homepage/task
+        chat opts in; the lightweight knowledge/file/article docks and share view leave
+        it off. Independent of knowledgeChatLayout (which is a layout-width flag and is
+        true for the homepage chat too). */
+    allowExport?: boolean;
+    /** Overrides empty-state line under the illustration (e.g. knowledge folder QA hint from parent) */
+    emptyStateHint?: string;
+    /** Overrides the empty-state illustration (defaults to the AI-home image).
+        Subscription / knowledge AI docks pass the brand-themed ArticleQA SVG. */
+    emptyStateIllustration?: ReactNode;
+    /** Skip the centered empty-state (AI-home image + article-assistant hint) and
+        fall through to the normal layout (HeaderTitle + empty message area). Used
+        by the daily/task conversation detail so an empty existing conversation
+        still shows its title + share header, not the knowledge-assistant welcome. */
+    hideEmptyState?: boolean;
+    /** Optional width utility classes for the inner message column */
+    contentWidthClassName?: string;
+    onPresetClick?: (question: string) => void;
+    onRegenerate?: (parentMessageId: string) => void;
+    onOpenCitationPanel?: (payload: CitationReferencesDesktopPayload) => void;
+    activeCitationMessageId?: string | null;
+    /** F035: open the task-mode workspace drawer (entry rendered in HeaderTitle) */
+    onOpenWorkspace?: () => void;
+    /** F035: whether the latest task turn has any uploaded/generated files */
+    hasWorkspaceFiles?: boolean;
+    /** F035: panel already open — hide the header entry button (shown only when closed) */
+    workspaceOpen?: boolean;
+    /** F035: preview a task-turn document in the inline workspace panel (ChatView
+        owns it) — a conversation doc link opens the file directly, no drawer. */
+    onPreviewFile?: (file: ArtifactFile) => void;
+}
+
+/**
+ * Recursively render a message tree node.
+ * Each level picks one sibling (via siblingIdx state) and renders its children below.
+ */
+function MessageTreeNode({
+    siblings,
+    isStreaming,
+    totalMessages,
+    currentIndex,
+    onRegenerate,
+    knowledgeChatLayout,
+    allowExport,
+    allowFeedback,
+    onOpenCitationPanel,
+    activeCitationMessageId,
+    onPreviewFile,
+}: {
+    siblings: ChatMessage[];
+    isStreaming?: boolean;
+    totalMessages: number;
+    currentIndex: number;
+    onRegenerate?: (parentMessageId: string) => void;
+    onPreviewFile?: (file: ArtifactFile) => void;
+    knowledgeChatLayout?: boolean;
+    allowExport?: boolean;
+    allowFeedback?: boolean;
+    onOpenCitationPanel?: (payload: CitationReferencesDesktopPayload) => void;
+    activeCitationMessageId?: string | null;
+}) {
+    // Local sibling index for this group of siblings
+    const [siblingIdx, setSiblingIdx] = useState(0);
+
+    // Reset siblingIdx when siblings change (new message added)
+    useEffect(() => {
+        if (siblings.length > 0 && siblingIdx >= siblings.length) {
+            setSiblingIdx(siblings.length - 1);
+        }
+    }, [siblings.length, siblingIdx]);
+
+    // When a new sibling is added (regenerate), show the latest one
+    useEffect(() => {
+        if (siblings.length > 1) {
+            setSiblingIdx(siblings.length - 1);
+        }
+    }, [siblings.length]);
+
+    if (!siblings || siblings.length === 0) return null;
+
+    const message = siblings[siblingIdx] ?? siblings[siblings.length - 1];
+    if (!message) return null;
+
+    const children = message.children ?? [];
+    const isLastInChain = children.length === 0;
+    const isLastMessage = isLastInChain && !message.isCreatedByUser;
+
+    return (
+        <>
+            <AiMessageBubble
+                message={message}
+                isLatest={isLastMessage}
+                isStreaming={isStreaming && isLastMessage}
+                onRegenerate={
+                    !message.isCreatedByUser && !isStreaming
+                        ? () => onRegenerate?.(message.parentMessageId)
+                        : undefined
+                }
+                siblingIdx={siblingIdx}
+                siblingCount={siblings.length}
+                setSiblingIdx={setSiblingIdx}
+                knowledgeChatLayout={knowledgeChatLayout}
+                allowExport={allowExport}
+                allowFeedback={allowFeedback}
+                onOpenCitationPanel={onOpenCitationPanel}
+                activeCitationMessageId={activeCitationMessageId}
+                onPreviewFile={onPreviewFile}
+            />
+            {/* Recursively render children */}
+            {children.length > 0 && (
+                <MessageTreeNode
+                    siblings={children}
+                    isStreaming={isStreaming}
+                    totalMessages={totalMessages}
+                    currentIndex={currentIndex + 1}
+                    onRegenerate={onRegenerate}
+                    knowledgeChatLayout={knowledgeChatLayout}
+                    allowExport={allowExport}
+                    allowFeedback={allowFeedback}
+                    onOpenCitationPanel={onOpenCitationPanel}
+                    activeCitationMessageId={activeCitationMessageId}
+                    onPreviewFile={onPreviewFile}
+                />
+            )}
+        </>
+    );
+}
+
+export default function AiChatMessages({
+    messages,
+    conversationId = "",
+    title = "",
+    isLoading,
+    isStreaming,
+    presetQuestions = [],
+    shareToken = '',
+    hideShare = false,
+    hideHeaderTitle = false,
+    flatMode = false,
+    knowledgeChatLayout = false,
+    allowExport = false,
+    emptyStateHint,
+    emptyStateIllustration,
+    contentWidthClassName,
+    onPresetClick,
+    onRegenerate,
+    onOpenCitationPanel,
+    activeCitationMessageId,
+    onOpenWorkspace,
+    hasWorkspaceFiles = false,
+    workspaceOpen = false,
+    hideEmptyState = false,
+    onPreviewFile,
+}: AiChatMessagesProps) {
+    const localize = useLocalize();
+    const isNarrowViewport = usePrefersMobileLayout();
+    const setChatMobileHeader = useSetRecoilState(store.chatMobileHeaderState);
+    const queryClient = useQueryClient();
+    const { isActiveForChat } = useMessageSelection();
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const messagesScrollRevealRef = useScrollRevealRef<HTMLDivElement>();
+    const emptyScrollRevealRef = useScrollRevealRef<HTMLDivElement>();
+    const endRef = useRef<HTMLDivElement>(null);
+    const [showScrollBtn, setShowScrollBtn] = useState(false);
+    // Track whether user has manually scrolled up
+    const isUserScrolledUp = useRef(false);
+
+    // Build message tree from flat array (skipped in flat mode)
+    const tree = useMemo(() => (flatMode ? [] : buildMessageTree(messages)), [messages, flatMode]);
+    const cachedConversationTitle = useMemo(() => {
+        if (!conversationId || conversationId === "new") return "";
+        const convoData = queryClient.getQueryData<ConversationData>([QueryKeys.allConversations]);
+        const hit = convoData?.pages
+            ?.flatMap((page) => page?.conversations || [])
+            ?.find((convo) => convo?.conversationId === conversationId);
+        return String(hit?.title || "").trim();
+    }, [queryClient, conversationId, messages.length]);
+
+    const headerTitleText = useMemo(() => {
+        const raw = tree[0]?.flow_name || title || cachedConversationTitle;
+        if (raw != null && String(raw).trim() !== "") return String(raw).trim();
+        return localize("com_ui_new_chat");
+    }, [tree, title, cachedConversationTitle, localize]);
+    useEffect(() => {
+        if (hideHeaderTitle) {
+            setChatMobileHeader(null);
+            return;
+        }
+        setChatMobileHeader({
+            title: headerTitleText,
+            conversationId,
+            flowId: "",
+            flowType: 15,
+            readOnly: !!shareToken,
+            hideShare,
+        });
+        return () => setChatMobileHeader(null);
+    }, [
+        hideHeaderTitle,
+        headerTitleText,
+        conversationId,
+        shareToken,
+        hideShare,
+        setChatMobileHeader,
+    ]);
+
+    // Check if user is near bottom
+    const checkNearBottom = () => {
+        if (!scrollRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        const distFromBottom = scrollHeight - scrollTop - clientHeight;
+        const nearBottom = distFromBottom < 100;
+        isUserScrolledUp.current = !nearBottom;
+        setShowScrollBtn(!nearBottom);
+    };
+
+    // Auto-scroll to bottom on new messages — only if user hasn't scrolled up
+    useEffect(() => {
+        if (!isUserScrolledUp.current && endRef.current) {
+            endRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
+
+    // ResizeObserver to detect content height changes (e.g. thinking block collapse/expand)
+    useEffect(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        const observer = new ResizeObserver(() => {
+            checkNearBottom();
+        });
+        // Observe the inner content div for size changes
+        const inner = container.firstElementChild;
+        if (inner) observer.observe(inner);
+        return () => observer.disconnect();
+    }, []);
+
+    // Show/hide scroll-to-bottom button and track user scroll position
+    const handleScroll = () => {
+        checkNearBottom();
+    };
+
+    const scrollToBottom = () => {
+        isUserScrolledUp.current = false;
+        endRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const hasMessages = messages.length > 0;
+
+    // 点赞/点踩 is offered on every real chat surface; the read-only anonymous
+    // share view (which carries a shareToken) opts out.
+    const allowFeedback = !shareToken;
+
+    // --- Empty state ---
+    if (!hasMessages && !isLoading && !hideEmptyState) {
+        return (
+            <div
+                ref={emptyScrollRevealRef}
+                // h-full (alongside flex-1) so the empty state fills its parent even when
+                // that parent is a plain block container (e.g. the dock's `relative` message
+                // area), keeping the illustration vertically centered instead of collapsing
+                // to the top. Mirrors the non-empty messages root below.
+                className="flex h-full min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-4 scrollbar-on-scroll"
+                style={{
+                    transitionProperty: 'background-color',
+                    transitionDuration: '350ms',
+                    transitionTimingFunction: 'ease-in-out'
+                }}
+            >
+                <div className="mb-6">
+                    {emptyStateIllustration ?? (
+                        <ArticleQAIllustration grey className="size-[80px] mx-auto block" />
+                    )}
+                    <p className="mt-4 text-center text-[14px] font-normal text-text-3">
+                        {emptyStateHint ?? localize("com_knowledge.qa_current_article")}
+                    </p>
+                    {presetQuestions.length > 0 && (
+                        <div className="w-full flex flex-col gap-3 pt-[22px]">
+                            {presetQuestions.map((q, i) => (
+                                <Button
+                                    key={i}
+                                    variant="ghost"
+                                    className="bg-gray-50 px-3 py-1 text-left text-sm font-normal text-text-3 transition-colors hover:bg-blue-500/[0.07] hover:text-blue-500 active:bg-blue-500/[0.07] rounded-lg flex items-center gap-1 group w-fit"
+                                    onClick={() => onPresetClick?.(q)}
+                                >
+                                    <div className="size-4 flex items-center justify-center">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary group-hover:hidden group-active:hidden" />
+                                        <CornerDownRightIcon className="size-4 text-primary hidden group-hover:block group-active:block" />
+                                    </div>
+                                    {q}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // --- Loading state ---
+    if (isLoading) {
+        return (
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+            </div>
+        );
+    }
+
+    // --- Messages (tree rendering) ---
+    return (
+        <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+            {!hideHeaderTitle && (
+                <HeaderTitle
+                    readOnly={!!shareToken}
+                    hideShare={hideShare}
+                    conversation={{ title: headerTitleText, flowId: "", conversationId, flowType: 15 }}
+                    onOpenWorkspace={onOpenWorkspace}
+                    hasWorkspaceFiles={hasWorkspaceFiles}
+                    workspaceOpen={workspaceOpen}
+                />
+            )}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* Soft top fade: content dissolves into the page as it scrolls under the
+                top edge instead of a hard cut. Sits ABOVE normal scroll content
+                (z-10) so it fades, but BELOW pinned sticky headers (z-20) — the
+                overflow container creates no stacking context, so a header's z-20
+                bubbles up to outrank this overlay and stays crisp. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-white to-transparent" />
+            <div
+                ref={(el) => {
+                    scrollRef.current = el;
+                    messagesScrollRevealRef(el);
+                }}
+                // `scrollbar-on-scroll` reserves the scrollbar gutter with
+                // `scrollbar-gutter: stable`, i.e. entirely on the end edge. That
+                // makes this box asymmetric, so the centered message column sits
+                // half a scrollbar left of the input below it — the input is
+                // centered in the full width, outside this scroller. Reserving on
+                // both edges restores a symmetric box and the two columns line up.
+                // Set inline, not as a utility class: `.scrollbar-on-scroll` is
+                // plain CSS declared after `@tailwind utilities`, so at equal
+                // specificity it would win on source order.
+                style={{ scrollbarGutter: "stable both-edges" }}
+                className={cn(
+                    "min-h-0 flex-1 overflow-y-auto scrollbar-on-scroll",
+                    hideHeaderTitle
+                        ? "pt-2"
+                        : isNarrowViewport
+                            // Narrow viewport renders no in-flow HeaderTitle (it returns
+                            // null — MobileNav owns the top bar), so the old pt-11 left a
+                            // vestigial 44px gap at the top where scrolled content bled
+                            // above the pinned sticky header. Match the headerless pt-2.
+                            ? "pt-2"
+                            : "pt-4",
+                )}
+                onScroll={handleScroll}
+            >
+                <div
+                    className={cn(
+                        "flex min-h-full w-full flex-col pt-2 pb-10",
+                        contentWidthClassName ?? (knowledgeChatLayout ? "max-w-none" : "max-w-[768px] mx-auto")
+                    )}
+                >
+                    {/* F028: surface the live messages list to selection-aware children
+                        (MessageCheckbox / ExportSelectionButton inside AiMessageBubble)
+                        without modifying useAiChat or prop-drilling. */}
+                    <SelectionMessagesProvider messages={messages}>
+                    {isActiveForChat(conversationId) && messages.length > 0 && (
+                        <SelectAllBelowBanner scrollRef={scrollRef} />
+                    )}
+                    {flatMode ? (
+                        /* Flat mode: render messages as a simple list */
+                        messages.map((message, idx) => {
+                            const isLast = idx === messages.length - 1;
+                            const isLastBot = isLast && !message.isCreatedByUser;
+                            return (
+                                <AiMessageBubble
+                                    key={message.messageId}
+                                    message={message}
+                                    isLatest={isLastBot}
+                                    isStreaming={isStreaming && isLastBot}
+                                    onRegenerate={
+                                        !message.isCreatedByUser && isLastBot && !isStreaming
+                                            ? () => onRegenerate?.(message.parentMessageId)
+                                            : undefined
+                                    }
+                                    knowledgeChatLayout={knowledgeChatLayout}
+                                    allowExport={allowExport}
+                                    allowFeedback={allowFeedback}
+                                    onOpenCitationPanel={onOpenCitationPanel}
+                                    activeCitationMessageId={activeCitationMessageId}
+                                    onPreviewFile={onPreviewFile}
+                                />
+                            );
+                        })
+                    ) : (
+                        /* Tree mode: render messages as tree with sibling navigation */
+                        tree.length > 0 && (
+                            <MessageTreeNode
+                                siblings={tree}
+                                isStreaming={isStreaming}
+                                totalMessages={messages.length}
+                                currentIndex={0}
+                                onRegenerate={onRegenerate}
+                                knowledgeChatLayout={knowledgeChatLayout}
+                                allowExport={allowExport}
+                                allowFeedback={allowFeedback}
+                                onOpenCitationPanel={onOpenCitationPanel}
+                                activeCitationMessageId={activeCitationMessageId}
+                                onPreviewFile={onPreviewFile}
+                            />
+                        )
+                    )}
+                    <div ref={endRef} className="h-0 shrink-0" />
+                    </SelectionMessagesProvider>
+                </div>
+            </div>
+            </div>
+            {/* Scroll to bottom button */}
+            {showScrollBtn && (
+                <div className="absolute -bottom-4 w-full h-0 flex justify-center z-10">
+                    <button
+                        type="button"
+                        onClick={scrollToBottom}
+                        className="flex items-center h-8 justify-center gap-2 rounded-md border border-border-base bg-white/80 px-2.5 text-sm leading-5 text-neutral-800 hover:bg-white/90 transition-colors"
+                    >
+                        <ArrowDownIcon size={16} />
+                        <span className="text-sm">回到底部</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}

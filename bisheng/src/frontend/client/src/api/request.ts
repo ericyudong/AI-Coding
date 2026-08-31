@@ -1,0 +1,333 @@
+// @ts-strict-ignore
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import i18next from "i18next";
+import { setTokenHeader } from '~/api/chat/headers-helpers';
+import { redirectToLogin } from '~/utils/loginRedirect';
+import * as endpoints from '~/api/chat/api-endpoints';
+import type * as t from '~/types/chat/types';
+
+// 报错的时候是否弹窗
+type ErrorOptions = {
+  showError?: boolean;
+  /** When true, the interceptor will NOT auto-redirect on 403. The caller handles it. */
+  skip403Redirect?: boolean;
+};
+
+const customAxios = axios.create({
+  baseURL: import.meta.env.BASE_URL
+  // 配置
+});
+
+async function _get<T>(url: string, options?: AxiosRequestConfig & ErrorOptions): Promise<T> {
+  const response = await customAxios.get(url, { ...options });
+  return response.data;
+}
+
+async function _getResponse<T>(url: string, options?: AxiosRequestConfig): Promise<T> {
+  return await customAxios.get(url, { ...options });
+}
+
+async function _post(url: string, data?: any, config?: AxiosRequestConfig) {
+  const response = await customAxios.post(url, config ? data : JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' },
+    ...config
+  });
+  return response.data;
+}
+
+async function _postResponse<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  // Mirror of _getResponse: returns the full Axios response so callers can
+  // read headers (e.g. Content-Disposition for file downloads).
+  return await customAxios.post(url, config ? data : JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' },
+    ...config,
+  }) as unknown as T;
+}
+
+async function _postMultiPart(url: string, formData: FormData, options?: AxiosRequestConfig) {
+  const response = await customAxios.post(url, formData, {
+    ...options,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
+
+async function _postTTS(url: string, formData: FormData, options?: AxiosRequestConfig) {
+  const response = await customAxios.post(url, formData, {
+    ...options,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    responseType: 'arraybuffer',
+  });
+  return response.data;
+}
+
+async function _put(url: string, data?: any, options?: AxiosRequestConfig) {
+  const response = await customAxios.put(url, JSON.stringify(data), {
+    ...options,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+}
+
+async function _delete<T>(url: string, options?: AxiosRequestConfig): Promise<T> {
+  const response = await customAxios.delete(url, { ...options });
+  return response.data;
+}
+
+async function _deleteWithOptions<T>(url: string, options?: AxiosRequestConfig): Promise<T> {
+  const response = await customAxios.delete(url, { ...options });
+  return response.data;
+}
+
+async function _patch(url: string, data?: any, options?: AxiosRequestConfig) {
+  const response = await customAxios.patch(url, JSON.stringify(data), {
+    ...options,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+}
+
+let isRefreshing = false;
+let failedQueue: { resolve: (value?: any) => void; reject: (reason?: any) => void }[] = [];
+
+const refreshToken = (retry?: boolean): Promise<t.TRefreshTokenResponse | undefined> =>
+  _post(endpoints.refreshToken(retry));
+
+const dispatchTokenUpdatedEvent = (token: string) => {
+  setTokenHeader(token);
+  window.dispatchEvent(new CustomEvent('tokenUpdated', { detail: token }));
+};
+
+const processQueue = (error: AxiosError | null, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+export const translateApiErrorMessage = (data: any) => {
+  const statusCodeKey = data?.status_code != null ? `api_errors.${data.status_code}` : "";
+  const statusMessage = typeof data?.status_message === "string" ? data.status_message : "";
+  const statusMessageKey = statusMessage ? `api_errors.${statusMessage}` : "";
+
+  if (statusCodeKey && i18next.exists(statusCodeKey)) {
+    return i18next.t(statusCodeKey, data?.data);
+  }
+  if (statusMessageKey && i18next.exists(statusMessageKey)) {
+    return i18next.t(statusMessageKey, data?.data);
+  }
+  // Last resort keeps t(key, vars) so {{xxx}} templates still interpolate from
+  // data.data; defaultValue guards the truly-untranslated case — never the raw key.
+  return (
+    statusMessage ||
+    (statusCodeKey
+      ? String(i18next.t(statusCodeKey, { ...(data?.data || {}), defaultValue: String(i18next.t("api_errors.fallback")) }))
+      : "")
+  );
+};
+
+// License degradation (gateway returns 11001): throttle the toast so a burst of
+// failing business calls doesn't flood the user with duplicate notices.
+let lastLicenseExpiredToastAt = 0;
+function shouldToastLicenseExpired(): boolean {
+  const now = Date.now();
+  if (now - lastLicenseExpiredToastAt > 5000) {
+    lastLicenseExpiredToastAt = now;
+    return true;
+  }
+  return false;
+}
+
+customAxios.interceptors.response.use(
+  (response) => {
+    // License expired (gateway degradation): always surface a clear toast and reject,
+    // regardless of per-call error flags, so end users learn it's an authorization
+    // issue rather than a transient glitch. See feature 037.
+    if (response.data?.status_code === 11001) {
+      const message = translateApiErrorMessage(response.data) || response.data.status_message || '';
+      if (message && shouldToastLicenseExpired()) {
+        window.showToast?.({ message, status: 'error' });
+      }
+      const err: any = new Error(message || 'license expired (11001)');
+      err.status_code = 11001;
+      err.status_message = response.data.status_message;
+      err.response = response;
+      return Promise.reject(err);
+    }
+
+    // Backend service exception surfaced as HTTP 200 + business code 500:
+    // gateways often wrap upstream 5xx into a 200 envelope, so mirror the
+    // HTTP-500 branch below and raise the global maintenance overlay here too.
+    // Return early — the overlay covers the screen, no toast needed underneath.
+    if (response.data?.status_code === 500) {
+      window.dispatchEvent(new CustomEvent('bs:service-maintenance'));
+      return response;
+    }
+
+    // Legacy 403 default: redirect to /c/new?error=11403 unless the caller
+    // explicitly opts out via skip403Redirect.
+    if (response.data.status_code === 403 && !response.config.skip403Redirect) {
+      localStorage.setItem('ERROR_REQUEST_PATH', response.config.url || '')
+      location.href = `${__APP_ENV__.BASE_URL}/c/new?error=11403`;
+      return response
+    }
+
+    // Unified business-error pipeline for callers that opted out of the 403
+    // redirect: translate the api_errors.<code> i18n key, toast it, and reject
+    // the promise so the caller's onError / .catch fires. Old call sites that
+    // rely on silent failure (no skip403Redirect) keep the previous behavior.
+    if (
+      response.config.skip403Redirect
+      && response.data
+      && response.data.status_code !== 200
+    ) {
+      const message = translateApiErrorMessage(response.data);
+      const display = message || response.data.status_message || "";
+      if (display) {
+        window.showToast?.({ message: display, status: 'error' });
+      }
+      const err: any = new Error(display || `request failed (${response.data.status_code})`);
+      err.status_code = response.data.status_code;
+      err.status_message = response.data.status_message;
+      err.response = response;
+      return Promise.reject(err);
+    }
+
+    if (response.config.showError && response.data && response.data.status_code !== 200) {
+      console.log('业务错误:>> ', response.config.url, response.data);
+      window.showToast?.({ message: translateApiErrorMessage(response.data), status: 'error' });
+    }
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    if (!error.response) {
+      return Promise.reject(error);
+    }
+
+    // Gateway/backend service exception → surface the global maintenance overlay.
+    // Event name mirrors SERVICE_MAINTENANCE_EVENT in SystemMaintenanceOverlay.tsx.
+    if (error.response.status === 500) {
+      window.dispatchEvent(new CustomEvent('bs:service-maintenance'));
+    }
+
+    if (originalRequest.url?.includes('/api/auth/2fa') === true) {
+      return Promise.reject(error);
+    }
+    if (originalRequest.url?.includes('/api/auth/logout') === true) {
+      return Promise.reject(error);
+    }
+
+    if (error.response.status === 401 && !originalRequest._retry) {
+      console.warn('401 error, refreshing token');
+      originalRequest._retry = true;
+
+      // Standalone guest chat links (/chat/flow/:flowId, /chat/assistant/:flowId)
+      // are passwordless — never redirect to the login page from here.
+      // Auth variants (/chat/flow/auth/..., /chat/assistant/auth/...) are excluded.
+      const isGuestStandaloneChat =
+        /\/chat\/(flow|assistant)\/(?!auth\/)[^/]+\/?$/.test(location.pathname);
+      if (isGuestStandaloneChat) {
+        return Promise.reject(error);
+      }
+
+      // redirectToLogin drops the bs:auth-state sentinel (so the next
+      // /api/user/me success counts as a fresh session), stores the full
+      // return target, prefers the SSO url, and is idempotent across the burst
+      // of parallel 401s a page load produces.
+      //
+      // Still gated on MODE: bouncing local dev to the platform origin on every
+      // 401 makes debugging painful. Routes where a blank page is useless carry
+      // their own unconditional guard instead (see routes/RequireLogin.tsx).
+      if (import.meta.env.MODE === 'production') {
+        redirectToLogin();
+      }
+      // } else {
+      //   if (location.pathname.indexOf('login') === -1) {
+      //     // location.href = '/workspace/login';
+      //   }
+      // }
+      // location.href = '/'
+
+      // if (isRefreshing) {
+      //   try {
+      //     const token = await new Promise((resolve, reject) => {
+      //       failedQueue.push({ resolve, reject });
+      //     });
+      //     // originalRequest.headers['Authorization'] = 'Bearer ' + token;
+      //     return await customAxios(originalRequest);
+      //   } catch (err) {
+      //     return Promise.reject(err);
+      //   }
+      // }
+
+      // isRefreshing = true;
+
+      try {
+        // const response = await refreshToken(
+        //   // Handle edge case where we get a blank screen if the initial 401 error is from a refresh token request
+        //   originalRequest.url?.includes('api/auth/refresh') === true ? true : false,
+        // );
+
+        // const token = response?.token ?? '';
+
+        // if (token) {
+        //   originalRequest.headers['Authorization'] = 'Bearer ' + token;
+        //   dispatchTokenUpdatedEvent(token);
+        //   processQueue(null, token);
+        //   return await customAxios(originalRequest);
+        // } else if (window.location.href.includes('share/')) {
+        //   console.log(
+        //     `Refresh token failed from shared link, attempting request to ${originalRequest.url}`,
+        //   );
+        // } else {
+        //   window.location.href = '/login';
+        // }
+      } catch (err) {
+        processQueue(err as AxiosError, null);
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+const paramsSerializer = (params) => {
+  return Object.keys(params)
+    .map(key => {
+      const value = params[key];
+      if (value === undefined) {
+        return null; // 只返回非undefined的值
+      }
+      if (Array.isArray(value)) {
+        return value.map(val => `${key}=${val}`).join('&');
+      }
+      return `${key}=${value}`;
+    })
+    .filter(item => item !== null) // 过滤掉值为null的项
+    .join('&');
+}
+
+export default {
+  get: _get,
+  getResponse: _getResponse,
+  post: _post,
+  postResponse: _postResponse,
+  postMultiPart: _postMultiPart,
+  postTTS: _postTTS,
+  put: _put,
+  delete: _delete,
+  deleteWithOptions: _deleteWithOptions,
+  patch: _patch,
+  refreshToken,
+  dispatchTokenUpdatedEvent,
+  paramsSerializer
+};

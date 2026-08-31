@@ -2,3 +2,10 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# macOS
+.DS_Store
+
+# BiSheng Docker runtime volumes (DB / MinIO / Redis / logs)
+bisheng/docker/mysql/data/
+bisheng/docker/data/

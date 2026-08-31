@@ -1,0 +1,357 @@
+// @ts-strict-ignore
+import axios from 'axios';
+import React from 'react';
+import { stripCitationMarkers } from '~/components/Chat/Messages/Content/citationUtils';
+
+export { default as buildDefaultConvo } from './buildDefaultConvo';
+export { default as buildTree } from './buildTree';
+export { default as cleanupPreset } from './cleanupPreset';
+export { default as cn } from './cn';
+export * from './convos';
+export * from './duration';
+export * from './endpoints';
+export * from './files';
+export * from './forms';
+export { default as getDefaultEndpoint } from './getDefaultEndpoint';
+export { default as getLoginError } from './getLoginError';
+export * from './json';
+export * from './languages';
+export * from './latex';
+export * from './localStorage';
+export { default as logger } from './logger';
+export * from './map';
+export * from './messages';
+export * from './presets';
+export * from './promptGroups';
+export * from './prompts';
+export * from './textarea';
+export * from './theme';
+
+export const languages = [
+  'java',
+  'c',
+  'markdown',
+  'css',
+  'html',
+  'xml',
+  'bash',
+  'json',
+  'yaml',
+  'jsx',
+  'python',
+  'c++',
+  'javascript',
+  'csharp',
+  'php',
+  'typescript',
+  'swift',
+  'objectivec',
+  'sql',
+  'r',
+  'kotlin',
+  'ruby',
+  'go',
+  'x86asm',
+  'matlab',
+  'perl',
+  'pascal',
+];
+
+export const removeFocusOutlines = '';
+export const removeFocusRings =
+  'focus:outline-none focus:ring-0 focus:ring-opacity-0 focus:ring-offset-0';
+
+export const cardStyle =
+  'transition-colors rounded-md min-w-[75px] border font-normal bg-white hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 dark:bg-gray-800 text-black dark:text-gray-600 focus:outline-none data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-gray-700';
+
+export const defaultTextProps =
+  'rounded-md border border-gray-200 focus:border-gray-400 focus:bg-gray-50 bg-transparent text-sm shadow-[0_0_10px_rgba(0,0,0,0.05)] outline-none focus-within:placeholder:text-text-primary focus:placeholder:text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-gray-400 focus:ring-opacity-20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:focus:bg-gray-600 dark:focus:border-gray-600 dark:text-gray-50 dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] dark:focus:outline-none';
+
+export const optionText =
+  'p-0 shadow-none text-right pr-1 h-8 border-transparent hover:bg-gray-800/10 dark:hover:bg-white/10 dark:focus:bg-white/10 transition-colors';
+
+export const defaultTextPropsLabel =
+  'rounded-md border border-gray-300 bg-transparent text-sm shadow-[0_0_10px_rgba(0,0,0,0.10)] outline-none focus-within:placeholder:text-text-primary focus:placeholder:text-text-primary placeholder:text-text-secondary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-700 dark:text-gray-50 dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] dark:focus:border-gray-600 dark:focus:outline-none';
+
+export function capitalizeFirstLetter(string: string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+export const handleDoubleClick: React.MouseEventHandler<HTMLElement> = (event) => {
+  const range = document.createRange();
+  range.selectNodeContents(event.target as Node);
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+  selection.removeAllRanges();
+  selection.addRange(range);
+};
+
+export const extractContent = (
+  children: React.ReactNode | { props: { children: React.ReactNode } } | string,
+): string => {
+  if (typeof children === 'string') {
+    return children;
+  }
+  if (React.isValidElement(children)) {
+    return extractContent((children.props as { children?: React.ReactNode }).children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(extractContent).join('');
+  }
+  return '';
+};
+
+export const normalizeLayout = (layout: number[]) => {
+  const sum = layout.reduce((acc, size) => acc + size, 0);
+  if (Math.abs(sum - 100) < 0.01) {
+    return layout.map((size) => Number(size.toFixed(2)));
+  }
+
+  const factor = 100 / sum;
+  const normalizedLayout = layout.map((size) => Number((size * factor).toFixed(2)));
+
+  const adjustedSum = normalizedLayout.reduce(
+    (acc, size, index) => (index === layout.length - 1 ? acc : acc + size),
+    0,
+  );
+  normalizedLayout[normalizedLayout.length - 1] = Number((100 - adjustedSum).toFixed(2));
+
+  return normalizedLayout;
+};
+
+// ding
+export const playDing = () => {
+  // 1. 创建音频元素
+  const audio = new Audio(__APP_ENV__.BASE_URL + '/assets/ding.wav');
+  audio.volume = 0.5; // 50%音量
+
+  // 2. 播放音频
+  audio.play().catch(error => {
+    console.error('播放失败:', error);
+    audio.remove(); // 如果播放失败也移除元素
+  });
+
+  // 3. 播放结束后销毁
+  audio.addEventListener('ended', () => {
+    console.log('播放结束，销毁音频元素');
+    audio.remove();
+  });
+
+  // 4. 错误处理（网络问题等）
+  audio.addEventListener('error', () => {
+    console.error('音频加载失败');
+    audio.remove();
+  });
+}
+
+
+/**
+ * 切换导航栏的展开/闭合状态
+ * @param {boolean} shouldExpand - true表示展开，false表示关闭
+ */
+export const toggleNav = (shouldExpand) => {
+  return // 去掉自动收起展开
+  // 获取导航栏切换按钮元素
+  const navToggle = document.querySelector('div[id="toggle-left-nav"]');
+
+  if (!navToggle) {
+    console.error('未找到导航栏切换按钮');
+    return;
+  }
+
+  // 获取当前展开状态
+  const isExpanded = navToggle.getAttribute('aria-expanded') === 'true';
+
+  // 判断是否需要操作
+  if ((shouldExpand && !isExpanded) || (!shouldExpand && isExpanded)) {
+    // 触发点击事件来切换状态
+    navToggle.click();
+  }
+}
+
+/**
+ * 时间字符串格式化函数
+ * @param {string} time - 时间字符串，格式为 "YYYY-mm-ddTHH:MM:SS"
+ * @param {boolean} hideTime - 是否隐藏时分秒
+ * @return {string} 格式化后的时间字符串，格式为 "YYYY-mm-dd HH:MM:SS"
+ */
+export const formatTime = (time: string, hideTime: boolean = false) => {
+  const value = time.replace('T', ' ').replaceAll('-', '/');
+  return hideTime ? value.slice(0, -3) : value
+}
+
+// Date转换为目标格式
+export function formatDate(date: Date, format: string): string {
+  const addZero = (num) => num < 10 ? `0${num}` : `${num}`
+  const replacements = {
+    'yyyy': date.getFullYear(),
+    'yy': date.getFullYear() % 2000,
+    'MM': addZero(date.getMonth() + 1),
+    'dd': addZero(date.getDate()),
+    'HH': addZero(date.getHours()),
+    'mm': addZero(date.getMinutes()),
+    'ss': addZero(date.getSeconds())
+  }
+  return format.replace(/yyyy|yy|MM|dd|HH|mm|ss/g, (match) => replacements[match])
+}
+
+// param time: yyyy-mm-ddTxxxx
+export function formatStrTime(time: string, notSameDayFormat: string): string {
+  if (!time) return ''
+  const date1 = new Date(time)
+  const date2 = new Date()
+  return date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate() ? formatDate(date1, 'HH:mm') : formatDate(date1, notSameDayFormat)
+}
+
+// Pull visible text out of a DOM node. Prefers the live selection range so
+// that user-select:none subtrees (e.g. citation badges) are excluded; falls
+// back to innerText when no selection is available.
+const extractVisibleText = (dom: HTMLElement): string => {
+  const range = document.createRange();
+  range.selectNode(dom);
+  const selection = window.getSelection();
+  let text = dom.innerText;
+  if (selection) {
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const selected = selection.toString();
+    if (selected) text = selected;
+    selection.removeAllRanges();
+  }
+  return text;
+};
+
+const copyStringToClipboard = (text: string): Promise<void> => {
+  // Always run the legacy fallback first — it is synchronous and works reliably
+  // inside focus-trapped dialogs (Radix Dialog portals) where the async Clipboard
+  // API may silently resolve without actually writing in Firefox.
+  const fallbackOk = copyTextFallbackSync(text);
+  if (fallbackOk) return Promise.resolve();
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  return Promise.reject(new Error('copy failed'));
+};
+
+const copyTextInDom = (dom: HTMLElement): Promise<string> => {
+  // Strip private-use citation markers so they don't leak to the clipboard
+  // (the rendered badges have no plain-text counterpart).
+  const cleanText = stripCitationMarkers(extractVisibleText(dom));
+  return copyStringToClipboard(cleanText).then(() => cleanText);
+};
+
+// Copy text to clipboard with Firefox-compatible fallback. Always strips
+// private-use citation markers so they never reach the clipboard regardless
+// of whether the caller passes a DOM node or a pre-extracted string.
+export const copyText = (text: string | HTMLElement): Promise<string | void> => {
+  if (typeof text !== 'string') return copyTextInDom(text);
+  return copyStringToClipboard(stripCitationMarkers(text));
+};
+
+/**
+ * Synchronous copy via a hidden textarea + execCommand.
+ * Appends inside the active dialog (if any) so that Radix focus-trap does not
+ * steal focus away from the textarea in Firefox.
+ * Returns true if execCommand reported success.
+ */
+function copyTextFallbackSync(text: string): boolean {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '-9999px';
+  textarea.style.opacity = '0';
+  // Append inside the active dialog/menu to avoid focus-trap interference.
+  // Radix DropdownMenu/Select content ([role="menu"]/[role="listbox"]) traps focus
+  // via FocusScope: a textarea appended to <body> loses focus immediately, so
+  // select()+execCommand copies nothing. Keeping it inside the trapped container
+  // preserves the selection (fixes copy from a mobile WebView dropdown menu item).
+  const container =
+    document.activeElement?.closest('[role="dialog"],[role="menu"],[role="listbox"]') ||
+    document.body;
+  container.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    // execCommand can throw in rare cases
+  } finally {
+    container.removeChild(textarea);
+  }
+  return ok;
+}
+
+
+export function downloadFile(url, label) {
+  console.log('download file :>> ', url);
+
+  return axios.get(url, { responseType: "blob" }).then((res: any) => {
+    const blob = new Blob([res.data]);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = label;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }).catch(console.error);
+}
+
+
+// uuid
+export const generateUUID = (length: number) => {
+  let d = new Date().getTime()
+  const uuid = ''.padStart(length, 'x').replace(/[xy]/g, (c) => {
+    const r = (d + Math.random() * 16) % 16 | 0
+    d = Math.floor(d / 16)
+    return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16)
+  })
+  return uuid
+}
+
+
+/**
+ * Calculate the full-width length of a string.
+ * Full-width characters (e.g. CJK) count as 1, half-width characters (e.g. letters, digits) count as 0.5.
+ * Example: "你好world" => 2 + 5*0.5 = 4.5
+ */
+export function getFullWidthLength(str: string): number {
+  let len = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code <= 0x7F) {
+      len += 0.5;
+    } else {
+      len += 1;
+    }
+  }
+  return len;
+}
+
+/**
+ * Truncate a string so that its full-width length does not exceed maxLen.
+ */
+export function truncateByFullWidth(str: string, maxLen: number): string {
+  let len = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    len += code <= 0x7F ? 0.5 : 1;
+    if (len > maxLen) {
+      return str.slice(0, i);
+    }
+  }
+  return str;
+}
+
+// 取后缀名
+export function getFileExtension(filename) {
+  if (!filename) return '';
+  const basename = filename.split(/[\\/]/).pop(); // 去除路径
+  if (!basename) return '';
+  const match = basename.match(/\.([^.]+)$/);
+  return (match ? match[1] : '').toUpperCase();
+}

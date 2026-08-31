@@ -1,0 +1,26 @@
+exclude: ^(scripts|docs|docker|requirements|test|experimental)/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        files: \.(py|pyd|ts|tsx|js|jsx)$
+      - id: check-yaml
+      - id: end-of-file-fixer
+        files: \.(py|pyd|ts|tsx|js|jsx)$
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+        files: \.(py|pyd|ts|tsx|js|jsx)$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]

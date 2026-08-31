@@ -1,0 +1,269 @@
+// @ts-strict-ignore
+import cloneDeep from "lodash-es/cloneDeep";
+import uniqueId from "lodash-es/uniqueId";
+import { Suspense, useContext, useEffect, useMemo, useState } from "react";
+import { RouterProvider } from "react-router-dom";
+import "./App.css";
+import "./style/vditor.css"
+
+import i18next from "i18next";
+import { useTranslation } from "react-i18next";
+import ErrorAlert from "./alerts/error";
+import NoticeAlert from "./alerts/notice";
+import SuccessAlert from "./alerts/success";
+import { Toaster } from "./components/bs-ui/toast";
+import { alertContext } from "./contexts/alertContext";
+import { locationContext } from "./contexts/locationContext";
+import { userContext } from "./contexts/userContext";
+import { getAdminRouter, getPrivateRouter, publicRouter, resolveRoutePermissions } from "./routes";
+import { LoadingIcon } from "./components/bs-icons/loading";
+import { useToast } from "./components/bs-ui/toast/use-toast";
+import { consumeLoginReturnTo } from "./utils/loginReturnTo";
+
+export default function App() {
+  const { setCurrent, setShowSideBar, setIsStackedOpen } = useContext(locationContext);
+  // let location = useLocation();
+  useEffect(() => {
+    setCurrent(location.pathname.replace(/\/$/g, "").split("/"));
+    setShowSideBar(true);
+    setIsStackedOpen(true);
+  }, [setCurrent, setIsStackedOpen, setShowSideBar]);
+  const {
+    errorData,
+    errorOpen,
+    setErrorOpen,
+    noticeData,
+    noticeOpen,
+    setNoticeOpen,
+    successData,
+    successOpen,
+    setErrorData,
+    setSuccessOpen,
+  } = useContext(alertContext);
+
+  // Initialize state variable for the list of alerts
+  const [alertsList, setAlertsList] = useState<
+    Array<{
+      type: string;
+      data: { title: string; list?: Array<string>; link?: string };
+      id: string;
+    }>
+  >([]);
+
+  // Use effect hook to update alertsList when a new alert is added
+  useEffect(() => {
+    // If there is an error alert open with data, add it to the alertsList
+    if (errorOpen && errorData) {
+      if (
+        alertsList.length > 0 &&
+        JSON.stringify(alertsList[alertsList.length - 1].data) ===
+        JSON.stringify(errorData)
+      ) {
+        return;
+      }
+      setErrorOpen(false);
+      setAlertsList((old) => {
+        const newAlertsList = [
+          ...old,
+          { type: "error", data: cloneDeep(errorData), id: uniqueId() },
+        ];
+        return newAlertsList;
+      });
+    }
+    // If there is a notice alert open with data, add it to the alertsList
+    else if (noticeOpen && noticeData) {
+      if (
+        alertsList.length > 0 &&
+        JSON.stringify(alertsList[alertsList.length - 1].data) ===
+        JSON.stringify(noticeData)
+      ) {
+        return;
+      }
+      setNoticeOpen(false);
+      setAlertsList((old) => {
+        const newAlertsList = [
+          ...old,
+          { type: "notice", data: cloneDeep(noticeData), id: uniqueId() },
+        ];
+        return newAlertsList;
+      });
+    }
+    // If there is a success alert open with data, add it to the alertsList
+    else if (successOpen && successData) {
+      if (
+        alertsList.length > 0 &&
+        JSON.stringify(alertsList[alertsList.length - 1].data) ===
+        JSON.stringify(successData)
+      ) {
+        return;
+      }
+      setSuccessOpen(false);
+      setAlertsList((old) => {
+        const newAlertsList = [
+          ...old,
+          { type: "success", data: cloneDeep(successData), id: uniqueId() },
+        ];
+        return newAlertsList;
+      });
+    }
+  }, [
+    errorData,
+    errorOpen,
+    noticeData,
+    noticeOpen,
+    setErrorOpen,
+    setNoticeOpen,
+    setSuccessOpen,
+    successData,
+    successOpen,
+  ]);
+
+
+  /**
+   * 暴露弹窗全局使用
+   **/
+  useEffect(() => {
+    window.errorAlerts = (errorList: string[]) => {
+      setAlertsList((old) => {
+        const newAlertsList = [
+          ...old,
+          { type: "error", data: { title: '', list: errorList }, id: uniqueId() },
+        ];
+        return newAlertsList;
+      })
+    }
+  }, [])
+
+  const removeAlert = (id: string) => {
+    setAlertsList((prevAlertsList) =>
+      prevAlertsList.filter((alert) => alert.id !== id)
+    );
+  };
+
+  const { user, setUser } = useContext(userContext);
+
+  // Post-login return hop for landings that never touch the local login form —
+  // chiefly the SSO/gateway callback, which sets the cookie and drops the user
+  // on the platform root. Without this, someone who opened a share link while
+  // signed out ends up on the home page instead of the shared page.
+  //
+  // One-shot: consumeLoginReturnTo() clears the keys, and it validates
+  // same-origin + freshness, so a stale target cannot yank an admin away later.
+  // The local login form consumes the same value before its own full-page
+  // navigation, so the two paths never both fire.
+  useEffect(() => {
+    if (!user?.user_id) return;
+    const returnTo = consumeLoginReturnTo();
+    if (returnTo && returnTo !== location.href) {
+      location.href = returnTo;
+    }
+  }, [user?.user_id]);
+
+  // 退出
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey && event.keyCode === 81) {
+        setUser(null)
+        localStorage.setItem('UUR_INFO', '')
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // i18n title
+  const { t } = useTranslation()
+
+  // init language
+  useEffect(() => {
+    const lang = user?.user_id ? localStorage.getItem('i18nextLng') : null
+    if (lang) {
+      i18next.changeLanguage(lang === 'zh' ? 'zh-Hans' : lang)
+    }
+  }, [user])
+
+  // 免登录列表
+  const noAuthPages = ['chat', 'resouce']
+  const path = location.pathname.replace(__APP_ENV__.BASE_URL, '').split('/')?.[1] || ''
+
+  // Dynamic routes use web_menu; Child Admin compatibility grants are added in resolveRoutePermissions.
+  const router = useMemo(() => {
+    if (user && user.role === 'admin') return getAdminRouter()
+    if (!user?.user_id) return null
+    const perms = resolveRoutePermissions(user)
+    // Admin-shell routes: gated by the admin approval scope (legacy flag as fallback).
+    return getPrivateRouter(perms, { menuApprovalMode: Boolean(user.menu_approval_mode_admin ?? user.menu_approval_mode) })
+  }, [user])
+
+  // url error toast
+  const { toast } = useToast()
+  useEffect(() => {
+    if (window.url_error) {
+      toast({
+        description: t(`api_errors:${window.url_error}`, { defaultValue: t('api_errors:fallback') }),
+        variant: 'error',
+      });
+      delete window.url_error
+    }
+  }, [])
+
+  return (
+    //need parent component with width and height
+    <div className="flex h-full flex-col">
+      {(user?.user_id || noAuthPages.includes(path)) && router ?
+        <Suspense fallback={
+          <div className='absolute w-full h-full top-0 left-0 flex justify-center items-center z-10 bg-[rgba(255,255,255,0.6)] dark:bg-blur-shared'>
+            <LoadingIcon className="w-48 text-primary" />
+          </div>
+        }>
+          <RouterProvider router={router} />
+        </Suspense>
+        : user ? <div className='absolute w-full h-full top-0 left-0 flex justify-center items-center z-10 bg-[rgba(255,255,255,0.6)] dark:bg-blur-shared'>
+          <LoadingIcon className="w-48 text-primary" />
+        </div>
+          : <Suspense fallback={
+            <div className='absolute w-full h-full top-0 left-0 flex justify-center items-center z-10 bg-[rgba(255,255,255,0.6)] dark:bg-blur-shared'>
+              <LoadingIcon className="w-48 text-primary" />
+            </div>
+          }>
+            <RouterProvider router={publicRouter} />
+          </Suspense>}
+      <div></div>
+      <div className="app-div" style={{ zIndex: 1000 }}>
+        {alertsList.map((alert) => (
+          <div key={alert.id}>
+            {alert.type === "error" ? (
+              <ErrorAlert
+                key={alert.id}
+                title={alert.data.title}
+                list={alert.data.list}
+                id={alert.id}
+                removeAlert={removeAlert}
+              />
+            ) : alert.type === "notice" ? (
+              <NoticeAlert
+                key={alert.id}
+                title={alert.data.title}
+                link={alert.data.link}
+                id={alert.id}
+                removeAlert={removeAlert}
+              />
+            ) : (
+              <SuccessAlert
+                key={alert.id}
+                title={alert.data.title}
+                id={alert.id}
+                removeAlert={removeAlert}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      {/* 新弹窗 */}
+      <Toaster></Toaster>
+    </div>
+  );
+}

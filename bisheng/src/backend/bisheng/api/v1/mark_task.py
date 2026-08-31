@@ -1,0 +1,275 @@
+from collections import deque
+
+from fastapi import APIRouter, Depends, Request
+from loguru import logger
+
+from bisheng.api.v1.schema.mark_schema import MarkData, MarkTaskCreate
+from bisheng.api.v1.schemas import resp_200, resp_500
+from bisheng.common.dependencies.user_deps import UserPayload
+from bisheng.database.models.mark_record import MarkRecord, MarkRecordDao
+from bisheng.database.models.mark_task import MarkTask, MarkTaskDao, MarkTaskRead, MarkTaskStatus
+from bisheng.database.models.message import ChatMessageDao
+from bisheng.database.models.session import MessageSessionDao
+from bisheng.database.models.user_group import UserGroupDao
+from bisheng.user.domain.models.user import UserDao
+from bisheng.utils.linked_list import DoubleLinkList
+
+router = APIRouter(prefix='/mark', tags=['Mark'])
+
+
+def _parse_process_user_ids(process_users: str, task_id: int) -> list[int]:
+    user_ids = []
+    for raw_user_id in (process_users or '').split(','):
+        raw_user_id = raw_user_id.strip()
+        if not raw_user_id:
+            continue
+        try:
+            user_ids.append(int(raw_user_id))
+        except ValueError:
+            logger.warning('Skipping invalid mark task process user: task_id={} user_id={}', task_id, raw_user_id)
+    return user_ids
+
+
+@router.get('/list')
+def list(request: Request,
+         status: int | None = None,
+         page_size: int = 10,
+         page_num: int = 1,
+         login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    """
+    Nonadmin Can only see their own marked and unlabeled
+    """
+    groups = UserGroupDao.get_user_admin_group(login_user.user_id)
+    if login_user.is_admin():
+        task_list, count = MarkTaskDao.get_task_list(page_size=page_size, page_num=page_num, status=status,
+                                                     create_id=None, user_id=None)
+    else:
+        task_list, count = MarkTaskDao.get_task_list(page_size=page_size, page_num=page_num, status=status,
+                                                     create_id=login_user.user_id if groups else None,
+                                                     user_id=login_user.user_id)
+
+    result_list = []
+    for task in task_list:
+        record = MarkRecordDao.get_count(task.id)
+        process_list = []
+        user_count = {}
+
+        for user_id in _parse_process_user_ids(task.process_users, task.id):
+            user = UserDao.get_user(user_id)
+            if not user:
+                logger.warning('Skipping missing mark task process user: task_id={} user_id={}', task.id, user_id)
+                continue
+            process_count = f"{user.user_name}:0"
+            user_count[user_id] = process_count
+
+        for c in record:
+            process_count = f"{c.create_user}:{c.user_count}"
+            user_count[c.create_id] = process_count
+
+        for c in user_count:
+            process_list.append(user_count[c])
+
+        result_list.append(MarkTaskRead(**task.model_dump(), mark_process=process_list))
+
+    result = {"list": result_list, "total": count}
+    return resp_200(data=result)
+
+
+@router.get('/get_status')
+async def get_status(task_id: int, chat_id: str,
+                     login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    record = MarkRecordDao.get_record(task_id, chat_id)
+    if not record:
+        return resp_200(data={"status": ""})
+
+    if login_user.user_id == record.create_id:
+        is_self = True
+    else:
+        is_self = False
+    result = {"status": record.status, "is_self": is_self}
+    return resp_200(result)
+
+
+@router.post('/create_task')
+async def create(task_create: MarkTaskCreate, login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    """
+    Apps and users are in a many-to-many relationship, relying on one director record
+    """
+
+    task = MarkTask(create_id=login_user.user_id,
+                    create_user=login_user.user_name,
+                    app_id=",".join(task_create.app_list),
+                    process_users=",".join(str(user_id) for user_id in task_create.user_list)
+                    )
+    MarkTaskDao.create_task_with_assignments(task, task_create.app_list, task_create.user_list)
+    return resp_200(data="ok")
+
+
+@router.get('/get_user')
+async def get_user(task_id: int):
+    """
+    Query under this app All Users.
+
+    Only `user_id` / `user_name` are exposed — the frontend filter picker
+    consumes just those. Returning full ORM rows here would leak `password`
+    and `token_version`.
+    """
+
+    # accordingtype Query different sessions
+    task = MarkTaskDao.get_task_byid(task_id)
+    user_list = []
+
+    for user_id in _parse_process_user_ids(task.process_users, task.id):
+        user = UserDao.get_user(user_id)
+        if not user:
+            continue
+        user_list.append({"user_id": user.user_id, "user_name": user.user_name})
+
+    return resp_200(data=user_list)
+
+
+@router.post('/mark')
+async def mark(data: MarkData,
+               login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    """
+    Flag task as current user and cannot be overwritten by others
+    flow_type flow assistant
+    """
+
+    # record = MarkRecordDao.get_record(data.task_id,data.session_id)
+    # if record:
+    #     return resp_500(data="Already flagged")
+
+    session_info = MessageSessionDao.get_one(data.session_id)
+    if session_info:
+        data.flow_type = session_info.flow_type
+
+    db_r = MarkRecordDao.get_record(data.task_id, data.session_id)
+    if db_r:
+        if data.status == MarkTaskStatus.DEFAULT.value:
+            MarkRecordDao.del_task_chat(task_id=db_r.task_id, session_id=db_r.session_id)
+            return resp_200(data="ok")
+        db_r.status = data.status
+        MarkRecordDao.update_record(db_r)
+    else:
+        # Not marked No data recorded
+        if data.status == MarkTaskStatus.DEFAULT.value:
+            return resp_200(data="ok")
+        record_info = MarkRecord(create_user=login_user.user_name, create_id=login_user.user_id,
+                                 session_id=data.session_id, task_id=data.task_id, status=data.status,
+                                 flow_type=data.flow_type)
+        # Create an article User callout record
+        MarkRecordDao.create_record(record_info)
+
+    task = MarkTaskDao.get_task_byid(task_id=data.task_id)
+    msg_list = ChatMessageDao.get_msg_by_flows(task.app_id.split(","))
+    # m_list = [msg.chat_id for msg in msg_list]
+    m_list = msg_list
+    r_list = MarkRecordDao.get_list_by_taskid(data.task_id)
+    app_record = [r.session_id for r in r_list]
+
+    m_list = [s.strip() for s in m_list if s.strip()]
+    app_record = [s.strip() for s in app_record if s.strip()]
+
+    m_list.sort()
+    app_record.sort()
+
+    logger.info("m_list={} app_record={}", m_list, app_record)
+
+    if m_list == app_record:
+        MarkTaskDao.update_task(data.task_id, MarkTaskStatus.DONE.value)
+    else:
+        MarkTaskDao.update_task(data.task_id, MarkTaskStatus.ING.value)
+
+    return resp_200(data="ok")
+
+
+@router.get('/get_record')
+async def get_record(chat_id: str, task_id: int):
+    record = MarkRecordDao.get_record(task_id, chat_id)
+    return resp_200(data=record)
+
+
+@router.get("/next")
+async def pre_or_next(chat_id: str, action: str, task_id: int,
+                      login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    """
+    prev or next
+    """
+
+    if action not in ["prev", "next"]:
+        return resp_500(data="actionParameter salah")
+
+    result = {"task_id": task_id}
+
+    if action == "prev":
+        record = MarkRecordDao.get_prev_task(login_user.user_id, task_id)
+        top_queue = deque()
+        bottom_queue = deque()
+        if record:
+            queue = top_queue
+            for r in record:
+                if r.session_id == chat_id:
+                    queue = bottom_queue
+                    continue
+                queue.append(r)
+
+            logger.info("top_queue={} bottom_queue={}", top_queue, bottom_queue)
+            if len(top_queue) == 0 and len(bottom_queue) == 0:
+                return resp_200()
+            record = bottom_queue.popleft() if len(bottom_queue) else top_queue.popleft()
+            chat = MessageSessionDao.get_one(record.session_id)
+            result["chat_id"] = chat.chat_id
+            result["flow_type"] = chat.flow_type
+            result["flow_id"] = chat.flow_id
+            return resp_200(data=result)
+    else:
+        task = MarkTaskDao.get_task_byid(task_id)
+        record = MarkRecordDao.get_list_by_taskid(task_id)
+        chat_list = [r.session_id for r in record]
+
+        msg = MessageSessionDao.filter_session(flow_ids=task.app_id.split(","), exclude_chats=chat_list)
+        linked = DoubleLinkList()
+        k_list = {}
+        for m in msg:
+            k_list[m.chat_id] = m
+            linked.append(m.chat_id)
+
+        cur = linked.find(chat_id)
+        if not k_list:
+            return resp_200()
+
+        logger.info("k_list={} cur={}", k_list, cur)
+
+        if cur:
+            if cur.next is None:
+                if linked.length() == 1 and linked.head().data == chat_id:
+                    return resp_200()
+                cur = k_list[linked.head().data]
+            else:
+                cur = k_list[cur.next.data]
+
+            result["chat_id"] = cur.chat_id
+            result["flow_id"] = cur.flow_id
+            result['flow_type'] = cur.flow_type
+            return resp_200(data=result)
+        else:
+            cur = k_list[linked.head().data]
+            result['flow_type'] = cur.flow_type
+            result["chat_id"] = cur.chat_id
+            result["flow_id"] = cur.flow_id
+            return resp_200(data=result)
+
+    return resp_200()
+
+
+@router.delete('/del')
+def del_task(request: Request, task_id: int, login_user: UserPayload = Depends(UserPayload.get_login_user)):
+    """
+    Nonadmin Can only see their own marked and unlabeled
+    """
+
+    MarkTaskDao.delete_task(task_id)
+    MarkRecordDao.del_record(task_id)
+
+    return resp_200(data="ok")

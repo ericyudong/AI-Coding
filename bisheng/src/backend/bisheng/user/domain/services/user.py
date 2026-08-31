@@ -1,0 +1,723 @@
+import re
+from base64 import b64decode
+from datetime import datetime
+from typing import TYPE_CHECKING
+from urllib.parse import unquote, urlsplit
+
+import rsa
+from fastapi import Depends, HTTPException, Request, UploadFile
+from loguru import logger
+
+from bisheng.common.constants.enums.telemetry import BaseTelemetryTypeEnum
+from bisheng.common.errcode.user import (
+    CaptchaError,
+    UserForbiddenError,
+    UserNameTooLongError,
+    UserNoRoleForLoginError,
+    UserNoWebMenuForLoginError,
+    UserPasswordExpireError,
+    UserPasswordMaxTryError,
+    UserPasswordStrengthError,
+    UserValidateError,
+)
+from bisheng.common.schemas.api import UnifiedResponseModel, resp_200
+from bisheng.common.schemas.telemetry.event_data_schema import UserLoginEventData
+from bisheng.common.services import telemetry_service
+from bisheng.common.services.config_service import settings
+from bisheng.core.cache.redis_manager import get_redis_client, get_redis_client_sync
+from bisheng.core.context.tenant import (
+    DEFAULT_TENANT_ID,
+    bypass_tenant_filter,
+    current_tenant_id,
+    set_current_tenant_id,
+)
+from bisheng.core.database import get_async_db_session
+from bisheng.core.logger import trace_id_var
+from bisheng.core.storage.minio.minio_manager import get_minio_storage, get_minio_storage_sync
+from bisheng.database.constants import AdminRole, DefaultRole
+from bisheng.database.models.department import DepartmentDao
+from bisheng.database.models.user_group import UserGroupDao
+from bisheng.permission.domain.services.legacy_rbac_sync_service import LegacyRBACSyncService
+from bisheng.user.domain.models.user import User, UserCreate, UserDao, UserLogin, UserRead
+from bisheng.user.domain.models.user_role import UserRoleDao
+from bisheng.utils import generate_uuid, get_request_ip, md5_hash
+from bisheng.utils.constants import RSA_KEY
+
+from ..const import USER_CURRENT_SESSION, USER_PASSWORD_ERROR
+from .auth import AuthJwt, LoginUser
+from .captcha import verify_captcha
+
+if TYPE_CHECKING:
+    from bisheng.api.v1.schemas import CreateUserReq
+
+# Allowed avatar file types and their MIME types
+ALLOWED_AVATAR_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+MAX_AVATAR_SIZE = 10 * 1024 * 1024  # 10MB
+AVATAR_OBJECT_PREFIX = "avatar/"
+
+# Password strength rule, kept in sync with the frontend PWD_RULE:
+# at least 8 chars, with a lowercase, an uppercase, a digit and a symbol.
+PASSWORD_STRENGTH_PATTERN = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,128}$")
+
+
+class UserService:
+    @classmethod
+    async def ainvalidate_jwt_after_account_disabled(cls, user_id: int) -> None:
+        """禁用账号后立刻让已签发的 JWT 失效（F012 ``token_version``），并清理管理端 scope 缓存。"""
+        try:
+            await UserDao.aincrement_token_version(user_id)
+        except Exception as exc:
+            logger.warning(
+                "aincrement_token_version failed after account disabled user_id=%s: %s",
+                user_id,
+                exc,
+            )
+            return
+        try:
+            from bisheng.admin.domain.services.tenant_scope import TenantScopeService
+
+            await TenantScopeService.clear_on_token_version_bump(user_id)
+        except Exception as exc:
+            logger.debug(
+                "clear_on_token_version_bump failed after account disabled user_id=%s: %s",
+                user_id,
+                exc,
+            )
+
+    @classmethod
+    def _normalize_avatar_object_name(cls, avatar: str | None, bucket: str | None = None) -> str | None:
+        if not avatar:
+            return avatar
+
+        avatar = avatar.strip()
+        path = urlsplit(avatar).path if "://" in avatar or avatar.startswith("/") else avatar.split("?", 1)[0]
+        path = unquote(path).lstrip("/")
+
+        if bucket and path.startswith(f"{bucket}/"):
+            path = path[len(bucket) + 1 :]
+
+        if path.startswith(AVATAR_OBJECT_PREFIX):
+            return path
+        return None
+
+    @classmethod
+    def get_avatar_share_link_sync(cls, avatar: str | None) -> str | None:
+        if not avatar:
+            return avatar
+
+        minio_client = get_minio_storage_sync()
+        object_name = cls._normalize_avatar_object_name(avatar, minio_client.bucket)
+        if not object_name:
+            return avatar
+        return minio_client.get_share_link_sync(object_name)
+
+    @classmethod
+    async def get_avatar_share_link(cls, avatar: str | None) -> str | None:
+        if not avatar:
+            return avatar
+
+        minio_client = await get_minio_storage()
+        object_name = cls._normalize_avatar_object_name(avatar, minio_client.bucket)
+        if not object_name:
+            return avatar
+        return await minio_client.get_share_link(object_name)
+
+    @classmethod
+    async def build_user_read(cls, user: User, **kwargs) -> UserRead:
+        user_data = user.model_dump()
+        user_data.update(kwargs)
+        user_data["avatar"] = await cls.get_avatar_share_link(user_data.get("avatar"))
+        return UserRead(**user_data)
+
+    @classmethod
+    def build_user_read_sync(cls, user: User, **kwargs) -> UserRead:
+        user_data = user.model_dump()
+        user_data.update(kwargs)
+        user_data["avatar"] = cls.get_avatar_share_link_sync(user_data.get("avatar"))
+        return UserRead(**user_data)
+
+    @classmethod
+    def decrypt_password_plain(cls, password: str) -> str:
+        """RSA 解密得到明文密码（未做 MD5）；无 RSA 配置时视为明文开发模式。"""
+        if value := get_redis_client_sync().get(RSA_KEY):
+            private_key = value[1]
+            return rsa.decrypt(b64decode(password), private_key).decode("utf-8")
+        return password
+
+    @classmethod
+    def decrypt_md5_password(cls, password: str):
+        plain = cls.decrypt_password_plain(password)
+        return md5_hash(plain)
+
+    @classmethod
+    def password_meets_policy(cls, plain: str) -> bool:
+        """Same rule as the frontend: >=8 chars with lowercase, uppercase,
+        digit and symbol."""
+        return bool(PASSWORD_STRENGTH_PATTERN.match(plain or ""))
+
+    @classmethod
+    def validate_password_strength(cls, plain: str) -> None:
+        if not cls.password_meets_policy(plain):
+            raise UserPasswordStrengthError()
+
+    @classmethod
+    def decrypt_md5_password_strict(cls, password: str) -> str:
+        """Decrypt to plaintext, enforce the strength policy, then MD5.
+
+        Use at every point that *sets* a new password (register, admin
+        create / reset, change password). Login and old-password checks must
+        keep using decrypt_md5_password so existing weak passwords still work.
+        """
+        plain = cls.decrypt_password_plain(password)
+        cls.validate_password_strength(plain)
+        return md5_hash(plain)
+
+    @classmethod
+    def create_user(cls, request: Request, login_user: LoginUser, req_data: "CreateUserReq"):
+        """
+        Create User
+        """
+        user = User(
+            user_name=req_data.user_name,
+            password=cls.decrypt_md5_password_strict(req_data.password),
+            source="local",
+            # Default external_id to user_name so password login (which queries
+            # external_id only since 94323e3ec) works out of the box. SSO-synced
+            # users set their own external_id via org_sync, not through here.
+            external_id=req_data.user_name,
+        )
+        group_ids = []
+        role_ids = []
+        for one in req_data.group_roles or []:
+            group_ids.append(one.group_id)
+            role_ids.extend(one.role_ids)
+        group_ids = list(dict.fromkeys(group_ids))
+        role_ids = list(dict.fromkeys(role_ids))
+        if not role_ids:
+            role_ids = [DefaultRole]
+        user = UserDao.add_user_with_groups_and_roles(user, group_ids, role_ids)
+        return user
+
+    @staticmethod
+    def get_error_password_key(user_id: int) -> str:
+        return USER_PASSWORD_ERROR.format(int(user_id))
+
+    @classmethod
+    async def clear_error_password_key(cls, user_id: int):
+        error_key = cls.get_error_password_key(user_id)
+        (await get_redis_client()).delete(error_key)
+
+    @classmethod
+    async def judge_user_password(cls, db_user: User, password: str) -> None:
+        redis_client = await get_redis_client()
+
+        password_conf = await settings.get_password_conf()
+        if not db_user.password:
+            raise UserValidateError()
+
+        if db_user.password == password:
+            # Determine if the password has not been changed for a long time
+            if password_conf.password_valid_period and password_conf.password_valid_period > 0:
+                if (datetime.now() - db_user.password_update_time).days >= password_conf.password_valid_period:
+                    raise UserPasswordExpireError()
+            return
+
+        # Determine if the number of errors needs to be logged
+        if not password_conf.login_error_time_window or not password_conf.max_error_times:
+            raise UserValidateError()
+        # Number of errors plus1
+        error_key = cls.get_error_password_key(db_user.user_id)
+        error_num = await redis_client.aincr(error_key)
+        if error_num == 1:
+            # First time setupkeyExpiration date
+            await redis_client.aexpire_key(error_key, password_conf.login_error_time_window * 60)
+        if error_num and int(error_num) >= password_conf.max_error_times:
+            # Maximum number of errors reached, account banned
+            db_user.delete = 1
+            await UserDao.aupdate_user(db_user)
+            await cls.ainvalidate_jwt_after_account_disabled(db_user.user_id)
+            raise UserPasswordMaxTryError()
+        raise UserValidateError()
+
+    @classmethod
+    async def user_register(cls, user: UserCreate):
+        # Captcha Verification
+        if settings.get_from_db("use_captcha"):
+            if not user.captcha_key or not await verify_captcha(user.captcha, user.captcha_key):
+                raise CaptchaError()
+
+        db_user = User.model_validate(user)
+        person_id = (db_user.external_id or "").strip()
+        if not person_id:
+            raise UserValidateError(msg="Person ID is required")
+        existing_pid = await UserDao.aget_by_external_id(person_id)
+        if existing_pid:
+            raise UserValidateError(msg="Person ID already exists")
+        db_user.external_id = person_id
+
+        # 允许用户名重复；人员唯一性由 external_id / user_id 等保证
+        if len(db_user.user_name) > 30:
+            raise UserNameTooLongError()
+        db_user.password = cls.decrypt_md5_password_strict(user.password)
+        # Under JudgmentadminDoes the user exist
+        assigned_tenant_id = await cls._resolve_registration_tenant_id()
+
+        tenant_token = None
+        if settings.multi_tenant.enabled:
+            tenant_token = set_current_tenant_id(int(assigned_tenant_id))
+        try:
+            admin = await UserDao.aget_user(1)
+            if admin:
+                db_user = await UserDao.add_user_and_default_role(db_user)
+                await LegacyRBACSyncService.sync_user_auth_created(
+                    db_user.user_id,
+                    [DefaultRole],
+                )
+            else:
+                db_user.user_id = 1
+                db_user = await UserDao.add_user_and_admin_role(db_user)
+                await LegacyRBACSyncService.sync_user_auth_created(
+                    db_user.user_id,
+                    [AdminRole],
+                )
+
+            await cls._ensure_user_default_tenant_association(
+                db_user.user_id,
+                tenant_id=assigned_tenant_id,
+            )
+            await cls._ensure_user_guest_department_membership(db_user.user_id)
+            return db_user
+        finally:
+            if tenant_token is not None:
+                current_tenant_id.reset(tenant_token)
+
+    @classmethod
+    async def _ensure_user_guest_department_membership(cls, user_id: int) -> None:
+        """注册完成后自动加入“临时访客”部门（主部门）。"""
+        from sqlmodel import select
+
+        from bisheng.database.models.department import Department, UserDepartment
+
+        guest_dept_id = "BS@guest"
+        async with get_async_db_session() as session:
+            dept = (
+                await session.exec(
+                    select(Department).where(
+                        Department.dept_id == guest_dept_id,
+                        Department.status == "active",
+                    )
+                )
+            ).first()
+            if not dept:
+                return
+            exists = (
+                await session.exec(
+                    select(UserDepartment).where(
+                        UserDepartment.user_id == user_id,
+                        UserDepartment.department_id == dept.id,
+                    )
+                )
+            ).first()
+            if exists:
+                return
+            session.add(
+                UserDepartment(
+                    user_id=user_id,
+                    department_id=dept.id,
+                    is_primary=1,
+                    source="local",
+                )
+            )
+            await session.commit()
+            from bisheng.department.domain.services.department_change_handler import (
+                DepartmentChangeHandler,
+            )
+
+            ops = DepartmentChangeHandler.on_members_added(dept.id, [user_id])
+            await DepartmentChangeHandler.execute_async(ops)
+
+    @classmethod
+    async def _resolve_registration_tenant_id(cls) -> int:
+        """Resolve the tenant_id used for anonymous self-registration."""
+        from bisheng.database.models.tenant import TenantDao
+
+        code = (settings.multi_tenant.default_tenant_code or "default").strip() or "default"
+        with bypass_tenant_filter():
+            tenant = await TenantDao.aget_by_code(code)
+        return int(tenant.id) if tenant else DEFAULT_TENANT_ID
+
+    @classmethod
+    async def _ensure_user_default_tenant_association(
+        cls,
+        user_id: int,
+        tenant_id: int | None = None,
+    ) -> int:
+        """Ensure a user has a default tenant row and return its tenant_id."""
+        from bisheng.database.models.tenant import UserTenantDao
+
+        existing = await UserTenantDao.aget_user_tenants(user_id)
+        if existing:
+            for row in existing:
+                if getattr(row, "is_default", 0) == 1:
+                    return int(row.tenant_id)
+            return int(existing[0].tenant_id)
+        if tenant_id is None:
+            tenant_id = await cls._resolve_registration_tenant_id()
+        await UserTenantDao.aadd_user_to_tenant(user_id=user_id, tenant_id=tenant_id, is_default=1)
+        return int(tenant_id)
+
+    @classmethod
+    async def _reject_login_if_user_has_no_usable_access(
+        cls,
+        db_user: User,
+        *,
+        role_ids: list[int] | None = None,
+        is_department_admin: bool | None = None,
+    ) -> UnifiedResponseModel | None:
+        """无角色且非部门/用户组管理员时拒绝登录；有角色但生效菜单既不包含工作台也不包含管理后台时拒绝登录。
+
+        需审批模式下角色可仅勾选一级菜单（workstation/admin）而无二级项，仍视为有菜单权限，允许登录。
+        """
+        # Pre-tenant-context check: any role/dept/group access across all tenants
+        # qualifies for login. Without bypass, every DAO below trips
+        # NoTenantContextError because do_orm_execute can't infer a tenant for
+        # tenant-aware tables (userrole/department/usergroup/roleaccess).
+        with bypass_tenant_filter():
+            if role_ids is None:
+                roles = await UserRoleDao.aget_user_roles(db_user.user_id)
+                resolved_role_ids = [role.role_id for role in roles]
+            else:
+                resolved_role_ids = list(role_ids)
+            if AdminRole in resolved_role_ids:
+                return None
+            if is_department_admin is None:
+                is_department_admin = bool(await DepartmentDao.aget_user_admin_departments(db_user.user_id))
+            if not resolved_role_ids:
+                if is_department_admin:
+                    return None
+                group_admins = await UserGroupDao.aget_user_admin_group(db_user.user_id)
+                if group_admins:
+                    return None
+                return UserNoRoleForLoginError.return_resp()
+
+            if is_department_admin:
+                return None
+
+            if not await LoginUser.user_has_workbench_or_admin_effective_menu(
+                db_user,
+                role_ids=resolved_role_ids,
+                is_department_admin=is_department_admin,
+            ):
+                return UserNoWebMenuForLoginError.return_resp()
+            return None
+
+    @classmethod
+    async def user_login(cls, request: Request, user: UserLogin, auth_jwt: AuthJwt = Depends()):
+        from bisheng.api.services.audit_log import AuditLogService
+
+        if await settings.aget_from_db("use_captcha"):
+            if not user.captcha_key or not await verify_captcha(user.captcha, user.captcha_key):
+                raise CaptchaError()
+
+        # 支持用户名或 external_id；重名时对候选用户依次校验密码
+        candidates = await UserDao.aget_login_candidates_by_account(user.user_name)
+        if not candidates:
+            # 禁用账号不会进入候选列表；单独提示，避免与「账号或密码错误」混淆
+            if await UserDao.aexists_disabled_login_account(user.user_name):
+                return UserForbiddenError.return_resp()
+            return UserValidateError.return_resp()
+
+        password = cls.decrypt_md5_password(user.password)
+        db_user = None
+        for c in candidates:
+            if c.delete == 1:
+                continue
+            try:
+                await cls.judge_user_password(c, password)
+                db_user = c
+                break
+            except UserPasswordExpireError:
+                raise
+            except UserPasswordMaxTryError:
+                raise
+            except UserValidateError:
+                # 该候选用户密码不匹配，尝试下一个同名账号
+                continue
+        if not db_user:
+            return UserValidateError.return_resp()
+
+        await cls.clear_error_password_key(db_user.user_id)
+
+        with bypass_tenant_filter():
+            login_user_roles = await UserRoleDao.aget_user_roles(db_user.user_id)
+            login_role_ids = [role.role_id for role in login_user_roles]
+            login_is_department_admin = False
+            if AdminRole not in login_role_ids:
+                login_is_department_admin = bool(await DepartmentDao.aget_user_admin_departments(db_user.user_id))
+            no_role_resp = await cls._reject_login_if_user_has_no_usable_access(
+                db_user,
+                role_ids=login_role_ids,
+                is_department_admin=login_is_department_admin,
+            )
+        if no_role_resp is not None:
+            return no_role_resp
+
+        # Multi-tenant login flow
+        tenant_id = None
+        requires_tenant_selection = False
+        tenants_list = None
+
+        if settings.multi_tenant.enabled:
+            from bisheng.common.errcode.tenant import (
+                NoTenantsAvailableError,
+                TenantDisabledError,
+            )
+            from bisheng.database.models.department import (
+                UserDepartmentDao,
+            )
+            from bisheng.database.models.tenant import TenantDao, UserTenantDao
+
+            # Reject login when the user's primary department mounts to a
+            # disabled child tenant. TenantResolver intentionally walks past
+            # non-active mount points to keep users functional during
+            # archive/orphan transitions; ``disabled`` is different — PRD
+            # treats it as a member-level freeze. Without this guard a member
+            # of a disabled tenant would get fallback-routed to Root and log
+            # in normally, which contradicts the operator's intent.
+            with bypass_tenant_filter():
+                primary_dept = await UserDepartmentDao.aget_user_primary_department(
+                    db_user.user_id,
+                )
+                if primary_dept is not None:
+                    mount_dept = await DepartmentDao.aget_ancestors_with_mount(
+                        primary_dept.department_id,
+                    )
+                    if mount_dept is not None and mount_dept.mounted_tenant_id:
+                        mount_tenant = await TenantDao.aget_by_id(
+                            mount_dept.mounted_tenant_id,
+                        )
+                        if mount_tenant is not None and mount_tenant.status == "disabled":
+                            raise TenantDisabledError()
+
+            user_tenants = await UserTenantDao.aget_user_tenants_with_details(db_user.user_id)
+            active_tenants = [t for t in user_tenants if t.get("status") == "active"]
+
+            if len(active_tenants) == 0:
+                # 注册/历史数据可能未写入 user_tenant；若默认租户存在则自动挂接，避免无法登录
+                code = (settings.multi_tenant.default_tenant_code or "default").strip() or "default"
+                with bypass_tenant_filter():
+                    default_tenant = await TenantDao.aget_by_code(code)
+                    if default_tenant is None:
+                        default_tenant = await TenantDao.aget_by_id(DEFAULT_TENANT_ID)
+                if default_tenant and default_tenant.status == "active":
+                    await UserTenantDao.aadd_user_to_tenant(
+                        user_id=db_user.user_id,
+                        tenant_id=default_tenant.id,
+                        is_default=1,
+                    )
+                    user_tenants = await UserTenantDao.aget_user_tenants_with_details(db_user.user_id)
+                    active_tenants = [t for t in user_tenants if t.get("status") == "active"]
+                if len(active_tenants) == 0:
+                    raise NoTenantsAvailableError()
+            elif len(active_tenants) == 1:
+                tenant_id = active_tenants[0]["tenant_id"]
+                await UserTenantDao.aupdate_last_access_time(db_user.user_id, tenant_id)
+            else:
+                # Multiple tenants: issue temporary JWT with tenant_id=0
+                tenant_id = 0
+                requires_tenant_selection = True
+                tenants_list = active_tenants
+
+        # v2.5.1 F012: resolve canonical leaf tenant + bump token_version.
+        # sync_user is a no-op when the resolved leaf already matches the
+        # active user_tenant row; otherwise it swaps the row, writes the
+        # audit log and rewrites FGA tuples. Fail-open: if the service
+        # errors (unusual — typically config missing) we fall back to the
+        # tenant_id computed above so the user can still log in.
+        try:
+            from bisheng.tenant.domain.constants import UserTenantSyncTrigger
+            from bisheng.tenant.domain.services.user_tenant_sync_service import (
+                UserTenantSyncService,
+            )
+
+            leaf = await UserTenantSyncService.sync_user(
+                db_user.user_id,
+                trigger=UserTenantSyncTrigger.LOGIN,
+            )
+            # Override tenant_id for JWT payload — the resolver is the
+            # authoritative source for leaf tenancy in v2.5.1.
+            if leaf is not None and getattr(leaf, "id", None):
+                tenant_id = leaf.id
+        except Exception as exc:
+            logger.warning(
+                "F012 login-time tenant sync failed for user %d: %s — falling back to legacy tenant resolution",
+                db_user.user_id,
+                exc,
+            )
+
+        # Block login when the resolved leaf tenant is disabled/archived.
+        # Without this gate the JWT is issued and the very next request gets
+        # 403'd by the tenant-status middleware — users see "logged in then
+        # immediately kicked out" instead of a clear error on the login form.
+        # DB.status is authoritative; Redis blacklist is a defensive cross-check.
+        if settings.multi_tenant.enabled and tenant_id and tenant_id > 0:
+            from bisheng.common.errcode.tenant import TenantDisabledError
+            from bisheng.database.models.tenant import TenantDao
+
+            with bypass_tenant_filter():
+                tenant_obj = await TenantDao.aget_by_id(tenant_id)
+            if not tenant_obj or tenant_obj.status != "active":
+                raise TenantDisabledError()
+            try:
+                from bisheng.tenant.domain.services.tenant_service import DISABLED_TENANT_KEY
+
+                redis_client = await get_redis_client()
+                if await redis_client.aget(DISABLED_TENANT_KEY.format(tenant_id)):
+                    raise TenantDisabledError()
+            except TenantDisabledError:
+                raise
+            except Exception as exc:
+                logger.debug(
+                    "tenant blacklist check skipped for tenant %s: %s",
+                    tenant_id,
+                    exc,
+                )
+
+        # Fetch fresh token_version (sync_user may have just bumped it) and
+        # embed in the JWT payload so the middleware can reject stale tokens.
+        fresh_token_version = 0
+        try:
+            fresh_token_version = await UserDao.aget_token_version(db_user.user_id)
+        except Exception as exc:
+            logger.debug("aget_token_version failed for %d: %s", db_user.user_id, exc)
+
+        # gen jwt token
+        access_token = LoginUser.create_access_token(
+            user=db_user,
+            auth_jwt=auth_jwt,
+            tenant_id=tenant_id,
+            token_version=fresh_token_version,
+        )
+
+        # set cookies
+        LoginUser.set_access_cookies(access_token, auth_jwt=auth_jwt)
+
+        # Set the logged in user's currentcookie, .jwtValid for an additional hour
+        redis_client = await get_redis_client()
+        await redis_client.aset(
+            USER_CURRENT_SESSION.format(db_user.user_id),
+            access_token,
+            auth_jwt.cookie_conf.jwt_token_expire_time + 3600,
+        )
+
+        # Log Audit Logs
+        login_user = await LoginUser.init_login_user(
+            db_user.user_id,
+            db_user.user_name,
+            role_ids=login_role_ids,
+        )
+        AuditLogService.user_login(login_user, get_request_ip(request))
+
+        # RecordTelemetryJournal
+        await telemetry_service.log_event(
+            user_id=db_user.user_id,
+            event_type=BaseTelemetryTypeEnum.USER_LOGIN,
+            trace_id=trace_id_var.get(),
+            event_data=UserLoginEventData(method="password"),
+        )
+
+        # Build response with tenant info. is_global_super is already a bool
+        # on LoginUser, populated by init_login_user; surface it so the
+        # frontend can render admin menus without a /user/info round-trip.
+        entry = await LoginUser.user_entry_payload_for_read(
+            db_user,
+            role_ids=login_role_ids,
+            is_department_admin=login_is_department_admin,
+        )
+        extra_fields = {
+            "access_token": access_token,
+            "is_global_super": login_user.is_global_super,
+            **entry,
+        }
+        if requires_tenant_selection:
+            extra_fields["requires_tenant_selection"] = True
+            extra_fields["tenants"] = tenants_list
+        if tenant_id and tenant_id > 0:
+            extra_fields["tenant_id"] = tenant_id
+            tenant_info = next((t for t in (tenants_list or []) if t.get("tenant_id") == tenant_id), None)
+            if not tenant_info and settings.multi_tenant.enabled:
+                from bisheng.database.models.tenant import TenantDao
+
+                with bypass_tenant_filter():
+                    t_obj = await TenantDao.aget_by_id(tenant_id)
+                if t_obj:
+                    extra_fields["tenant_name"] = t_obj.tenant_name
+
+        return resp_200(await cls.build_user_read(db_user, **extra_fields))
+
+    @classmethod
+    def get_user_all_info(
+        cls,
+        *,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        user_ids: list[int] = None,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> list[User]:
+        """Get user information, including user group and role information"""
+        return UserDao.get_user_with_group_role(
+            page=page, page_size=page_size, user_ids=user_ids, start_time=start_time, end_time=end_time
+        )
+
+    @classmethod
+    def get_first_user(cls) -> User | None:
+        """Get the first user"""
+        return UserDao.get_first_user()
+
+    @classmethod
+    async def get_user_by_id(cls, user_id: int) -> User | None:
+        """Get user by username"""
+        return await UserDao.aget_user(user_id)
+
+    @classmethod
+    async def update_avatar(cls, user_id: int, file: UploadFile) -> str:
+        """
+        Update user avatar
+        :param user_id: User ID
+        :param file: Uploaded avatar file
+        :return: Avatar URL
+        """
+        # Validate file type
+        if file.content_type not in ALLOWED_AVATAR_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid file type. Allowed types: jpg, png, webp, gif")
+
+        # Read file content to check size
+        content = await file.read()
+        if len(content) > MAX_AVATAR_SIZE:
+            raise HTTPException(status_code=400, detail="File size exceeds limit. Maximum size: 10MB")
+
+        # Generate object name for MinIO
+        file_ext = ALLOWED_AVATAR_TYPES[file.content_type]
+        object_name = f"avatar/{user_id}/{generate_uuid()}{file_ext}"
+
+        # Upload to MinIO
+        minio_client = await get_minio_storage()
+        await minio_client.put_object(
+            object_name=object_name,
+            file=content,
+            content_type=file.content_type,
+        )
+
+        # Update user avatar in database
+        user = await UserDao.aget_user(user_id)
+        if user:
+            user.avatar = object_name
+            await UserDao.aupdate_user(user)
+
+        return await cls.get_avatar_share_link(object_name)

@@ -1,0 +1,1092 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useUnactivate } from 'react-activation';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useRecoilState } from 'recoil';
+import { getRecommendedAppsApi } from '~/api/apps';
+import { writeAppChatOrigin, writeAppChatReturnTo } from '~/pages/appChat/appChatOrigin';
+import AiChatInput from '~/components/Chat/AiChatInput';
+import AiChatMessages from '~/components/Chat/AiChatMessages';
+import { PinnedTaskPanel } from '~/components/Linsight/Execution/PinnedTaskPanel';
+import { WorkspacePanel } from '~/components/Linsight/Artifacts/WorkspacePanel';
+import { useWorkspacePanel } from '~/components/Linsight/Artifacts/useWorkspacePanel';
+import { type ArtifactFile, toUploadedArtifacts } from '~/components/Linsight/Artifacts/artifactUtils';
+import { useLinsightManager } from '~/hooks/useLinsightManager';
+import { userStopLinsightEvent } from '~/api/linsight';
+import { SopStatus, taskModeState } from '~/store/linsight';
+import { findPendingUserInput, splitSessionPseudoTask } from '~/components/Linsight/Execution/stepUtils';
+import type { ExecStepEventData } from '~/components/Linsight/Execution/stepUtils';
+import { useCitationReferencePanel } from '~/components/Chat/Messages/Content/useCitationReferencePanel';
+import { Spinner } from '~/components/svg';
+import { useAuthContext } from '~/hooks/AuthContext';
+import { useGetBsConfig } from '~/hooks/queries/data-provider';
+import useAiChat from '~/hooks/useAiChat';
+import useChatModelMemo from '~/hooks/useChatModelMemo';
+import useLocalize from '~/hooks/useLocalize';
+import store from '~/store';
+import { addConversation, cn, generateUUID } from '~/utils';
+import { Card, CardContent } from '../ui/Card';
+import Landing from './Landing';
+import Presentation from './Presentation';
+import { ConversationData, QueryKeys } from '~/types/chat';
+import AppAvator from '../Avator';
+import {
+  importMessagesToKnowledgeApi,
+  listUploadableSpacesApi,
+} from '~/api/messageExport';
+import { translateApiErrorMessage } from '~/api/request';
+import {
+  ExportFormatSheet,
+  MessageSelectionToolbar,
+} from '~/components/Chat/MessageSelection';
+import {
+  useExitSelectionOnChatChange,
+  useMessageSelection,
+} from '~/hooks/useMessageSelection';
+import usePrefersMobileLayout from '~/hooks/usePrefersMobileLayout';
+import useMediaQuery from '~/hooks/useMediaQuery';
+import { useToastContext } from '~/Providers';
+import { NotificationSeverity } from '~/common';
+import {
+  AddToKnowledgeModal,
+  type AddToKnowledgeSelection,
+} from '~/pages/Subscription/Article/AddToKnowledgeModal';
+
+const ChatView = ({ id = '', index = 0, shareToken = '' }: { id?: string, index?: number, shareToken?: string }) => {
+  const t = useLocalize();
+  const { conversationId: cid } = useParams();
+  const location = useLocation();
+  const conversationId = (cid ?? id) || 'new';
+
+  const [inputText, setInputText] = useState('');
+
+  // F035: task mode is a toggle on the daily welcome page — no route jump.
+  // The route stays `/c`; only submitting in task mode navigates to /linsight.
+  // Driven by a GLOBAL atom (not local state): ChatView is KeepAlive-cached, so a
+  // nav-state/effect-based toggle goes stale after returning from another tab.
+  // The sidebar "新建任务/新建对话" buttons set the atom directly (see Nav/NewChat),
+  // which the re-activated ChatView reads immediately.
+  const [taskMode, setTaskMode] = useRecoilState(taskModeState);
+
+  const { data: bsConfig } = useGetBsConfig();
+  const { user } = useAuthContext();
+  const [chatModel, setChatModel] = useRecoilState(store.chatModel);
+  const [selectedOrgKbs, setSelectedOrgKbs] = useRecoilState(store.selectedOrgKbs);
+  const [selectedAgentTools, setSelectedAgentTools] = useRecoilState(store.selectedAgentTools);
+  const [agentToolsInitialized, setAgentToolsInitialized] = useRecoilState(store.agentToolsInitialized);
+  const [searchType, setSearchType] = useRecoilState(store.searchType);
+  // Landing-only: the input box reports whether its attachment bar is showing
+  // so the welcome subtitle can hide without shifting the title / input box.
+  const [landingHasSelection, setLandingHasSelection] = useState(false);
+
+  // v2.5 interaction memory — per-user localStorage snapshots for the input
+  // bar. The model selection is shared across chat surfaces (ChatView and
+  // AiAssistantPanel), so it lives in useChatModelMemo. KB / tools are
+  // ChatView-only and handled in the effect below. Rules:
+  //  - KB space: default empty; remember user toggles
+  //  - org KB: default per bsConfig.orgKbs[].default_checked; remember toggles
+  //  - tools: default per bsConfig.tools[].default_checked; remember toggles
+  useChatModelMemo(user, bsConfig as any);
+
+  const memoReadyRef = useRef(false);
+  useEffect(() => {
+    if (!bsConfig || !user?.id) return;
+    if (memoReadyRef.current) return;
+    const prefix = `bs:${user.id}:`;
+
+    // Org KBs + knowledge spaces (unified selectedOrgKbs atom).
+    // Priority: any localStorage entry (including empty) wins so the user's
+    // explicit clear is preserved across refresh; admin-configured
+    // default_checked only applies on first session (key absent).
+    // When org-KB is disabled by admin, keep knowledge-space selections and
+    // only drop org KB entries.
+    try {
+      const raw = localStorage.getItem(`${prefix}selectedOrgKbs`);
+      let saved: any[] | null = null;
+      if (raw !== null) {
+        try {
+          const v = JSON.parse(raw);
+          if (Array.isArray(v)) saved = v;
+        } catch { /* ignore parse errors */ }
+      }
+
+      const orgKbDisabled = (bsConfig as any)?.knowledgeBase?.enabled === false;
+      if (saved !== null) {
+        setSelectedOrgKbs(
+          orgKbDisabled
+            ? saved.filter((item: any) => item?.type !== 'org')
+            : saved
+        );
+      } else {
+        const defaults = orgKbDisabled
+          ? []
+          : ((bsConfig as any)?.orgKbs || [])
+            .filter((k: any) => k.default_checked)
+            .map((k: any) => ({ id: String(k.id), name: k.name, type: 'org' }));
+        setSelectedOrgKbs(defaults);
+      }
+    } catch { /* ignore */ }
+
+    // Agent tool groups (parent-level). Same priority rule: any localStorage
+    // entry (including empty) is treated as the user's choice; admin
+    // default_checked only seeds the first session via AgentToolSelector
+    // when no key exists yet.
+    try {
+      const raw = localStorage.getItem(`${prefix}selectedAgentTools`);
+      let saved: any[] | null = null;
+      if (raw !== null) {
+        try {
+          const v = JSON.parse(raw);
+          if (Array.isArray(v)) saved = v;
+        } catch { /* ignore parse errors */ }
+      }
+      if (saved !== null) {
+        setSelectedAgentTools(saved);
+        setAgentToolsInitialized(true);
+      }
+      // else: key absent → leave initialized=false so AgentToolSelector
+      // applies admin defaults on first session.
+    } catch { /* ignore */ }
+
+    // Web search toggle. ChatForm clears searchType on conversation change,
+    // but its effect runs before this one (children commit first), so the
+    // hydrated value wins on initial mount and survives refresh / new tab.
+    try {
+      const saved = localStorage.getItem(`${prefix}searchType`);
+      if (saved !== null) setSearchType(saved);
+    } catch { /* ignore */ }
+
+    memoReadyRef.current = true;
+  }, [bsConfig, user?.id, setSelectedOrgKbs, setSelectedAgentTools, setAgentToolsInitialized, setSearchType]);
+
+
+  // Persist on change (after initial hydrate completes).
+  useEffect(() => {
+    if (!memoReadyRef.current || !user?.id) return;
+    localStorage.setItem(`bs:${user.id}:selectedOrgKbs`, JSON.stringify(selectedOrgKbs));
+  }, [selectedOrgKbs, user?.id]);
+
+  useEffect(() => {
+    if (!memoReadyRef.current || !user?.id || !agentToolsInitialized) return;
+    localStorage.setItem(`bs:${user.id}:selectedAgentTools`, JSON.stringify(selectedAgentTools));
+  }, [selectedAgentTools, user?.id, agentToolsInitialized]);
+
+  useEffect(() => {
+    if (!memoReadyRef.current || !user?.id) return;
+    localStorage.setItem(`bs:${user.id}:searchType`, searchType ?? '');
+  }, [searchType, user?.id]);
+
+  // Core chat state — replaces old ChatContext + useSSE + useChatHelpers
+  const {
+    messages,
+    conversationId: activeConvoId,
+    title: chatTitle,
+    isLoading,
+    isStreaming,
+    sendMessage,
+    stopGenerating,
+    regenerate,
+  } = useAiChat(conversationId, false, shareToken);
+
+  // ── F028: workstation conversation export / import-to-knowledge ──
+  // Auto-exit selection mode whenever the user switches to another chat.
+  useExitSelectionOnChatChange(activeConvoId);
+  const { state: selectionState, getSelectedIds, exitSelectionMode } =
+    useMessageSelection();
+  const isH5 = usePrefersMobileLayout();
+  // Matches the CSS `touch-mobile` variant (≤1023px) so the JS-measured apps
+  // offset stays in sync with the CSS-based welcome-block centering.
+  const isTouchLayout = useMediaQuery('(max-width: 1023px)');
+  // F035: task-mode workspace panel responsive tiers — mirror the daily-mode
+  // citation panel (useCitationReferencePanel): ≤576 full-screen overlay,
+  // 577–767 right drawer, 768–1023 portaled right drawer, ≥1024 in-flow docked.
+  // isH5 (above) = ≤767; isTouchLayout = ≤1023.
+  const isPhoneViewport = useMediaQuery('(max-width: 576px)');
+  const { showToast } = useToastContext();
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
+  const handleImportSelect = useCallback(
+    async (selection: AddToKnowledgeSelection) => {
+      if (!activeConvoId) return;
+      const ids = getSelectedIds(messages);
+      const messageIds = ids
+        .map((s) => Number.parseInt(s, 10))
+        .filter((n) => Number.isFinite(n));
+      if (!messageIds.length) return;
+
+      try {
+        const resp = await importMessagesToKnowledgeApi({
+          chatId: activeConvoId,
+          messageIds,
+          knowledgeSpaceId: Number(selection.knowledgeSpaceId),
+          parentId: selection.folderId ? Number(selection.folderId) : null,
+        });
+        showToast({
+          message:
+            t('workstation.messageExport.importSuccess') +
+            (resp.dup_renamed ? ` (${resp.target_filename})` : ''),
+          severity: NotificationSeverity.SUCCESS,
+        });
+        setImportModalOpen(false);
+        exitSelectionMode();
+      } catch (e: any) {
+        // Prefer the backend business message (e.g. 12065 知识空间不存在 /
+        // 12066 文件夹不存在 / 12067 暂无权限) so the user sees the real reason
+        // instead of a generic failure — and never a false "success".
+        showToast({
+          message:
+            translateApiErrorMessage({ status_code: e?.status_code, status_message: e?.status_message })
+            || t('workstation.messageExport.renderFailed'),
+          severity: NotificationSeverity.ERROR,
+        });
+      }
+    },
+    [activeConvoId, messages, getSelectedIds, showToast, t, exitSelectionMode],
+  );
+
+  const navigate = useNavigate();
+
+  // F035: distinguishes the post-submit URL self-rewrite (same conversation
+  // just got its real id — keep the composing mode) from a genuine navigation
+  // to a different existing conversation (drop task mode). Set right before the
+  // self-rewrite navigate below, consumed by the reset effect it triggers.
+  const keepTaskModeOnRewriteRef = useRef(false);
+
+  // F035: sync the local task-mode toggle to navigation. ChatView is NOT
+  // remounted across `/c/:id` param changes (same route element), so the
+  // useState initializer above only runs on first mount. This effect picks up
+  // subsequent navigations:
+  //  - sidebar "新建任务" lands on /c/new with state.taskMode=true → enter task mode.
+  //  - the first submit on /c/new self-rewrites the URL to the real id; that is
+  //    the SAME conversation, so the user's chosen mode is preserved (they can
+  //    keep composing task turns, or toggle off manually).
+  //  - any OTHER navigation to an existing conversation (id !== 'new') defaults
+  //    to off HERE, before history loads (so a stale mode from another tab can't
+  //    leak in). The restore effect below re-enters task mode once the loaded
+  //    history proves this is a task conversation — a daily chat stays off.
+  // location.key changes on every navigation so re-entering /c/new with the
+  // same state still re-triggers.
+  useEffect(() => {
+    if (conversationId !== 'new') {
+      // Post-submit self-rewrite: keep whatever mode the user is composing in.
+      if (keepTaskModeOnRewriteRef.current) {
+        keepTaskModeOnRewriteRef.current = false;
+        return;
+      }
+      setTaskMode(false);
+      return;
+    }
+    // On /c/new both sidebar entries set the atom themselves before navigating
+    // ("新建任务" → true, "新建对话" → false), so this only has to honour a
+    // navigation that actually declares a mode. Reading an absent state as
+    // "daily" used to drop the user's choice: `newConversation` runs an async
+    // chain that fires its own state-less `navigate('/c/new')` a tick after
+    // ours, and that second landing reset the toggle the button had just set —
+    // the intermittent "新建任务 opens a daily chat, click it again and it works".
+    const navTaskMode = (location.state as { taskMode?: boolean } | null)?.taskMode;
+    if (navTaskMode !== undefined) {
+      setTaskMode(!!navTaskMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, conversationId]);
+
+  // Sync URL: ONLY when we were on /new and the hook just assigned a real ID.
+  // Do NOT navigate if the user is clicking around in the sidebar (that changes
+  // conversationId from params which should NOT be overridden by stale activeConvoId).
+  useEffect(() => {
+    if (
+      conversationId === 'new' &&
+      activeConvoId &&
+      activeConvoId !== 'new'
+    ) {
+      // Flag the rewrite so the reset effect above preserves the current mode.
+      keepTaskModeOnRewriteRef.current = true;
+      navigate(`/c/${activeConvoId}`, { replace: true });
+    }
+  }, [activeConvoId]); // intentionally ONLY on activeConvoId — don't add navigate/conversationId
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Landing layout: measure the welcome+input block via callback ref so the
+  // recommended-apps section can sit exactly 40px below it while the block
+  // itself stays pinned at viewport vertical center via absolute positioning.
+  // A callback ref re-attaches the ResizeObserver whenever the landing branch
+  // is (re)mounted, which a useEffect with stale deps would miss.
+  const landingResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const [landingBlockHeight, setLandingBlockHeight] = useState(0);
+  const landingBlockRef = useCallback((el: HTMLDivElement | null) => {
+    if (landingResizeObserverRef.current) {
+      landingResizeObserverRef.current.disconnect();
+      landingResizeObserverRef.current = null;
+    }
+    if (!el) return;
+    const update = () => setLandingBlockHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    landingResizeObserverRef.current = ro;
+  }, []);
+
+  // H5 shell (≤767) only: the landing parent is a definite `h-full` box (= the
+  // visible scroll-area height; MobileNav + Banner already excluded). We can't
+  // use `vh` here, and a `%` paddingTop resolves against WIDTH, so the apps
+  // offset is computed in px from this measured height: apps sit 40px below the
+  // welcome block, whose center is pinned at 40% of the region.
+  const landingParentObserverRef = useRef<ResizeObserver | null>(null);
+  const [landingParentHeight, setLandingParentHeight] = useState(0);
+  const landingParentRef = useCallback((el: HTMLDivElement | null) => {
+    if (landingParentObserverRef.current) {
+      landingParentObserverRef.current.disconnect();
+      landingParentObserverRef.current = null;
+    }
+    if (!el) return;
+    const update = () => setLandingParentHeight(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    landingParentObserverRef.current = ro;
+  }, []);
+
+
+  // F035: task mode is a ROLE permission. The backend folds each role's
+  // menu_ids into web_menu → client `user.plugins`; `linsight_task_mode` is the
+  // workbench-home sub-capability toggled per role in the admin console. When
+  // the current user's role lacks it, hide the input's task-mode entry + skill
+  // submenu (the sidebar "新建任务" button gates on the same key in Nav/NewChat).
+  // plugins absent / non-array → allow (matches the NewChat default, and keeps
+  // super-admin/dept-admin — who always carry the key — unaffected).
+  const canUseTaskMode = useMemo(() => {
+    const plugins = (user as any)?.plugins;
+    return Array.isArray(plugins) ? plugins.includes('linsight_task_mode') : true;
+  }, [user]);
+
+  const handleSend = useCallback((text: string, files?: any[] | null) => {
+    // F035 Track J (TJ-6): both modes go through the SAME unified entry now.
+    // Task mode is just a per-turn flag — no /linsight navigation, no separate
+    // submission pipeline. The turn stays in this daily conversation; the
+    // backend hands off the linsight SV and the inline task bubble renders it.
+    //
+    // The unified entry now threads question + knowledge-base selection +
+    // tools + uploaded files (backend _to_linsight_submit maps them onto the
+    // linsight submit schema; daily-bucket files are parsed on-the-fly into the
+    // task workspace). Skills are still resolved separately.
+    if (taskMode && canUseTaskMode) {
+      const trimmed = text.trim();
+      if (!trimmed && !(files || []).length) return;
+      sendMessage(trimmed, files, { taskMode: true });
+      setInputText('');
+      return;
+    }
+
+    sendMessage(text, files);
+    setInputText('');
+  }, [taskMode, canUseTaskMode, sendMessage]);
+
+  const isNew = conversationId === 'new';
+  const hasMessages = messages.length > 0;
+  const { activeCitationMessageId, citationPanelElement, onOpenCitationPanel, closeCitationPanel } = useCitationReferencePanel({ hasMessages });
+
+  // F035: the task checklist is pinned above the input (Figma 12221-39902 /
+  // 12221-40080) for the conversation's latest task turn — it tracks that turn's
+  // execution detail from the linsight store rather than scrolling away in the
+  // message stream.
+  const latestTaskVersionId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i] as any;
+      if (m?.category === 'task' && m?.linsightSessionVersionId) {
+        return m.linsightSessionVersionId as string;
+      }
+    }
+    return '';
+  }, [messages]);
+
+  // F035: a conversation that already holds a task turn IS a task-mode
+  // conversation. Guard on the message's own conversationId so the stale
+  // previous-conversation message list that lingers for one commit during a
+  // navigation transition can't misfire (loaded rows carry chat_id, the
+  // optimistic promote carries the real chat_id — both equal conversationId
+  // once we're settled on this conversation).
+  const isTaskConversation = useMemo(
+    () =>
+      messages.some(
+        (m: any) =>
+          m?.category === 'task' &&
+          m?.linsightSessionVersionId &&
+          m?.conversationId === conversationId,
+      ),
+    [messages, conversationId],
+  );
+
+  // F035: restore task mode when returning to a task conversation. The reset
+  // effect above defaults every existing conversation to off before its history
+  // loads (so a stale mode from another tab doesn't leak in); this re-enables
+  // the toggle once the history resolves and proves this is a task conversation,
+  // so the user can keep composing task turns without re-toggling. Not gated on
+  // the toggle itself — an explicit manual off within a visit stays off (it
+  // doesn't change these deps), but a fresh navigation back re-enters task mode.
+  useEffect(() => {
+    if (conversationId === 'new') return;
+    if (isTaskConversation && canUseTaskMode) setTaskMode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, isTaskConversation, canUseTaskMode]);
+
+  // F035: workspace drawer for the chat-embedded task mode. Lifted to ChatView
+  // (the task turn renders inline per message, but the entry button lives in the
+  // shared header) and bound to the LATEST task turn. Shows uploaded sources +
+  // generated deliverables. The drawer only opens on the header button — no
+  // auto-expand (the entry icon appearing is enough).
+  const { getLinsight, updateLinsight } = useLinsightManager();
+  const taskArtifacts = useWorkspacePanel(latestTaskVersionId);
+
+  // F035: enter/exit animation for the fullscreen workspace overlay. The overlay
+  // is a separate instance from the docked panel (only one is ever mounted at a
+  // time). It's portaled to document.body + position:fixed so it can escape
+  // chatContainer and cover the sidebar conversation list. It expands to fill the
+  // rounded content card (the white panel inside <main>'s gutter that holds the
+  // sidebar + chat) — NOT the whole window — so the icon rail and the card's
+  // surrounding gap + radius are preserved. `fsMounted` keeps it in the DOM
+  // across the collapse transition; `fsExpanded` drives the geometry between the
+  // docked card's box and the content card's box, both measured in viewport-inset
+  // form on enter (still mounted that render). Exiting: collapse, unmount on end.
+  const dockedCardRef = useRef<HTMLDivElement>(null);
+  const [fsMounted, setFsMounted] = useState(false);
+  const [fsExpanded, setFsExpanded] = useState(false);
+  type FsInset = { top: number; left: number; right: number; bottom: number };
+  const [fsBox, setFsBox] = useState<{ collapsed: FsInset; expanded: FsInset } | null>(null);
+  useEffect(() => {
+    if (taskArtifacts.fullscreen) {
+      // Measure the docked card (collapsed) and <main> (expanded) in viewport-inset
+      // coords. Both are still in the DOM this render (card gated on !fsMounted,
+      // flipped just below). Inset form lets us animate to <main>'s edges cleanly.
+      const card = dockedCardRef.current;
+      // Climb to the OUTERMOST <main>: Presentation wraps ChatView in its own
+      // <main> (chat content only), but MainLayout's outer <main> is the one that
+      // also contains the sidebar conversation list — that's the box to fill.
+      let main = card?.closest('main') ?? chatContainerRef.current?.closest('main') ?? null;
+      for (let p = main?.parentElement?.closest('main'); p; p = p.parentElement?.closest('main')) {
+        main = p;
+      }
+      if (card && main) {
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const c = card.getBoundingClientRect();
+        const m = main.getBoundingClientRect();
+        // Collapsed = the docked panel's measured box (it keeps its 4px p-1 margin),
+        // overlay padding 0. Expanded grows the BOX outward by 4px on top/right/
+        // bottom (border reaches the card edge) and left to the card's left
+        // (main.left + 8px p-2 gutter), while the overlay's padding goes 0 → 4px.
+        // Net: the inner content (toolbar buttons) stays at the exact docked
+        // position the whole time — only the gray border slides out to the card edge
+        // and the left edge fills the card. No button shift, smooth border, uniform
+        // #FBFBFB fill (the 4px is overlay bg, not a white ring).
+        // The content card sits inside <main>'s content box, so its left edge is
+        // main.left + main's (possibly-asymmetric / zero) left padding. Read it live
+        // instead of hardcoding so changing the layout gutter never desyncs the
+        // fullscreen left edge.
+        const mainPadLeft = parseFloat(getComputedStyle(main).paddingLeft) || 0;
+        const collapsed = { top: c.top, left: c.left, right: W - c.right, bottom: H - c.bottom };
+        setFsBox({
+          collapsed,
+          expanded: {
+            top: collapsed.top - 4,
+            right: collapsed.right - 4,
+            bottom: collapsed.bottom - 4,
+            left: m.left + mainPadLeft,
+          },
+        });
+      }
+      setFsMounted(true);
+      // Double rAF: let the collapsed state paint before flipping to expanded,
+      // otherwise React can batch both and the enter transition is skipped.
+      let r2 = 0;
+      const r1 = requestAnimationFrame(() => {
+        r2 = requestAnimationFrame(() => setFsExpanded(true));
+      });
+      return () => {
+        cancelAnimationFrame(r1);
+        cancelAnimationFrame(r2);
+      };
+    }
+    setFsExpanded(false);
+    // Fallback unmount in case transitionEnd never fires (e.g. reduced-motion
+    // disables the transition) — otherwise the overlay would stay mounted and the
+    // docked panel would never re-render. Slightly longer than the 300ms anim.
+    const t = setTimeout(() => setFsMounted(false), 360);
+    return () => clearTimeout(t);
+  }, [taskArtifacts.fullscreen]);
+
+  // F035: the fullscreen overlay is desktop-only. Resizing into the touch layout
+  // (≤1023px) while it's open would otherwise leave `fullscreen` true with the
+  // overlay suppressed; clear it so the mobile overlay/drawer branch renders.
+  useEffect(() => {
+    if (isTouchLayout && taskArtifacts.fullscreen) {
+      taskArtifacts.setFullscreen(false);
+    }
+  }, [isTouchLayout, taskArtifacts.fullscreen, taskArtifacts.setFullscreen]);
+
+  // KeepAlive freezes (but doesn't unmount) ChatView when the user switches to
+  // another sidebar section, so the <body>-portaled fullscreen overlay would keep
+  // floating over the new page. Collapse the workspace + force-unmount the overlay
+  // on deactivate so the new section is shown unobstructed.
+  useUnactivate(() => {
+    taskArtifacts.closeWorkspace();
+    setFsExpanded(false);
+    setFsMounted(false);
+    // The citation panel portals to <body> in the 768–1023 / mobile tiers, so it
+    // also outlives the cached view — collapse it so it doesn't hang over the
+    // section the user switched to.
+    closeCitationPanel();
+  });
+
+  const taskLinsight = latestTaskVersionId ? getLinsight(latestTaskVersionId) : null;
+  const taskWorkspaceFiles = useMemo(() => {
+    const uploaded = toUploadedArtifacts(taskLinsight?.files as any[]);
+    const generated = (taskLinsight?.file_list as ArtifactFile[]) || [];
+    return [...uploaded, ...generated];
+  }, [taskLinsight?.files, taskLinsight?.file_list]);
+
+  // F035: while the latest task round is in a non-terminal state (generating /
+  // running / queued), the input stays editable but the send button is disabled
+  // — the next round can only be submitted after the current one finishes.
+  const taskRunning = useMemo(() => {
+    const status = (taskLinsight as any)?.status;
+    return (
+      status === SopStatus.NotStarted ||
+      status === SopStatus.SopGenerating ||
+      status === SopStatus.SopGenerated ||
+      status === SopStatus.Running
+    );
+  }, [taskLinsight]);
+
+  // A parked task (ask_user awaiting the user's reply) keeps status === Running —
+  // park is not a distinct live status — so taskRunning stays true even though the
+  // agent is suspended on an interrupt and nothing is executing. Detect the park
+  // (an unanswered call_user_input in the latest task turn) so the input can drop
+  // the misleading "running" Stop button and show a "waiting for your reply" hint;
+  // the user answers via the ClarifyCard in the message stream, not this input.
+  const awaitingUserInput = useMemo(() => {
+    if (!taskRunning || !taskLinsight) return false;
+    const { tasks, sessionSteps } = splitSessionPseudoTask(
+      ((taskLinsight as any).tasks as any[]) || [],
+      ((taskLinsight as any).sessionSteps as ExecStepEventData[]) || [],
+    );
+    return !!findPendingUserInput(sessionSteps, tasks);
+  }, [taskRunning, taskLinsight]);
+
+  // Stop button handler. A task round runs via the linsight worker/WS, normally
+  // AFTER the handoff SSE stream closed — route the stop to terminate-execute.
+  const handleStop = useCallback(() => {
+    if (taskRunning && latestTaskVersionId) {
+      userStopLinsightEvent(latestTaskVersionId).catch(() => { /* best-effort: WS task_terminated reconciles */ });
+      updateLinsight(latestTaskVersionId, (prev) => ({
+        ...prev,
+        status: SopStatus.Stoped,
+        tasks: (prev.tasks || []).map((tk: any) => ({
+          ...tk,
+          status: tk.status === 'in_progress' ? 'terminated' : tk.status,
+          children: tk.children
+            ? tk.children.map((c: any) => ({ ...c, status: c.status === 'in_progress' ? 'terminated' : c.status }))
+            : tk.children,
+        })),
+      }));
+      // The handoff SSE may still be open when the user stops quickly (esp. while
+      // queued): isStreaming would then keep the input's stop button lit after the
+      // terminate, since the button gates on `isStreaming || taskRunning` and only
+      // taskRunning flipped here. Abort the (now-useless) handoff stream + clear
+      // isStreaming so the input syncs to the stopped state immediately instead of
+      // lingering until the stream drops on its own. (QA: stop-while-queued.)
+      stopGenerating();
+      return;
+    }
+    stopGenerating();
+  }, [taskRunning, latestTaskVersionId, updateLinsight, stopGenerating]);
+
+  return (
+    <Presentation isLingsi={false}>
+      <div className={cn('h-full')}>
+        <div
+          ref={chatContainerRef}
+          className={cn("relative z-10 h-full noscrollbar", !hasMessages && "overflow-y-auto")}
+        >
+          {/* Layout: treat "loading an existing conversation" the same as
+              "has messages" so the input stays pinned to the bottom during
+              sidebar navigation (otherwise the centered welcome-page layout
+              briefly floats the input up before messages arrive). */}
+          {(() => {
+            const loadingExistingConvo = isLoading && conversationId !== 'new';
+            // Keep input pinned to bottom as soon as a send starts (before first token lands),
+            // otherwise mobile can briefly fall back to the centered landing layout.
+            // An EXISTING conversation (id !== 'new') always uses the detail layout,
+            // even with zero messages — opening an empty conversation must show the
+            // conversation view, not the welcome/landing page (landing is /c/new only).
+            const useMessagesLayout = hasMessages || loadingExistingConvo || isStreaming || !isNew;
+            return (
+              <div className={cn(
+                'flex flex-col relative',
+                // Landing (non-messages) layout keeps auto height on the desktop
+                // shell (≥768) so the vh-positioned welcome block + apps flow
+                // naturally. The H5 shell (≤767) needs a definite height so the
+                // landing block's `min-h-full` centering resolves against the
+                // visible scroll-area height.
+                useMessagesLayout ? 'h-full' : 'max-md:h-full'
+              )}>
+                {/* Content area: Split into Chat Main and Citation Sidebar */}
+                {isLoading && conversationId !== 'new' ? (
+                  <div className="flex h-screen items-center justify-center">
+                    <Spinner className="opacity-0" />
+                  </div>
+                ) : (hasMessages || !isNew) ? (
+                  <div className="flex min-h-0 flex-1 overflow-hidden">
+                    {/* Left: Chat Main (Messages + Input). */}
+                    <div className="relative flex min-w-0 flex-1 min-h-0 flex-col overflow-hidden">
+                      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+                        <AiChatMessages
+                          messages={messages}
+                          conversationId={activeConvoId}
+                          title={chatTitle}
+                          isLoading={false}
+                          isStreaming={isStreaming}
+                          shareToken={shareToken}
+                          knowledgeChatLayout
+                          allowExport
+                          contentWidthClassName="w-full max-w-[800px] mx-auto px-4 touch-mobile:max-w-full"
+                          onRegenerate={regenerate}
+                          onOpenCitationPanel={onOpenCitationPanel}
+                          activeCitationMessageId={activeCitationMessageId}
+                          onOpenWorkspace={taskArtifacts.openWorkspace}
+                          // Show the workspace entry whenever this is a task
+                          // conversation (regardless of whether files exist yet);
+                          // it's hidden only while the panel itself is open.
+                          hasWorkspaceFiles={!!latestTaskVersionId}
+                          workspaceOpen={taskArtifacts.open}
+                          onPreviewFile={taskArtifacts.openPreview}
+                          hideEmptyState
+                          flatMode
+                        />
+                        {/* Soft translucent fade so the scrolling step flow
+                            dissolves into the pinned task panel / input instead of
+                            ending on a hard cut. */}
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-12 bg-gradient-to-t from-white to-white/0"
+                        />
+                      </div>
+
+                      {/* Input area — moved inside the left column to be independent of sidebar.
+                          When F028 selection mode is active, the input is replaced by the
+                          selection toolbar at 100% width. */}
+                      {!shareToken && (
+                        activeConvoId && selectionState.active && selectionState.chatId === activeConvoId ? (
+                          <div className="w-full max-w-[800px] mx-auto touch-mobile:max-w-full py-1.5 shrink-0">
+                            <MessageSelectionToolbar
+                              chatId={activeConvoId}
+                              messages={messages}
+                              onExportToLocal={isH5 ? () => setExportSheetOpen(true) : undefined}
+                              onImportToKnowledge={() => setImportModalOpen(true)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full max-w-[800px] mx-auto px-4 touch-mobile:max-w-full shrink-0 pb-3">
+                            {latestTaskVersionId && <PinnedTaskPanel versionId={latestTaskVersionId} />}
+                            <AiChatInput
+                              disabled={!bsConfig?.models?.length || !!shareToken}
+                              sendDisabled={taskRunning}
+                              isStreaming={isStreaming}
+                              // Parked awaiting the user → not "running": drop the Stop
+                              // button (sendDisabled still blocks a new round until the
+                              // current one resolves). The user replies via the
+                              // ClarifyCard in the stream above, not this input.
+                              taskRunning={taskRunning && !awaitingUserInput}
+                              features={{ taskModeEntry: canUseTaskMode, taskMode: (taskMode || taskRunning) && canUseTaskMode }}
+                              onToggleTaskMode={() => setTaskMode((v) => !v)}
+                              placeholder={awaitingUserInput
+                                ? t('com_linsight_awaiting_reply')
+                                : taskMode
+                                  ? ((bsConfig as any)?.linsightConfig?.input_placeholder || t('com_linsight_input_placeholder'))
+                                  : undefined}
+                              onScrollToBottom={() => { }}
+                              modelOptions={bsConfig?.models}
+                              modelValue={chatModel.id}
+                              onModelChange={(val) => {
+                                const model = bsConfig?.models?.find((m) => m.id === val);
+                                setChatModel({
+                                  id: Number(val),
+                                  name: model?.displayName || '',
+                                });
+                              }}
+                              onSend={handleSend}
+                              onStop={handleStop}
+                              value={inputText}
+                              onChange={setInputText}
+                              bsConfig={bsConfig}
+                              selectedOrgKbs={selectedOrgKbs}
+                              onSelectedOrgKbsChange={setSelectedOrgKbs}
+                              searchType={searchType}
+                              onSearchTypeChange={setSearchType}
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {/* F035: inline workspace panel docked to the right of the chat
+                        main for the latest task turn. Opens from the header entry
+                        button; the file preview renders in place. Fullscreen is a
+                        separate overlay (below) covering the whole route viewport.
+
+                        The wrapper stays mounted whenever a task turn exists so
+                        open/close animates its width + opacity instead of hard
+                        mount/unmount. Width uses an inline clamp() (not min/max-w
+                        classes) so it interpolates smoothly 0px → 46% — min-width
+                        doesn't transition and would otherwise snap to 440px on the
+                        first frame. The inner box keeps a min-width so the panel
+                        content slides/clips rather than reflowing while it collapses.
+
+                        The inner WorkspacePanel renders only while the fullscreen
+                        overlay is NOT mounted (`!fsMounted`): the overlay is its own
+                        instance, so showing both would double the preview fetch and
+                        flash two toolbars during the fullscreen transition. The
+                        wrapper still reserves its docked width throughout (so the
+                        chat column doesn't reflow), it's just emptied — the overlay
+                        collapses back onto exactly this box before unmounting.
+
+                        ≤1023px is handled by the mobile branch below instead — the
+                        docked clamp() width would otherwise squeeze the chat column
+                        on small screens instead of taking over the viewport. */}
+                    {latestTaskVersionId && !isTouchLayout && (
+                      <div
+                        className={cn(
+                          'min-h-0 shrink-0 overflow-hidden transition-[width,opacity,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                          taskArtifacts.open ? 'p-1 opacity-100' : 'pointer-events-none p-0 opacity-0',
+                        )}
+                        style={{ width: taskArtifacts.open ? 'clamp(440px, 46%, 720px)' : '0px' }}
+                      >
+                        {!fsMounted && (
+                          <div ref={dockedCardRef} className="h-full min-w-[420px]">
+                            <WorkspacePanel
+                              files={taskWorkspaceFiles}
+                              versionId={latestTaskVersionId}
+                              previewFile={taskArtifacts.previewFile}
+                              fullscreen={false}
+                              onPreview={taskArtifacts.openPreview}
+                              onBack={taskArtifacts.backToList}
+                              onClose={taskArtifacts.closeWorkspace}
+                              onToggleFullscreen={taskArtifacts.toggleFullscreen}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* F035: mobile (≤1023px) workspace panel — mirrors the daily-mode
+                        citation panel's responsive tiers. Renders only while open
+                        (hard mount/unmount, no width reservation, so the chat column
+                        keeps full width behind it). The fullscreen toggle is hidden
+                        (`hideFullscreenToggle`) since the panel already takes over the
+                        screen / docks as a drawer here. `fullscreen` is passed so the
+                        inner card drops its own border/radius — the overlay/drawer
+                        container provides the chrome. */}
+                    {latestTaskVersionId && isTouchLayout && taskArtifacts.open && (() => {
+                      const mobilePanel = (
+                        <WorkspacePanel
+                          files={taskWorkspaceFiles}
+                          versionId={latestTaskVersionId}
+                          previewFile={taskArtifacts.previewFile}
+                          fullscreen
+                          hideFullscreenToggle
+                          onPreview={taskArtifacts.openPreview}
+                          onBack={taskArtifacts.backToList}
+                          onClose={taskArtifacts.closeWorkspace}
+                          onToggleFullscreen={taskArtifacts.toggleFullscreen}
+                        />
+                      );
+
+                      // ≤576: full-screen overlay flush to the viewport edges.
+                      if (isPhoneViewport) {
+                        return (
+                          <div className="fixed inset-0 z-[120] flex h-[100dvh] min-h-0 flex-col overflow-hidden overscroll-contain bg-[#FBFBFB]">
+                            {mobilePanel}
+                          </div>
+                        );
+                      }
+
+                      // 768–1023: flex-inline would interleave with HeaderTitle / main
+                      // stacking contexts; portal a fixed right drawer to <body> at a
+                      // higher z so it clears the chrome (mirrors the citation panel).
+                      if (!isH5) {
+                        return createPortal(
+                          <div className="fixed inset-y-0 right-0 z-[150] flex min-h-0 flex-col overflow-hidden rounded-tl-xl border-l border-border-base bg-[#FBFBFB] shadow-[-8px_0_28px_rgba(0,0,0,0.1)] animate-in slide-in-from-right duration-300 w-[min(480px,100vw)]">
+                            {mobilePanel}
+                          </div>,
+                          document.body,
+                        );
+                      }
+
+                      // 577–767: right drawer docked to the viewport edge (z above
+                      // MobileNav z-60), full height, slide-in from the right.
+                      return (
+                        <div className="fixed inset-y-0 right-0 z-[130] flex min-h-0 flex-col overflow-hidden rounded-tl-xl border-l border-border-base bg-[#FBFBFB] shadow-[-8px_0_28px_rgba(0,0,0,0.08)] animate-in slide-in-from-right duration-300 min-w-[260px] w-[min(520px,42vw)] max-[580px]:min-w-[240px] max-[580px]:w-[min(360px,calc(100vw-40px))]">
+                          {mobilePanel}
+                        </div>
+                      );
+                    })()}
+
+                    {citationPanelElement}
+                  </div>
+                ) : (
+                  /* Landing page branch — the welcome block is pinned to the
+                     region's vertical center via absolute positioning, so its
+                     position is INDEPENDENT of whether recommended apps exist
+                     (apps just flow below it and scroll if they overflow).
+
+                     ≥768 (desktop): center at 45vh; apps sit 40px below via
+                     `paddingTop: calc(45vh + halfBlock + 40px)`.
+
+                     ≤767 (H5 shell): can't use `vh` (MobileNav + Banner sit above
+                     this scroll container). The parent is a definite `h-full` box,
+                     so the block centers at 35% of it (`top-[35%]`) and the apps
+                     offset is computed in px from the measured region height
+                     (landingParentHeight) — a `%` paddingTop would resolve against
+                     width, not height. */
+                  <div ref={landingParentRef} className="relative min-h-full max-md:h-full">
+                    {/* Welcome message + input, absolutely centered. ≥768 at 45vh,
+                        ≤767 at 40% of the definite-height region. */}
+                    <div
+                      ref={landingBlockRef}
+                      className="absolute inset-x-0 top-[45vh] -translate-y-1/2 max-md:top-[35%]"
+                    >
+                      {/* F035 Track H (P5): daily/task mode switch removed —
+                          task mode is reached via the sidebar "new task" entry
+                          and the input-bar task-mode button. */}
+                      <Landing isNew={isNew} hideSubtitle={landingHasSelection} />
+
+                      {/* Input area for landing page */}
+                      {!shareToken && (
+                        <div className="w-full max-w-[800px] mx-auto px-4 mt-10 max-md:max-w-full pb-3">
+                          <AiChatInput
+                            elevated
+                            disabled={!bsConfig?.models?.length || !!shareToken}
+                            sendDisabled={taskRunning}
+                            isStreaming={isStreaming}
+                            features={{ taskModeEntry: canUseTaskMode, taskMode: taskMode && canUseTaskMode }}
+                            onToggleTaskMode={() => setTaskMode((v) => !v)}
+                            placeholder={taskMode
+                              ? ((bsConfig as any)?.linsightConfig?.input_placeholder || t('com_linsight_input_placeholder'))
+                              : undefined}
+                            onScrollToBottom={() => { }}
+                            modelOptions={bsConfig?.models}
+                            modelValue={chatModel.id}
+                            onModelChange={(val) => {
+                              const model = bsConfig?.models?.find((m) => m.id === val);
+                              setChatModel({
+                                id: Number(val),
+                                name: model?.displayName || '',
+                              });
+                            }}
+                            onSend={handleSend}
+                            onStop={stopGenerating}
+                            value={inputText}
+                            onChange={setInputText}
+                            bsConfig={bsConfig}
+                            selectedOrgKbs={selectedOrgKbs}
+                            onSelectedOrgKbsChange={setSelectedOrgKbs}
+                            searchType={searchType}
+                            onSearchTypeChange={setSearchType}
+                            onSelectionPresenceChange={setLandingHasSelection}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recommended apps: 40px below the centered block, so the
+                        block's own position never shifts when apps appear.
+                        offset = (block center) + (half block height) + 40px.
+                        ≥768 block center = 45vh; ≤767 = 40% of the measured region
+                        height (px, since `vh`/`%`-padding don't work here). */}
+                    <div
+                      style={{
+                        paddingTop: isH5
+                          ? `${landingParentHeight * 0.35 + landingBlockHeight / 2 + 40}px`
+                          : `calc(45vh + ${landingBlockHeight / 2 + 40}px)`,
+                      }}
+                    >
+                      <DailyFeaturedApps t={t} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* F035: fullscreen workspace preview — portaled to <body> + fixed so it
+              escapes chatContainer and can cover the sidebar conversation list.
+              Separate instance from the inline panel above (only one is ever
+              mounted, so the preview never double fetches). The box animates between
+              the docked panel's measured box (padding 0) and the content card's box
+              (padding 4px): the gray border slides out from the docked 4px margin to
+              the card edge while the inner content — and the toolbar buttons — stay
+              fixed (box grows +4px exactly as padding grows +4px). Fills the card
+              edge-to-edge in #FBFBFB (the 4px is overlay bg, not a white ring) with
+              the border on the outermost ring. Unmounts on transitionEnd.
+              Desktop-only (≥1024px): below that the panel is already an overlay /
+              drawer (mobile branch above), so the fullscreen overlay is suppressed
+              and resizing desktop→mobile tears any open overlay down cleanly. */}
+          {latestTaskVersionId && !isTouchLayout && fsMounted && fsBox && createPortal(
+            <div
+              className="fixed z-[100] overflow-hidden border border-border-base bg-[#FBFBFB] transition-[top,left,right,bottom,padding,border-radius] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+              style={{ ...(fsExpanded ? fsBox.expanded : fsBox.collapsed), padding: fsExpanded ? 4 : 0, borderRadius: fsExpanded ? 12 : 8 }}
+              onTransitionEnd={(e) => {
+                // Unmount only after the collapse finishes (ignore the expand end
+                // and bubbled child transitions).
+                if (e.target === e.currentTarget && e.propertyName === 'left' && !taskArtifacts.fullscreen) {
+                  setFsMounted(false);
+                }
+              }}
+            >
+              <WorkspacePanel
+                files={taskWorkspaceFiles}
+                versionId={latestTaskVersionId}
+                previewFile={taskArtifacts.previewFile}
+                fullscreen={true}
+                onPreview={taskArtifacts.openPreview}
+                onBack={taskArtifacts.backToList}
+                onClose={taskArtifacts.closeWorkspace}
+                onToggleFullscreen={taskArtifacts.toggleFullscreen}
+              />
+            </div>,
+            document.body,
+          )}
+        </div>
+
+        {/* F028: portal-style sheets/modals (the floating toolbar lives next to the input) */}
+        {activeConvoId && selectionState.active && selectionState.chatId === activeConvoId && (
+          <>
+            <ExportFormatSheet
+              open={exportSheetOpen}
+              onOpenChange={setExportSheetOpen}
+              chatId={activeConvoId}
+              messages={messages}
+            />
+            <AddToKnowledgeModal
+              open={importModalOpen}
+              onOpenChange={setImportModalOpen}
+              mode="channel_sync"
+              dataSourceApi={listUploadableSpacesApi}
+              onSyncSelect={handleImportSelect}
+            />
+          </>
+        )}
+
+      </div>
+    </Presentation>
+  );
+};
+
+const DailyFeaturedApps = ({ t }: { t: (k: string) => string }) => {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { setConversation } = store.useCreateConversationAtom(0)
+  const appFlowOriginKey = (flowId: string) => `app-flow-origin:${flowId}`;
+  const appLastOriginKey = 'app-last-origin';
+
+  const { data: dailyApps = [] } = useQuery<any[]>(
+    ['recommendedApps'],
+    () => getRecommendedAppsApi().then((res: any) => res?.data ?? []),
+    { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false },
+  )
+
+  const handleCardClick = (agent: any) => {
+    const _chatId = generateUUID(32)
+    const flowId = agent.id
+    const flowType = agent.flow_type || agent.type
+    const homeReturnTo = '/c/new';
+    writeAppChatOrigin(_chatId, 'home');
+    writeAppChatReturnTo(_chatId, homeReturnTo);
+    try {
+      sessionStorage.setItem(`app-chat-entry:${_chatId}`, 'home')
+      sessionStorage.setItem(appFlowOriginKey(String(flowId)), 'home')
+      sessionStorage.setItem(appLastOriginKey, 'home')
+    } catch {
+      // ignore storage failures
+    }
+    queryClient.setQueryData<ConversationData>([QueryKeys.allConversations], (convoData) => {
+      if (!convoData) return convoData;
+      return addConversation(convoData, {
+        conversationId: _chatId,
+        createdAt: "",
+        endpoint: null,
+        endpointType: null,
+        model: "",
+        flowId,
+        flowType,
+        title: agent.name,
+        tools: [],
+        updatedAt: ""
+      } as any);
+    });
+    setConversation((prevState: any) => ({ ...prevState, conversationId: _chatId }))
+    navigate(`/app/${_chatId}/${flowId}/${flowType}?from=home-recommended&entry=home&returnTo=${encodeURIComponent(homeReturnTo)}`, {
+      state: { appSurfaceReturn: homeReturnTo },
+    })
+  }
+  const displayApps = dailyApps
+
+  if (dailyApps.length === 0) return null
+
+
+  return (
+    <div className="relative z-10 w-full pb-24">
+      <div className="flex justify-between items-center mb-3 text-sm text-gray-500 max-w-[800px] mx-auto px-4">
+        <h2 className="text-sm text-gray-400">推荐应用</h2>
+      </div>
+      <div className="relative max-w-[800px] mx-auto px-4">
+        <div className="pr-1">
+          <div className="grid grid-cols-2 touch-desktop:grid-cols-4 gap-3 mb-3">
+            {displayApps.map((appItem) => (
+              <Card
+                key={appItem.id}
+                className="group flex flex-col py-0 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.02)] border border-border-base overflow-hidden cursor-pointer hover:border-blue-500 hover:shadow-[0_4px_14px_rgb(var(--brand-500)/0.12)] transition-all duration-300 h-[142px] hover:-translate-y-1"
+                style={{ background: 'linear-gradient(135deg, rgb(var(--brand-500)/0.04) 0%, #fff 50%, rgb(var(--brand-500)/0.04) 100%)' }}
+                onClick={() => handleCardClick(appItem)}
+              >
+                <CardContent className="h-full p-2 flex flex-col relative w-full">
+                  <div className="flex items-center gap-2.5 mb-2 shrink-0">
+                    <AppAvator
+                      id={appItem.name}
+                      url={appItem.logo}
+                      flowType={appItem.flow_type || appItem.type}
+                      className={`size-[32px] min-w-[32px] !rounded-lg`}
+                      iconClassName="w-5 h-5"
+                    />
+                    <div className="text-[15px] font-medium text-text-1 line-clamp-1 break-all">{appItem.name}</div>
+                  </div>
+                  <div className="text-[13px] text-text-3 line-clamp-2 break-all font-normal leading-[1.5]">{appItem.description}</div>
+
+                  <div className="mt-auto pt-2 relative h-[30px] shrink-0 w-full overflow-hidden">
+                    <div className="absolute inset-x-0 bottom-0 top-1 flex gap-1.5 flex-wrap overflow-hidden opacity-100 fine-pointer:group-hover:opacity-0 transition-opacity duration-200 pointer-events-none coarse-pointer:opacity-0">
+                      {appItem.tags && appItem.tags.map((tag: any) => (
+                        <div
+                          key={tag.id || tag.name || tag}
+                          className="bg-fill-2 text-text-2 text-[12px] px-2 py-[2px] rounded-[4px] font-normal whitespace-nowrap"
+                        >
+                          {tag.name || tag}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 top-1 flex items-center justify-center bg-blue-500 rounded-md text-white text-[13px] font-medium opacity-0 fine-pointer:group-hover:opacity-100 transform translate-y-2 fine-pointer:group-hover:translate-y-0 transition-all duration-300 coarse-pointer:opacity-100 coarse-pointer:translate-y-0">
+                      开始对话
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default memo(ChatView);

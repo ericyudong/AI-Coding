@@ -1,0 +1,457 @@
+import functools
+import time
+from datetime import datetime
+from typing import Any, Union
+from uuid import UUID
+
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import ChatGenerationChunk, ChatResult, GenerationChunk
+from loguru import logger
+
+from bisheng.common.constants.enums.telemetry import BaseTelemetryTypeEnum, StatusEnum
+from bisheng.common.schemas.telemetry.event_data_schema import ModelInvokeEventData
+from bisheng.common.services import telemetry_service
+from bisheng.common.services.metric_log import emit_metric
+from bisheng.core.cache.redis_manager import get_redis_client, get_redis_client_sync
+from bisheng.core.logger import trace_id_var
+from bisheng.llm.domain.const import LLM_CACHE, LLMModelStatus
+
+
+def _stringify_reasoning_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        parts = [_stringify_reasoning_value(one) for one in value]
+        return "".join(part for part in parts if part)
+    if isinstance(value, dict):
+        for key in ("text", "content", "reasoning_content", "reasoning"):
+            nested_value = value.get(key)
+            nested_text = _stringify_reasoning_value(nested_value)
+            if nested_text:
+                return nested_text
+        return ""
+    return str(value)
+
+
+def extract_reasoning_content(payload: Any) -> str:
+    if payload is None:
+        return ""
+
+    if isinstance(payload, dict):
+        reasoning_content = _stringify_reasoning_value(payload.get("reasoning_content"))
+        if reasoning_content:
+            return reasoning_content
+        return _stringify_reasoning_value(payload.get("reasoning"))
+
+    for attr in ("additional_kwargs", "response_metadata", "generation_info"):
+        reasoning_content = extract_reasoning_content(getattr(payload, attr, None))
+        if reasoning_content:
+            return reasoning_content
+
+    message = getattr(payload, "message", None)
+    if message is not None:
+        return extract_reasoning_content(message)
+
+    generations = getattr(payload, "generations", None)
+    if generations:
+        for one in generations:
+            if isinstance(one, list):
+                for sub_one in one:
+                    reasoning_content = extract_reasoning_content(sub_one)
+                    if reasoning_content:
+                        return reasoning_content
+            else:
+                reasoning_content = extract_reasoning_content(one)
+                if reasoning_content:
+                    return reasoning_content
+
+    return ""
+
+
+def normalize_reasoning_content(payload: Any) -> Any:
+    message = getattr(payload, "message", None)
+    if message is not None:
+        normalize_reasoning_content(message)
+
+    generations = getattr(payload, "generations", None)
+    if generations:
+        for one in generations:
+            if isinstance(one, list):
+                for sub_one in one:
+                    normalize_reasoning_content(sub_one)
+            else:
+                normalize_reasoning_content(one)
+
+    reasoning_content = extract_reasoning_content(payload)
+    if not reasoning_content:
+        return payload
+
+    additional_kwargs = getattr(payload, "additional_kwargs", None)
+    if isinstance(additional_kwargs, dict):
+        additional_kwargs["reasoning_content"] = reasoning_content
+
+    return payload
+
+
+async def bisheng_model_limit_check(self: "BishengBase"):
+    now = datetime.now().strftime("%Y-%m-%d")
+    if self.server_info.limit_flag:
+        # Number of calls checked
+        cache_key = f"model_limit:{now}:{self.server_info.id}"
+        redis_client = await get_redis_client()
+        use_num = await redis_client.aincr(cache_key)
+        if use_num > self.server_info.limit:
+            raise Exception(f"{self.server_info.name}/{self.model_info.model_name} Quota used up")
+
+
+def sync_bisheng_model_limit_check(self: "BishengBase"):
+    now = datetime.now().strftime("%Y-%m-%d")
+    if self.server_info.limit_flag:
+        # Number of calls checked
+        cache_key = f"model_limit:{now}:{self.server_info.id}"
+        use_num = get_redis_client_sync().incr(cache_key)
+        if use_num > self.server_info.limit:
+            raise Exception(f"{self.server_info.name}/{self.model_info.model_name} Quota used up")
+
+
+def get_token_from_usage(token_usage: dict[str, Any] | None) -> tuple[int, int, int, int]:
+    """
+    FROMtoken_usageGet in DictionarytokenUsage
+    """
+    # token_usage may be None for a partial/cancelled stream result.
+    if not token_usage:
+        return 0, 0, 0, 0
+    input_token = token_usage.get("input_tokens", 0) or token_usage.get("prompt_tokens", 0)
+    output_token = token_usage.get("output_tokens", 0) or token_usage.get("completion_tokens", 0)
+    cache_token = (
+        token_usage.get("cached_token", 0)
+        or token_usage.get("prompt_tokens_details", {}).get("cached_tokens", 0)
+        or token_usage.get("input_tokens_details", {}).get("cache_read", 0)
+    )
+    total_token = token_usage.get("total_tokens", 0)
+    return input_token, output_token, cache_token, total_token
+
+
+def parse_token_usage(result: Any) -> tuple[int, int, int, int]:
+    """
+    analyzingtokenUsage
+    """
+    input_token, output_token, cache_token, total_token = 0, 0, 0, 0
+    if isinstance(result, ChatResult):
+        for generation in result.generations:
+            generation_info = generation.generation_info or {}
+            response_metadata = generation.message.response_metadata or {}
+            token_usage = (
+                generation_info.get("token_usage", {})
+                or response_metadata.get("token_usage", {})
+                or generation.message.usage_metadata
+            )
+            tmp1, tmp2, tmp3, tmp4 = get_token_from_usage(token_usage)
+            input_token += tmp1
+            output_token += tmp2
+            cache_token += tmp3
+            total_token += tmp4
+    elif isinstance(result, ChatGenerationChunk):
+        generation_info = result.generation_info or {}
+        response_metadata = result.message.response_metadata or {}
+        token_usage = (
+            response_metadata.get("token_usage", {})
+            or generation_info.get("token_usage", {})
+            or result.message.usage_metadata
+        )
+        input_token, output_token, cache_token, total_token = get_token_from_usage(token_usage)
+    else:
+        logger.warning(f"unknown result type: {type(result)}")
+    return input_token, output_token, cache_token, total_token
+
+
+class TelemetryCallback(BaseCallbackHandler):
+    """
+    Telemetry Slider Callbacks
+    """
+
+    def __init__(self, start_time: float):
+        self.start_time = start_time
+        self.first_token_time: int | None = 0
+
+    def on_llm_new_token(
+        self,
+        token: str,
+        *,
+        chunk: Union[GenerationChunk, ChatGenerationChunk] | None = None,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        if not self.first_token_time:
+            self.first_token_time = int((time.time() - self.start_time) * 1000)
+
+
+def upload_telemetry_log(
+    self: "BishengBase",
+    start_time: float,
+    end_time: float,
+    first_token_cost_time: int,
+    status: StatusEnum,
+    is_stream: bool = False,
+    result: Any = None,
+):
+    """
+    Upload Buried Point Log
+    """
+    try:
+        logger.debug("start upload model invoke telemetry log")
+        input_token, output_token, cache_token, total_token = 0, 0, 0, 0
+        if self.model_info.model_type in ["llm"]:
+            try:
+                input_token, output_token, cache_token, total_token = parse_token_usage(result)
+            except Exception as e:
+                logger.warning(f"parse token usage failed: {e}")
+
+        telemetry_service.log_event_sync(
+            user_id=self.user_id,
+            event_type=BaseTelemetryTypeEnum.MODEL_INVOKE,
+            trace_id=trace_id_var.get(),
+            event_data=ModelInvokeEventData(
+                model_id=self.model_id,
+                model_name=self.model_name,
+                model_type=self.model_info.model_type,
+                model_server_id=self.server_info.id,
+                model_server_name=self.server_info.name,
+                app_id=self.app_id,
+                app_name=self.app_name,
+                app_type=self.app_type,
+                start_time=int(start_time),
+                end_time=int(end_time),
+                first_token_cost_time=first_token_cost_time,
+                status=status,
+                is_stream=is_stream,
+                input_token=input_token,
+                output_token=output_token,
+                cache_token=cache_token,
+                total_token=total_token,
+            ),
+        )
+
+        logger.debug("end upload model invoke telemetry log")
+    except Exception:
+        logger.exception("upload telemetry log failed")
+
+    # F042: parallel structured metric line, independent of the ES telemetry
+    # above (design §5 坑 5 — reuse the already-collected TTFT/status/is_stream).
+    emit_metric(
+        "model_invoke",
+        model_id=self.model_id,
+        status="success" if status == StatusEnum.SUCCESS else "failed",
+        is_stream=is_stream,
+        ttft_ms=first_token_cost_time,
+        total_ms=(end_time - start_time) * 1000.0,
+    )
+
+
+def wrapper_bisheng_model_limit_check(func):
+    """
+    Number of calls to check the decorator
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        sync_bisheng_model_limit_check(self)
+        status = LLMModelStatus.NORMAL.value
+        remark = ""
+        start_time = time.time()
+        result = None
+        telemetry_status = StatusEnum.SUCCESS
+        telemetry_callback = None
+        try:
+            if self.model_info.model_type == "llm":
+                telemetry_callback = TelemetryCallback(start_time=start_time)
+                if kwargs.get("run_manager") is not None:
+                    kwargs["run_manager"].handlers.append(telemetry_callback)
+            result = func(*args, **kwargs)
+
+            return result
+        except Exception as e:
+            status = LLMModelStatus.ERROR.value
+            remark = str(e)
+            telemetry_status = StatusEnum.FAILED
+            raise e
+        finally:
+            end_time = time.time()
+            # Avoid blocking the main thread by uploading logs asynchronously using the thread pool
+            first_token_cost_time = telemetry_callback.first_token_time if telemetry_callback else 0
+            upload_telemetry_log(self, start_time, end_time, first_token_cost_time, telemetry_status, result=result)
+            self.sync_update_model_status(status, remark)
+
+    return wrapper
+
+
+def wrapper_bisheng_model_limit_check_async(func):
+    """
+    Number of calls to check the decorator
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        self = args[0]
+        await bisheng_model_limit_check(self)
+        status = LLMModelStatus.NORMAL.value
+        remark = ""
+        start_time = time.time()
+        telemetry_status = StatusEnum.SUCCESS
+        result = None
+        telemetry_callback = None
+        try:
+            if self.model_info.model_type == "llm":
+                telemetry_callback = TelemetryCallback(start_time=start_time)
+                if kwargs.get("run_manager") is not None:
+                    kwargs["run_manager"].handlers.append(telemetry_callback)
+            result = await func(*args, **kwargs)
+            return result
+        except Exception as e:
+            status = LLMModelStatus.ERROR.value
+            remark = str(e)
+            telemetry_status = StatusEnum.FAILED
+            raise e
+        finally:
+            end_time = time.time()
+            first_token_cost_time = telemetry_callback.first_token_time if telemetry_callback else 0
+            upload_telemetry_log(self, start_time, end_time, first_token_cost_time, telemetry_status, result=result)
+            await args[0].update_model_status(status, remark)
+
+    return wrapper
+
+
+def wrapper_bisheng_model_generator(func):
+    """
+    Number of calls to check the decorator  Decorative Synchronization Builder Functions
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        sync_bisheng_model_limit_check(self)
+
+        status = LLMModelStatus.NORMAL.value
+        remark = ""
+        start_time = time.time()
+        first_token_cost_time = 0
+        telemetry_status = StatusEnum.SUCCESS
+        item = None
+        try:
+            for item in func(*args, **kwargs):
+                yield item
+                if first_token_cost_time == 0:
+                    first_token_cost_time = int((time.time() - start_time) * 1000)
+        except Exception as e:
+            status = LLMModelStatus.ERROR.value
+            remark = str(e)
+            telemetry_status = StatusEnum.FAILED
+            raise e
+        finally:
+            end_time = time.time()
+            upload_telemetry_log(self, start_time, end_time, first_token_cost_time, telemetry_status, True, result=item)
+            self.sync_update_model_status(status, remark)
+
+    return wrapper
+
+
+def wrapper_bisheng_model_generator_async(func):
+    """
+    Number of calls to check the decorator  Decorative Asynchronous Builder Functions
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        self = args[0]
+        await bisheng_model_limit_check(self)
+        status = LLMModelStatus.NORMAL.value
+        remark = ""
+        start_time = time.time()
+        first_token_cost_time = 0
+        telemetry_status = StatusEnum.SUCCESS
+        item = None
+        try:
+            async for item in func(*args, **kwargs):
+                yield item
+                if first_token_cost_time == 0:
+                    first_token_cost_time = int((time.time() - start_time) * 1000)
+        except Exception as e:
+            status = LLMModelStatus.ERROR.value
+            remark = str(e)
+            telemetry_status = StatusEnum.FAILED
+            raise e
+        finally:
+            end_time = time.time()
+            upload_telemetry_log(self, start_time, end_time, first_token_cost_time, telemetry_status, True, result=item)
+            await self.update_model_status(status, remark)
+
+    return wrapper
+
+
+def _scoped_cache_key(key_prefix: str, unique_id: Any) -> str:
+    """Cache key namespaced by current tenant scope.
+
+    The ORM-level ``do_orm_execute`` listener filters reads by the active
+    tenant_id, so a Root admin's cached row would otherwise be served back
+    to a Child tenant on the next call (or vice versa). Including the
+    scope in the key keeps each tenant's view honest and avoids the
+    "first caller wins" symptom that masked the v2.5.1 root-share bug.
+    """
+    from bisheng.core.context.tenant import get_current_tenant_id
+
+    tid = get_current_tenant_id() or 0
+    return f"{key_prefix}t{tid}:{unique_id}"
+
+
+def wrapper_bisheng_llm_info(key_prefix: str):
+    """
+    LLM Information Cache Decorator
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            unique_id = args[1] if args and len(args) > 1 else kwargs.get("model_id") or kwargs.get("server_id")
+            cache_flag = kwargs.get("cache", False)
+            if not cache_flag:
+                return func(*args, **kwargs)
+            cache_key = _scoped_cache_key(key_prefix, unique_id)
+            cache_info = LLM_CACHE.get(cache_key)
+            if cache_info:
+                return cache_info
+            cache_info = func(*args, **kwargs)
+            LLM_CACHE.setdefault(cache_key, cache_info)
+            return cache_info
+
+        return wrapper
+
+    return decorator
+
+
+def wrapper_bisheng_llm_info_async(key_prefix: str):
+    """
+    LLM Information Cache Decorator for Async Functions
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            unique_id = args[1] if args and len(args) > 1 else kwargs.get("model_id") or kwargs.get("server_id")
+            cache_flag = kwargs.get("cache", False)
+            if not cache_flag:
+                return await func(*args, **kwargs)
+            cache_key = _scoped_cache_key(key_prefix, unique_id)
+            cache_info = LLM_CACHE.get(cache_key)
+            if cache_info:
+                return cache_info
+            cache_info = await func(*args, **kwargs)
+            LLM_CACHE.setdefault(cache_key, cache_info)
+            return cache_info
+
+        return wrapper
+
+    return decorator
