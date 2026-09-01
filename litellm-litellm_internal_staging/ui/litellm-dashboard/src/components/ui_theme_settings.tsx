@@ -3,6 +3,7 @@ import { Card, Title, Text, TextInput, Button } from "@tremor/react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getProxyBaseUrl, getGlobalLitellmHeaderName } from "@/components/networking";
 import NotificationsManager from "./molecules/notifications_manager";
+import { useI18n } from "@/i18n";
 
 interface UIThemeSettingsProps {
   userID: string | null;
@@ -11,6 +12,7 @@ interface UIThemeSettingsProps {
 }
 
 const UIThemeSettings: React.FC<UIThemeSettingsProps> = ({ userID, userRole, accessToken }) => {
+  const { t } = useI18n();
   const { logoUrl, setLogoUrl, faviconUrl, setFaviconUrl } = useTheme();
   const [logoUrlInput, setLogoUrlInput] = useState<string>("");
   const [faviconUrlInput, setFaviconUrlInput] = useState<string>("");
@@ -98,26 +100,26 @@ const UIThemeSettings: React.FC<UIThemeSettingsProps> = ({ userID, userRole, acc
   return (
     <div className="w-full mx-auto max-w-4xl px-6 py-8">
       <div className="mb-8">
-        <Title className="text-2xl font-bold mb-2">UI Theme Customization</Title>
-        <Text className="text-gray-600">Customize your LiteLLM admin dashboard with a custom logo and favicon.</Text>
+        <Title className="text-2xl font-bold mb-2">{t("settings.uiTheme.title")}</Title>
+        <Text className="text-gray-600">{t("settings.uiTheme.subtitle")}</Text>
       </div>
       <Card className="shadow-sm p-6">
         <div className="space-y-6">
           <div>
-            <Text className="text-sm font-medium text-gray-700 mb-2 block">Custom Logo URL</Text>
+            <Text className="text-sm font-medium text-gray-700 mb-2 block">{t("settings.uiTheme.logoLabel")}</Text>
             <TextInput placeholder="https://example.com/logo.png" value={logoUrlInput}
               onValueChange={(v) => { setLogoUrlInput(v); setLogoUrl(v || null); }} className="w-full" />
-            <Text className="text-xs text-gray-500 mt-1">Enter a URL for your custom logo or leave empty for default</Text>
+            <Text className="text-xs text-gray-500 mt-1">{t("settings.uiTheme.logoHint")}</Text>
           </div>
           <div>
-            <Text className="text-sm font-medium text-gray-700 mb-2 block">Custom Favicon URL</Text>
+            <Text className="text-sm font-medium text-gray-700 mb-2 block">{t("settings.uiTheme.faviconLabel")}</Text>
             <TextInput placeholder="https://example.com/favicon.ico" value={faviconUrlInput}
               onValueChange={(v) => { setFaviconUrlInput(v); setFaviconUrl(v || null); }} className="w-full" />
-            <Text className="text-xs text-gray-500 mt-1">Enter a URL for your custom favicon (.ico, .png, or .svg) or leave empty for default</Text>
+            <Text className="text-xs text-gray-500 mt-1">{t("settings.uiTheme.faviconHint")}</Text>
           </div>
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleSave} loading={loading} disabled={loading} color="indigo">Save Changes</Button>
-            <Button onClick={handleReset} loading={loading} disabled={loading} variant="secondary" color="gray">Reset to Default</Button>
+            <Button onClick={handleSave} loading={loading} disabled={loading} color="indigo">{t("common.saveChanges")}</Button>
+            <Button onClick={handleReset} loading={loading} disabled={loading} variant="secondary" color="gray">{t("settings.uiTheme.resetDefault")}</Button>
           </div>
         </div>
       </Card>

@@ -33,6 +33,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { all_admin_roles, internalUserRoles, isAdminRole, rolesWithWriteAccess } from "@/utils/roles";
 import UsageIndicator from "@/components/UsageIndicator";
 import { serverRootPath } from "@/components/networking";
+import { useI18n, type MessageKey } from "@/i18n";
 
 const { Sider } = Layout;
 
@@ -49,7 +50,7 @@ interface MenuItemCfg {
   key: string;
   newTab?: boolean;
   page: string; // legacy id; we map this to a path below
-  label: string;
+  labelKey: MessageKey;
   roles?: string[];
   children?: MenuItemCfg[];
   icon?: React.ReactNode;
@@ -156,78 +157,78 @@ const toHref = (slugOrPath: string) => {
   return `${base}${rel}`;
 };
 
-// ----- Menu config (unchanged labels/icons; same appearance) -----
+// ----- Menu config (label keys resolved via i18n) -----
 const menuItems: MenuItemCfg[] = [
-  { key: "1", page: "api-keys", label: "Virtual Keys", icon: <KeyOutlined style={{ fontSize: 18 }} /> },
+  { key: "1", page: "api-keys", labelKey: "nav.virtualKeys", icon: <KeyOutlined style={{ fontSize: 18 }} /> },
   {
     key: "3",
     page: "llm-playground",
-    label: "Test Key",
+    labelKey: "nav.testKey",
     icon: <PlayCircleOutlined style={{ fontSize: 18 }} />,
     roles: rolesWithWriteAccess,
   },
   {
     key: "2",
     page: "models",
-    label: "Models + Endpoints",
+    labelKey: "nav.models",
     icon: <BlockOutlined style={{ fontSize: 18 }} />,
     roles: rolesWithWriteAccess,
   },
   {
     key: "12",
     page: "new_usage",
-    label: "Usage",
+    labelKey: "nav.usage",
     icon: <BarChartOutlined style={{ fontSize: 18 }} />,
     roles: [...all_admin_roles, ...internalUserRoles],
   },
-  { key: "6", page: "teams", label: "Teams", icon: <TeamOutlined style={{ fontSize: 18 }} /> },
+  { key: "6", page: "teams", labelKey: "nav.teams", icon: <TeamOutlined style={{ fontSize: 18 }} /> },
   {
     key: "17",
     page: "organizations",
-    label: "Organizations",
+    labelKey: "nav.organizations",
     icon: <BankOutlined style={{ fontSize: 18 }} />,
     roles: all_admin_roles,
   },
   {
     key: "5",
     page: "users",
-    label: "Internal Users",
+    labelKey: "nav.users",
     icon: <UserOutlined style={{ fontSize: 18 }} />,
     roles: all_admin_roles,
   },
-  { key: "14", page: "api-reference", label: "API Reference", icon: <ApiOutlined style={{ fontSize: 18 }} /> },
+  { key: "14", page: "api-reference", labelKey: "nav.apiReference", icon: <ApiOutlined style={{ fontSize: 18 }} /> },
   {
     key: "16",
     page: "model-hub-table",
-    label: "Model Hub",
+    labelKey: "nav.modelHub",
     icon: <AppstoreOutlined style={{ fontSize: 18 }} />,
   },
-  { key: "15", page: "logs", label: "Logs", icon: <LineChartOutlined style={{ fontSize: 18 }} /> },
+  { key: "15", page: "logs", labelKey: "nav.logs", icon: <LineChartOutlined style={{ fontSize: 18 }} /> },
   {
     key: "11",
     page: "guardrails",
-    label: "Guardrails",
+    labelKey: "nav.guardrails",
     icon: <SafetyOutlined style={{ fontSize: 18 }} />,
     roles: all_admin_roles,
   },
   {
     key: "28",
     page: "policies",
-    label: "Policies",
+    labelKey: "nav.policies",
     icon: <AuditOutlined style={{ fontSize: 18 }} />,
     roles: all_admin_roles,
   },
   {
     key: "26",
     page: "tools",
-    label: "Tools",
+    labelKey: "nav.tools",
     icon: <ToolOutlined style={{ fontSize: 18 }} />,
     children: [
-      { key: "18", page: "mcp-servers", label: "MCP Servers", icon: <ToolOutlined style={{ fontSize: 18 }} /> },
+      { key: "18", page: "mcp-servers", labelKey: "nav.mcpServers", icon: <ToolOutlined style={{ fontSize: 18 }} /> },
       {
         key: "21",
         page: "vector-stores",
-        label: "Vector Stores",
+        labelKey: "nav.vectorStores",
         icon: <DatabaseOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
@@ -236,86 +237,86 @@ const menuItems: MenuItemCfg[] = [
   {
     key: "experimental",
     page: "experimental",
-    label: "Experimental",
+    labelKey: "nav.experimental",
     icon: <ExperimentOutlined style={{ fontSize: 18 }} />,
     children: [
       {
         key: "9",
         page: "caching",
-        label: "Caching",
+        labelKey: "nav.caching",
         icon: <DatabaseOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "25",
         page: "prompts",
-        label: "Prompts",
+        labelKey: "nav.prompts",
         icon: <FileTextOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "10",
         page: "budgets",
-        label: "Budgets",
+        labelKey: "nav.budgets",
         icon: <BankOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "20",
         page: "transform-request",
-        label: "API Playground",
+        labelKey: "nav.apiPlayground",
         icon: <ApiOutlined style={{ fontSize: 18 }} />,
         roles: [...all_admin_roles, ...internalUserRoles],
       },
       {
         key: "19",
         page: "tag-management",
-        label: "Tag Management",
+        labelKey: "nav.tagManagement",
         icon: <TagsOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "27",
         page: "claude-code-plugins",
-        label: "Claude Code Plugins",
+        labelKey: "nav.claudeCodePlugins",
         icon: <ToolOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
-      { key: "4", page: "usage", label: "Old Usage", icon: <BarChartOutlined style={{ fontSize: 18 }} /> },
+      { key: "4", page: "usage", labelKey: "nav.oldUsage", icon: <BarChartOutlined style={{ fontSize: 18 }} /> },
     ],
   },
   {
     key: "settings",
     page: "settings",
-    label: "Settings",
+    labelKey: "nav.settings",
     icon: <SettingOutlined style={{ fontSize: 18 }} />,
     roles: all_admin_roles,
     children: [
       {
         key: "11",
         page: "general-settings",
-        label: "Router Settings",
+        labelKey: "nav.routerSettings",
         icon: <SettingOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "8",
         page: "settings",
-        label: "Logging & Alerts",
+        labelKey: "nav.loggingAlerts",
         icon: <SettingOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "13",
         page: "admin-panel",
-        label: "Admin Settings",
+        labelKey: "nav.adminSettings",
         icon: <SettingOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
       {
         key: "14",
         page: "ui-theme",
-        label: "UI Theme",
+        labelKey: "nav.uiTheme",
         icon: <SettingOutlined style={{ fontSize: 18 }} />,
         roles: all_admin_roles,
       },
@@ -326,6 +327,7 @@ const menuItems: MenuItemCfg[] = [
 const Sidebar2: React.FC<SidebarProps> = ({ accessToken, userRole, defaultSelectedKey, collapsed = false }) => {
   const router = useRouter();
   const pathname = usePathname() || "/";
+  const { t } = useI18n();
 
   // ----- Filter by role without mutating originals -----
   const filteredMenuItems = React.useMemo<MenuItemCfg[]>(() => {
@@ -452,11 +454,11 @@ const Sidebar2: React.FC<SidebarProps> = ({ accessToken, userRole, defaultSelect
             items={filteredMenuItems.map((item) => ({
               key: item.key,
               icon: item.icon,
-              label: renderNavLink(item.label, item.page, item.newTab),
+              label: renderNavLink(t(item.labelKey), item.page, item.newTab),
               children: item.children?.map((child) => ({
                 key: child.key,
                 icon: child.icon,
-                label: renderNavLink(child.label, child.page, child.newTab),
+                label: renderNavLink(t(child.labelKey), child.page, child.newTab),
                 onClick: () => goTo(child.page, child.newTab),
               })),
               onClick: !item.children ? () => goTo(item.page, item.newTab) : undefined,

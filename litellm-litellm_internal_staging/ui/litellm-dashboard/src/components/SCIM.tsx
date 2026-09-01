@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { parseErrorMessage } from "./shared/errorUtils";
 import NotificationsManager from "./molecules/notifications_manager";
+import { useI18n } from "@/i18n";
 
 interface SCIMConfigProps {
   accessToken: string | null;
@@ -20,6 +21,7 @@ interface SCIMConfigProps {
 }
 
 const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySettings }) => {
+  const { t } = useI18n();
   const [form] = Form.useForm();
   const [isCreatingToken, setIsCreatingToken] = useState(false);
   const [tokenData, setTokenData] = useState<any>(null);
@@ -50,7 +52,7 @@ const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySetti
       setIsCreatingToken(true);
 
       const formData = {
-        key_alias: values.key_alias || "SCIM Access Token",
+        key_alias: values.key_alias || t("settings.scim.accessToken"),
         team_id: null,
         models: [],
         allowed_routes: ["/scim/*"],
@@ -71,7 +73,7 @@ const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySetti
     <Grid numItems={1}>
       <Card>
         <div className="flex items-center mb-4">
-          <Title>SCIM Configuration</Title>
+          <Title>{t("settings.scim.title")}</Title>
         </div>
         <Text className="text-gray-600">
           System for Cross-domain Identity Management (SCIM) allows you to automatically provision and manage users and
@@ -121,7 +123,7 @@ const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySetti
               </Title>
             </div>
 
-            <Callout title="Using SCIM" color="blue" className="mb-4">
+            <Callout title={t("settings.scim.using")} color="blue" className="mb-4">
               You need a SCIM token to authenticate with the SCIM API. Create one below and use it in your SCIM provider
               configuration.
             </Callout>
@@ -131,10 +133,10 @@ const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySetti
                 <Form form={form} onFinish={handleCreateSCIMToken} layout="vertical">
                   <Form.Item
                     name="key_alias"
-                    label="Token Name"
-                    rules={[{ required: true, message: "Please enter a name for your token" }]}
+                    label={t("settings.scim.tokenName")}
+                    rules={[{ required: true, message: t("settings.scim.tokenNameRequired") }]}
                   >
-                    <TextInput placeholder="SCIM Access Token" />
+                    <TextInput placeholder={t("settings.scim.accessToken")} />
                   </Form.Item>
                   <Form.Item>
                     <TremorButton
@@ -153,7 +155,7 @@ const SCIMConfig: React.FC<SCIMConfigProps> = ({ accessToken, userID, proxySetti
               <Card className="border border-yellow-300 bg-yellow-50">
                 <div className="flex items-center mb-2 text-yellow-800">
                   <ExclamationCircleOutlined className="h-5 w-5 mr-2" />
-                  <Title className="text-lg text-yellow-800">Your SCIM Token</Title>
+                  <Title className="text-lg text-yellow-800">{t("settings.scim.yourToken")}</Title>
                 </div>
                 <Text className="text-yellow-800 mb-4 font-medium">
                   Make sure to copy this token now. You will not be able to see it again.

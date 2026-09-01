@@ -4,6 +4,7 @@ import { useOrganizations } from "@/app/(dashboard)/hooks/organizations/useOrgan
 import { Accordion, AccordionBody, AccordionHeader, SelectItem, TextInput } from "@tremor/react";
 import { Alert, Button, Checkbox, Form, Input, Modal, Select, Select as Select2, Space, Tooltip, Typography } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/i18n";
 import BulkCreateUsers from "./bulk_create_users_button";
 import TeamDropdown from "./common_components/team_dropdown";
 import { getModelDisplayName } from "./key_team_helpers/fetch_available_models_team_key";
@@ -56,6 +57,7 @@ export const CreateUserButton: React.FC<CreateuserProps> = ({
   onUserCreated,
   isEmbedded = false,
 }) => {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [uiSettings, setUISettings] = useState<UISettings | null>(null);
   const [form] = Form.useForm();
@@ -234,7 +236,7 @@ export const CreateUserButton: React.FC<CreateuserProps> = ({
         </Form.Item>
 
         <div style={{ textAlign: "right", marginTop: "10px" }}>
-          <Button htmlType="submit">Create User</Button>
+          <Button htmlType="submit">{t("users.createUser")}</Button>
         </div>
       </Form>
     );
@@ -244,11 +246,11 @@ export const CreateUserButton: React.FC<CreateuserProps> = ({
   return (
     <div className="flex gap-2">
       <Button type="primary" className="mb-0" onClick={() => setIsModalVisible(true)}>
-        + Invite User
+        {t("users.inviteUser")}
       </Button>
       <BulkCreateUsers accessToken={accessToken} teams={teams} possibleUIRoles={possibleUIRoles} />
       <Modal
-        title="Invite User"
+        title={t("users.inviteUserTitle")}
         open={isModalVisible}
         width={800}
         footer={null}
@@ -379,7 +381,7 @@ export const CreateUserButton: React.FC<CreateuserProps> = ({
 
           <div style={{ textAlign: "right", marginTop: "10px" }}>
             <Button type="primary" icon={<UserAddOutlined />} htmlType="submit">
-              Invite User
+              {t("users.inviteUserTitle")}
             </Button>
           </div>
         </Form>

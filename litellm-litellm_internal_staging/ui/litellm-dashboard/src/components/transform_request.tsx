@@ -4,6 +4,7 @@ import { CopyOutlined } from "@ant-design/icons";
 import { Title } from "@tremor/react";
 import { transformRequestCall } from "./networking";
 import NotificationsManager from "./molecules/notifications_manager";
+import { useI18n } from "@/i18n";
 interface TransformRequestPanelProps {
   accessToken: string | null;
 }
@@ -15,6 +16,7 @@ interface TransformResponse {
 }
 
 const TransformRequestPanel: React.FC<TransformRequestPanelProps> = ({ accessToken }) => {
+  const { t } = useI18n();
   const [originalRequestJSON, setOriginalRequestJSON] = useState(`{
   "model": "openai/gpt-4o",
   "messages": [
@@ -129,7 +131,7 @@ ${formattedBody}
 
   return (
     <div className="w-full m-2" style={{ overflow: "hidden" }}>
-      <Title>Playground</Title>
+      <Title>{t("apiPlayground.title")}</Title>
       <p className="text-sm text-gray-500">See how LiteLLM transforms your request for the specified provider.</p>
       <div
         style={{
@@ -141,7 +143,7 @@ ${formattedBody}
         }}
         className="mt-4"
       >
-        {/* Original Request Panel */}
+        {/* {t("apiPlayground.original")} Panel */}
         <div
           style={{
             flex: "1 1 50%",
@@ -156,7 +158,7 @@ ${formattedBody}
           }}
         >
           <div style={{ marginBottom: "24px" }}>
-            <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 4px 0" }}>Original Request</h2>
+            <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 4px 0" }}>{t("apiPlayground.original")}</h2>
             <p style={{ color: "#666", margin: 0 }}>
               The request you would send to LiteLLM /chat/completions endpoint.
             </p>
@@ -179,7 +181,7 @@ ${formattedBody}
             value={originalRequestJSON}
             onChange={(e) => setOriginalRequestJSON(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Press Cmd/Ctrl + Enter to transform"
+            placeholder={t("apiPlayground.pressEnter")}
           />
 
           <div
@@ -200,13 +202,13 @@ ${formattedBody}
               onClick={handleTransform}
               loading={isLoading}
             >
-              <span>Transform</span>
+              <span>{t("apiPlayground.transform")}</span>
               <span>→</span>
             </Button>
           </div>
         </div>
 
-        {/* Transformed Request Panel */}
+        {/* {t("apiPlayground.transformed")} Panel */}
         <div
           style={{
             flex: "1 1 50%",
@@ -221,7 +223,7 @@ ${formattedBody}
           }}
         >
           <div style={{ marginBottom: "24px" }}>
-            <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 4px 0" }}>Transformed Request</h2>
+            <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 4px 0" }}>{t("apiPlayground.transformed")}</h2>
             <p style={{ color: "#666", margin: 0 }}>How LiteLLM transforms your request for the specified provider.</p>
             <br />
             <p style={{ color: "#666", margin: 0 }} className="text-xs">

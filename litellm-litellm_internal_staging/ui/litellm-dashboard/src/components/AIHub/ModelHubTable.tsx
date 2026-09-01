@@ -2,6 +2,7 @@ import { AgentHubData, getAgentHubTableColumns } from "@/components/AIHub/AgentH
 import MakeAgentPublicForm from "@/components/AIHub/forms/MakeAgentPublicForm";
 import MakeMCPPublicForm from "@/components/AIHub/forms/MakeMCPPublicForm";
 import MakeModelPublicForm from "@/components/AIHub/forms/MakeModelPublicForm";
+import { useI18n } from "@/i18n";
 import { mcpHubColumns, MCPServerData } from "@/components/mcp_hub_table_columns";
 import { modelHubColumns } from "@/components/model_hub_table_columns";
 import UsefulLinksManagement from "@/components/AIHub/UsefulLinksManagement";
@@ -61,6 +62,7 @@ interface ModelGroupInfo {
 }
 
 const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, premiumUser, userRole }) => {
+  const { t } = useI18n();
   // Admin Viewer follows the read-parity rule: see the AI Hub catalog, but
   // cannot toggle public visibility (write).
   const canModify = isProxyAdminRole(userRole || "");
@@ -399,7 +401,7 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
           {/* Header with Title, Description and URL */}
           <div className="flex justify-between items-center mb-6">
             <div className="flex flex-col items-start">
-              <Title className="text-center">AI Hub</Title>
+              <Title className="text-center">{t("modelHub.aiHub")}</Title>
               {isAdminRole(userRole || "") ? (
                 <p className="text-sm text-gray-600">
                   Make models, agents, and MCP servers public for developers to know what&apos;s available.
@@ -409,13 +411,13 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
               )}
             </div>
             <div className="flex items-center space-x-4">
-              <Text>Model Hub URL:</Text>
+              <Text>{t("modelHub.url")}</Text>
               <div className="flex items-center bg-gray-200 px-2 py-1 rounded">
                 <Text className="mr-2">{`${getProxyBaseUrl()}/ui/model_hub_table`}</Text>
                 <button
                   onClick={() => copyToClipboard(`${getProxyBaseUrl()}/ui/model_hub_table`)}
                   className="p-1 hover:bg-gray-300 rounded transition-colors"
-                  title="Copy URL"
+                  title={t("modelHub.copyUrl")}
                 >
                   <Copy size={16} className="text-gray-600" />
                 </button>
@@ -433,10 +435,10 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
           {/* Tab System for Model Hub, Agent Hub, MCP Hub, and Plugin Marketplace */}
           <TabGroup>
             <TabList className="mb-4">
-              <Tab>Model Hub</Tab>
-              <Tab>Agent Hub</Tab>
-              <Tab>MCP Hub</Tab>
-              <Tab>Skill Hub</Tab>
+              <Tab>{t("modelHub.modelHub")}</Tab>
+              <Tab>{t("modelHub.agentHub")}</Tab>
+              <Tab>{t("modelHub.mcpHub")}</Tab>
+              <Tab>{t("modelHub.skillHub")}</Tab>
             </TabList>
 
             <TabPanels>
@@ -447,7 +449,7 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
                   {/* Header with Make Public Button */}
                   {publicPage == false && canModify && (
                     <div className="flex justify-end mb-4">
-                      <Button onClick={() => handleMakePublicPage()}>Select Models to Make Public</Button>
+                      <Button onClick={() => handleMakePublicPage()}>{t("modelHub.selectModelsPublic")}</Button>
                     </div>
                   )}
 
@@ -476,7 +478,7 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
                   {/* Header with Make Public Button */}
                   {publicPage == false && canModify && (
                     <div className="flex justify-end mb-4">
-                      <Button onClick={() => handleMakeAgentPublicPage()}>Select Agents to Make Public</Button>
+                      <Button onClick={() => handleMakeAgentPublicPage()}>{t("modelHub.selectAgentsPublic")}</Button>
                     </div>
                   )}
 
@@ -502,7 +504,7 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
                   {/* Header with Make Public Button */}
                   {publicPage == false && canModify && (
                     <div className="flex justify-end mb-4">
-                      <Button onClick={() => handleMakeMcpPublicPage()}>Select MCP Servers to Make Public</Button>
+                      <Button onClick={() => handleMakeMcpPublicPage()}>{t("modelHub.selectMcpPublic")}</Button>
                     </div>
                   )}
 
@@ -548,8 +550,8 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
         </div>
       ) : (
         <Card className="mx-auto max-w-xl mt-10">
-          <Text className="text-xl text-center mb-2 text-black">Public Model Hub not enabled.</Text>
-          <p className="text-base text-center text-slate-800">Ask your proxy admin to enable this on their Admin UI.</p>
+          <Text className="text-xl text-center mb-2 text-black">{t("modelHub.publicNotEnabled")}</Text>
+          <p className="text-base text-center text-slate-800">{t("modelHub.askAdmin")}</p>
         </Card>
       )}
 
@@ -564,7 +566,7 @@ const ModelHubTable: React.FC<ModelHubTableProps> = ({ accessToken, publicPage, 
       >
         <div className="pt-5 pb-5">
           <div className="flex justify-between mb-4">
-            <Text className="text-base mr-2">Shareable Link:</Text>
+            <Text className="text-base mr-2">{t("modelHub.shareableLink")}</Text>
             <Text className="max-w-sm ml-2 bg-gray-200 pr-2 pl-2 pt-1 pb-1 text-center rounded">
               {`${getProxyBaseUrl()}/ui/model_hub_table`}
             </Text>
@@ -1039,6 +1041,7 @@ print(response.choices[0].message.content)`}
               <SyntaxHighlighter language="python" className="text-sm">
                 {`from fastmcp import Client
 import asyncio
+import { useI18n } from "@/i18n";
 
 # Standard MCP configuration
 config = {

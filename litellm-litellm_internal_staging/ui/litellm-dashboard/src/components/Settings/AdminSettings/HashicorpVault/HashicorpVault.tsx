@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import { useState } from "react";
 import { useHashicorpVaultConfig } from "@/app/(dashboard)/hooks/configOverrides/useHashicorpVaultConfig";
 import { useDeleteHashicorpVaultConfig } from "@/app/(dashboard)/hooks/configOverrides/useDeleteHashicorpVaultConfig";
@@ -28,6 +29,7 @@ const descriptionsConfig = {
 };
 
 export default function HashicorpVault() {
+  const { t } = useI18n();
   const { accessToken } = useAuthorized();
   const { data, isLoading, isError, error } = useHashicorpVaultConfig();
   const { mutate: deleteConfig, isPending: isDeleting } = useDeleteHashicorpVaultConfig(accessToken);
@@ -111,7 +113,7 @@ export default function HashicorpVault() {
 
     return (
       <Descriptions bordered {...descriptionsConfig}>
-        <Descriptions.Item label="Auth Method">
+        <Descriptions.Item label={t("settings.vault.authMethod")}>
           <Text>{detectAuthMethod(rawValues)}</Text>
         </Descriptions.Item>
         {fieldsToShow.map(([key]) => (
@@ -145,8 +147,8 @@ export default function HashicorpVault() {
               <Flex align="center" gap={12}>
                 <KeyRound className="w-6 h-6 text-gray-400" />
                 <div>
-                  <Title level={3} style={{ marginBottom: 0 }}>Hashicorp Vault</Title>
-                  <Text type="secondary">Manage secret manager configuration</Text>
+                  <Title level={3} style={{ marginBottom: 0 }}>{t("settings.vault.title")}</Title>
+                  <Text type="secondary">{t("settings.vault.subtitle")}</Text>
                 </div>
               </Flex>
 
@@ -215,11 +217,11 @@ export default function HashicorpVault() {
 
       <DeleteResourceModal
         isOpen={isDeleteModalOpen}
-        title="Delete Hashicorp Vault Configuration?"
+        title={t("settings.vault.deleteTitle")}
         message="Models using Vault secrets will lose access to their API keys until a new configuration is saved."
-        resourceInformationTitle="Vault Configuration"
+        resourceInformationTitle={t("settings.vault.config")}
         resourceInformation={[
-          { label: "Vault Address", value: rawValues.vault_addr },
+          { label: t("settings.vault.address"), value: rawValues.vault_addr },
         ]}
         onCancel={() => setIsDeleteModalOpen(false)}
         onOk={handleDelete}

@@ -21,6 +21,7 @@ import MCPNetworkSettings from "./MCPNetworkSettings";
 import MCPDiscovery from "./mcp_discovery";
 import { ByokCredentialModal } from "./ByokCredentialModal";
 import { getSecureItem } from "@/utils/secureStorage";
+import { useI18n } from "@/i18n";
 
 const { Text: AntdText, Title: AntdTitle } = Typography;
 const EDIT_OAUTH_UI_STATE_KEY = "litellm-mcp-oauth-edit-state";
@@ -28,6 +29,7 @@ const EDIT_OAUTH_UI_STATE_KEY = "litellm-mcp-oauth-edit-state";
 const { Option } = Select;
 
 const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID }) => {
+  const { t } = useI18n();
   const { data: mcpServers, isLoading: isLoadingServers, refetch } = useMCPServers();
 
   // Fetch health status for all servers
@@ -248,9 +250,9 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
     <div className="w-full h-full p-6">
       <Modal
         open={isDeleteModalOpen}
-        title="Delete MCP Server?"
+        title={t("mcp.deleteTitle")}
         onOk={confirmDelete}
-        okText={isDeletingServer ? "Deleting..." : "Delete"}
+        okText={isDeletingServer ? t("mcp.deleting") : t("common.delete")}
         onCancel={cancelDelete}
         cancelText="Cancel"
         cancelButtonProps={{ disabled: isDeletingServer }}
@@ -303,19 +305,19 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <Title>MCP Servers</Title>
+            <Title>{t("mcp.title")}</Title>
             {filteredServers.length > 0 && (
               <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                 {filteredServers.length}
               </span>
             )}
           </div>
-          <Text className="text-tremor-content mt-1">Configure and manage your MCP servers</Text>
+          <Text className="text-tremor-content mt-1">{t("mcp.subtitle")}</Text>
         </div>
         <div className="flex items-center gap-2">
           {isAdminRole(userRole) && (
             <Button className="flex-shrink-0" onClick={() => setDiscoveryVisible(true)}>
-              + Add New MCP Server
+              {t("mcp.addNew")}
             </Button>
           )}
           {!isAdminRole(userRole) && (
@@ -350,12 +352,12 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
       <TabGroup className="w-full h-full">
         <TabList className="flex justify-between mt-2 w-full items-center">
           <div className="flex">
-            <Tab>All Servers</Tab>
-            <Tab>Toolsets</Tab>
-            <Tab>Connect</Tab>
-            <Tab>Semantic Filter</Tab>
-            <Tab>Network Settings</Tab>
-            {isAdminRole(userRole) && <Tab><span className="flex items-center gap-2">Submitted MCPs <NewBadge /></span></Tab>}
+            <Tab>{t("mcp.allServers")}</Tab>
+            <Tab>{t("mcp.toolsets")}</Tab>
+            <Tab>{t("mcp.connect")}</Tab>
+            <Tab>{t("mcp.semanticFilter")}</Tab>
+            <Tab>{t("mcp.networkSettings")}</Tab>
+            {isAdminRole(userRole) && <Tab><span className="flex items-center gap-2">{t("mcp.submitted")} <NewBadge /></span></Tab>}
           </div>
         </TabList>
         <TabPanels>
@@ -381,7 +383,7 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
                         <Text className="text-sm font-medium text-gray-600 whitespace-nowrap">Team</Text>
                         <Select value={selectedTeam} onChange={handleTeamChange} style={{ width: 220 }} size="middle">
                           <Option value="all">
-                            <span className="font-medium">{isInternalUser ? "All Available Servers" : "All Servers"}</span>
+                            <span className="font-medium">{isInternalUser ? t("mcp.allAvailable") : t("mcp.allServers")}</span>
                           </Option>
                           <Option value="personal">
                             <span className="font-medium">Personal</span>
@@ -403,7 +405,7 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
                         </Text>
                         <Select value={selectedMcpAccessGroup} onChange={handleMcpAccessGroupChange} style={{ width: 220 }} size="middle">
                           <Option value="all">
-                            <span className="font-medium">All Access Groups</span>
+                            <span className="font-medium">{t("mcp.allAccessGroups")}</span>
                           </Option>
                           {uniqueMcpAccessGroups.map((group) => (
                             <Option key={group} value={group}>
@@ -422,8 +424,8 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
                     renderSubComponent={() => <div></div>}
                     getRowCanExpand={() => false}
                     isLoading={isLoadingServers}
-                    noDataMessage="No MCP servers configured. Click '+ Add New MCP Server' to get started."
-                    loadingMessage="Loading MCP servers..."
+                    noDataMessage={t("mcp.empty")}
+                    loadingMessage={t("mcp.loading")}
                     enableSorting={true}
                   />
                 </div>

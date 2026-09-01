@@ -25,6 +25,7 @@ import {
 import { ExportOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Alert, Button } from "antd";
 import React, { useMemo, useState } from "react";
+import { useI18n } from "@/i18n";
 import TeamMultiSelect from "../../../common_components/team_multi_select";
 import { ActivityMetrics, processActivityData } from "../../../activity_metrics";
 import { UsageExportHeader } from "../../../EntityUsageExport";
@@ -101,6 +102,7 @@ const ENTITY_FETCH_FNS: Record<EntityType, (...args: any[]) => Promise<any>> = {
 };
 
 const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, entityId, entityList, dateValue }) => {
+  const { t } = useI18n();
   const { teams } = useTeams();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [topKeysLimit, setTopKeysLimit] = useState<number>(5);
@@ -386,11 +388,11 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
   };
 
   const getFilterLabel = (entityType: string) => {
-    return `Filter by ${entityType}`;
+    return t("usage.filterByEntity", { entity: entityType });
   };
 
   const getFilterPlaceholder = (entityType: string) => {
-    return `Select ${entityType} to filter...`;
+    return t("usage.selectEntity", { entity: entityType });
   };
 
   const capitalizedEntityLabel = entityType.charAt(0).toUpperCase() + entityType.slice(1);
@@ -471,7 +473,7 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
       )}
       {entityType === "team" && (
         <div className="mb-4">
-          <Text className="mb-2">Filter by team</Text>
+          <Text className="mb-2">{t("usage.filterByTeam")}</Text>
           <TeamMultiSelect
             value={selectedTags}
             onChange={setSelectedTags}
@@ -493,11 +495,11 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
       />
       <TabGroup>
         <TabList variant="solid" className="mt-1">
-          <Tab>Cost</Tab>
-          <Tab>{entityType === "agent" ? "Request / Token Consumption" : "Model Activity"}</Tab>
-          {entityType === "team" ? <Tab>Agent Activity</Tab> : <></>}
-          <Tab>Key Activity</Tab>
-          <Tab>Endpoint Activity</Tab>
+          <Tab>{t("usage.tabCost")}</Tab>
+          <Tab>{entityType === "agent" ? t("usage.tabRequestToken") : t("usage.tabModelActivity")}</Tab>
+          {entityType === "team" ? <Tab>{t("usage.tabAgentActivity")}</Tab> : <></>}
+          <Tab>{t("usage.tabKeyActivity")}</Tab>
+          <Tab>{t("usage.tabEndpointActivity")}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -505,34 +507,34 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
               {/* Total Spend Card */}
               <Col numColSpan={2}>
                 <Card>
-                  <Title>{capitalizedEntityLabel} Spend Overview</Title>
+                  <Title>{t("usage.spendOverview", { entity: capitalizedEntityLabel })}</Title>
                   <Grid numItems={5} className="gap-4 mt-4">
                     <Card>
-                      <Title>Total Spend</Title>
+                      <Title>{t("usage.ttSpend")}</Title>
                       <Text className="text-2xl font-bold mt-2">
                         ${formatNumberWithCommas(spendData.metadata.total_spend, 2)}
                       </Text>
                     </Card>
                     <Card>
-                      <Title>Total Requests</Title>
+                      <Title>{t("usage.totalRequests")}</Title>
                       <Text className="text-2xl font-bold mt-2">
                         {spendData.metadata.total_api_requests.toLocaleString()}
                       </Text>
                     </Card>
                     <Card>
-                      <Title>Successful Requests</Title>
+                      <Title>{t("usage.successfulRequests")}</Title>
                       <Text className="text-2xl font-bold mt-2 text-green-600">
                         {spendData.metadata.total_successful_requests.toLocaleString()}
                       </Text>
                     </Card>
                     <Card>
-                      <Title>Failed Requests</Title>
+                      <Title>{t("usage.failedRequests")}</Title>
                       <Text className="text-2xl font-bold mt-2 text-red-600">
                         {spendData.metadata.total_failed_requests.toLocaleString()}
                       </Text>
                     </Card>
                     <Card>
-                      <Title>Total Tokens</Title>
+                      <Title>{t("usage.totalTokens")}</Title>
                       <Text className="text-2xl font-bold mt-2">
                         {spendData.metadata.total_tokens.toLocaleString()}
                       </Text>
@@ -544,7 +546,7 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
               {/* Daily Spend Chart */}
               <Col numColSpan={2}>
                 <Card>
-                  <Title>Daily Spend</Title>
+                  <Title>{t("usage.dailySpendTitle")}</Title>
                   <BarChart
                     data={[...spendData.results].sort(
                       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -562,11 +564,11 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
                       return (
                         <div className="bg-white p-4 shadow-lg rounded-lg border">
                           <p className="font-bold">{data.date}</p>
-                          <p className="text-cyan-500">Total Spend: ${formatNumberWithCommas(data.metrics.spend, 2)}</p>
-                          <p className="text-gray-600">Total Requests: {data.metrics.api_requests}</p>
-                          <p className="text-gray-600">Successful: {data.metrics.successful_requests}</p>
-                          <p className="text-gray-600">Failed: {data.metrics.failed_requests}</p>
-                          <p className="text-gray-600">Total Tokens: {data.metrics.total_tokens}</p>
+                          <p className="text-cyan-500">{t("usage.ttSpendColon")} ${formatNumberWithCommas(data.metrics.spend, 2)}</p>
+                          <p className="text-gray-600">{t("usage.totalRequestsColon")} {data.metrics.api_requests}</p>
+                          <p className="text-gray-600">{t("usage.successfulColon")} {data.metrics.successful_requests}</p>
+                          <p className="text-gray-600">{t("usage.failedColon")} {data.metrics.failed_requests}</p>
+                          <p className="text-gray-600">{t("usage.totalTokensColon")} {data.metrics.total_tokens}</p>
                           <p className="text-gray-600">
                             Total {capitalizedEntityLabel}s: {entityCount}
                           </p>
@@ -605,7 +607,7 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
                   <div className="flex flex-col space-y-4">
                     <div className="flex flex-col space-y-2">
                       <Title>Spend Per {capitalizedEntityLabel}</Title>
-                      <Subtitle className="text-xs">Showing Top 5 by Spend</Subtitle>
+                      <Subtitle className="text-xs">{t("usage.top5BySpend")}</Subtitle>
                       <div className="flex items-center text-sm text-gray-500">
                         <span>Get Started by Tracking cost per {capitalizedEntityLabel} </span>
                         <a
@@ -634,13 +636,13 @@ const EntityUsage: React.FC<EntityUsageProps> = ({ accessToken, entityType, enti
                             return (
                               <div className="bg-white p-4 shadow-lg rounded-lg border">
                                 <p className="font-bold">{data.metadata.alias}</p>
-                                <p className="text-cyan-500">Spend: ${formatNumberWithCommas(data.metrics.spend, 4)}</p>
-                                <p className="text-gray-600">Requests: {data.metrics.api_requests.toLocaleString()}</p>
+                                <p className="text-cyan-500">{t("usage.spendColon")} ${formatNumberWithCommas(data.metrics.spend, 4)}</p>
+                                <p className="text-gray-600">{t("usage.requestsColon")} {data.metrics.api_requests.toLocaleString()}</p>
                                 <p className="text-green-600">
-                                  Successful: {data.metrics.successful_requests.toLocaleString()}
+                                  {t("usage.successfulColon")} {data.metrics.successful_requests.toLocaleString()}
                                 </p>
-                                <p className="text-red-600">Failed: {data.metrics.failed_requests.toLocaleString()}</p>
-                                <p className="text-gray-600">Tokens: {data.metrics.total_tokens.toLocaleString()}</p>
+                                <p className="text-red-600">{t("usage.failedColon")} {data.metrics.failed_requests.toLocaleString()}</p>
+                                <p className="text-gray-600">{t("usage.tokensColon")} {data.metrics.total_tokens.toLocaleString()}</p>
                               </div>
                             );
                           }}

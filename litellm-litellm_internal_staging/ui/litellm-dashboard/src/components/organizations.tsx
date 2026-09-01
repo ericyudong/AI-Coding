@@ -1,4 +1,5 @@
 import OrganizationFilters, { FilterState } from "@/app/(dashboard)/organizations/OrganizationFilters";
+import { useI18n } from "@/i18n";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { ChevronDownIcon, ChevronRightIcon, RefreshIcon } from "@heroicons/react/outline";
 import {
@@ -71,6 +72,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
   setOrganizations,
   premiumUser,
 }) => {
+  const { t } = useI18n();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editOrg, setEditOrg] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -221,7 +223,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
         <Col numColSpan={1} className="flex flex-col gap-2">
           {(userRole === "Admin" || userRole === "Org Admin") && (
             <Button className="w-fit" onClick={() => setIsOrgModalVisible(true)}>
-              + Create New Organization
+              {t("orgs.createNew")}
             </Button>
           )}
           {selectedOrgId ? (
@@ -241,10 +243,10 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
             <TabGroup className="gap-2 h-[75vh] w-full">
               <TabList className="flex justify-between mt-2 w-full items-center">
                 <div className="flex">
-                  <Tab>Your Organizations</Tab>
+                  <Tab>{t("orgs.yourOrgs")}</Tab>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {lastRefreshed && <Text>Last Refreshed: {lastRefreshed}</Text>}
+                  {lastRefreshed && <Text>{t("orgs.lastRefreshed", { time: lastRefreshed })}</Text>}
                   <Icon
                     icon={RefreshIcon}
                     variant="shadow"
@@ -256,7 +258,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <Text>Click on &ldquo;Organization ID&rdquo; to view organization details.</Text>
+                  <Text>{t("orgs.clickIdHint")}</Text>
                   <Grid numItems={1} className="gap-2 pt-2 pb-2 h-[75vh] w-full mt-2">
                     <Col numColSpan={1}>
                       <Card className="w-full mx-auto flex-auto overflow-hidden overflow-y-auto max-h-[50vh]">
@@ -274,15 +276,15 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                         <Table>
                           <TableHead>
                             <TableRow>
-                              <TableHeaderCell>Organization ID</TableHeaderCell>
-                              <TableHeaderCell>Organization Name</TableHeaderCell>
-                              <TableHeaderCell>Created</TableHeaderCell>
-                              <TableHeaderCell>Spend (USD)</TableHeaderCell>
-                              <TableHeaderCell>Budget (USD)</TableHeaderCell>
-                              <TableHeaderCell>Models</TableHeaderCell>
-                              <TableHeaderCell>TPM / RPM Limits</TableHeaderCell>
-                              <TableHeaderCell>Info</TableHeaderCell>
-                              <TableHeaderCell>Actions</TableHeaderCell>
+                              <TableHeaderCell>{t("orgs.orgId")}</TableHeaderCell>
+                              <TableHeaderCell>{t("orgs.orgName")}</TableHeaderCell>
+                              <TableHeaderCell>{t("common.created")}</TableHeaderCell>
+                              <TableHeaderCell>{t("keys.spendUsd")}</TableHeaderCell>
+                              <TableHeaderCell>{t("keys.budgetUsd")}</TableHeaderCell>
+                              <TableHeaderCell>{t("common.models")}</TableHeaderCell>
+                              <TableHeaderCell>{t("orgs.tpmRpmLimits")}</TableHeaderCell>
+                              <TableHeaderCell>{t("orgs.info")}</TableHeaderCell>
+                              <TableHeaderCell>{t("common.actions")}</TableHeaderCell>
                             </TableRow>
                           </TableHead>
 
@@ -316,7 +318,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                         {org.litellm_budget_table?.max_budget !== null &&
                                         org.litellm_budget_table?.max_budget !== undefined
                                           ? org.litellm_budget_table?.max_budget
-                                          : "No limit"}
+                                          : t("orgs.noLimit")}
                                       </TableCell>
                                       <TableCell
                                         style={{
@@ -331,7 +333,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                             <div className="flex flex-col">
                                               {org.models.length === 0 ? (
                                                 <Badge size={"xs"} className="mb-1" color="red">
-                                                  <Text>All Proxy Models</Text>
+                                                  <Text>{t("keys.allProxyModels")}</Text>
                                                 </Badge>
                                               ) : (
                                                 <>
@@ -360,7 +362,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                                       {org.models.slice(0, 3).map((model, index) =>
                                                         model === "all-proxy-models" ? (
                                                           <Badge key={index} size={"xs"} color="red">
-                                                            <Text>All Proxy Models</Text>
+                                                            <Text>{t("keys.allProxyModels")}</Text>
                                                           </Badge>
                                                         ) : (
                                                           <Badge key={index} size={"xs"} color="blue">
@@ -388,7 +390,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                                           {org.models.slice(3).map((model, index) =>
                                                             model === "all-proxy-models" ? (
                                                               <Badge key={index + 3} size={"xs"} color="red">
-                                                                <Text>All Proxy Models</Text>
+                                                                <Text>{t("keys.allProxyModels")}</Text>
                                                               </Badge>
                                                             ) : (
                                                               <Badge key={index + 3} size={"xs"} color="blue">
@@ -431,7 +433,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                           <>
                                             <TableIconActionButton
                                               variant="Edit"
-                                              tooltipText="Edit organization"
+                                              tooltipText={t("orgs.edit")}
                                               onClick={() => {
                                                 setSelectedOrgId(org.organization_id);
                                                 setEditOrg(true);
@@ -439,7 +441,7 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
                                             />
                                             <TableIconActionButton
                                               variant="Delete"
-                                              tooltipText="Delete organization"
+                                              tooltipText={t("orgs.delete")}
                                               onClick={() => handleDelete(org.organization_id)}
                                             />
                                           </>
@@ -459,15 +461,15 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
           )}
         </Col>
       </Grid>
-      <Modal title="Create Organization" visible={isOrgModalVisible} width={800} footer={null} onCancel={handleCancel}>
+      <Modal title={t("orgs.create")} visible={isOrgModalVisible} width={800} footer={null} onCancel={handleCancel}>
         <Form form={form} onFinish={handleCreate} labelCol={{ span: 8 }} wrapperCol={{ span: 16 }} labelAlign="left">
           <Form.Item
-            label="Organization Name"
+            label={t("orgs.orgName")}
             name="organization_alias"
             rules={[
               {
                 required: true,
-                message: "Please input an organization name",
+                message: t("orgs.nameRequired"),
               },
             ]}
           >
@@ -553,10 +555,10 @@ const OrganizationsTable: React.FC<OrganizationsTableProps> = ({
 
       <DeleteResourceModal
         isOpen={isDeleteModalOpen}
-        title="Delete Organization?"
-        message="Are you sure you want to delete this organization? This action cannot be undone."
-        resourceInformationTitle="Organization Information"
-        resourceInformation={[{ label: "Organization ID", value: orgToDelete, code: true }]}
+        title={t("orgs.deleteTitle")}
+        message={t("orgs.deleteConfirm")}
+        resourceInformationTitle={t("orgs.orgInfo")}
+        resourceInformation={[{ label: t("orgs.orgId"), value: orgToDelete, code: true }]}
         onCancel={cancelDelete}
         onOk={confirmDelete}
         confirmLoading={isDeleting}

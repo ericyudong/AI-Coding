@@ -27,6 +27,7 @@ import UISettings from "./Settings/AdminSettings/UISettings/UISettings";
 import HashicorpVault from "./Settings/AdminSettings/HashicorpVault/HashicorpVault";
 import SSOModals from "./SSOModals";
 import UIAccessControlForm from "./UIAccessControlForm";
+import { useI18n } from "@/i18n";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -35,6 +36,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
+  const { t } = useI18n();
   const { premiumUser, accessToken, userId: userID } = useAuthorized();
   const [form] = Form.useForm();
   const [isAddSSOModalVisible, setIsAddSSOModalVisible] = useState(false);
@@ -186,19 +188,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
   const tabItems = [
     {
       key: "sso-settings",
-      label: "SSO Settings",
+      label: t("settings.admin.tabSso"),
       children: <SSOSettings />,
     },
     {
       key: "security-settings",
-      label: "Security Settings",
+      label: t("settings.admin.tabSecurity"),
       children: (
         <>
           <Card>
-            <Title level={4}> ✨ Security Settings</Title>
+            <Title level={4}>{t("settings.admin.securityTitle")}</Title>
             <Alert
-              message="SSO Configuration Deprecated"
-              description="Editing SSO Settings on this page is deprecated and will be removed in a future version. Please use the SSO Settings tab for SSO configuration."
+              message={t("settings.admin.ssoDeprecatedTitle")}
+              description={t("settings.admin.ssoDeprecatedDesc")}
               type="warning"
               showIcon
             />
@@ -213,12 +215,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
             >
               <div>
                 <Button style={{ width: "150px" }} onClick={() => setIsAddSSOModalVisible(true)}>
-                  {ssoConfigured ? "Edit SSO Settings" : "Add SSO"}
+                  {ssoConfigured ? t("settings.admin.editSso") : t("settings.admin.addSso")}
                 </Button>
               </div>
               <div>
                 <Button style={{ width: "150px" }} onClick={handleShowAllowedIPs}>
-                  Allowed IPs
+                  {t("settings.admin.allowedIps")}
                 </Button>
               </div>
               <div>
@@ -230,7 +232,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
                       : NotificationsManager.fromBackend("Only premium users can configure UI access control")
                   }
                 >
-                  UI Access Control
+                  {t("settings.admin.uiAccessControl")}
                 </Button>
               </div>
             </div>
@@ -250,7 +252,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
               ssoConfigured={ssoConfigured}
             />
             <Modal
-              title="Manage Allowed IP Addresses"
+              title={t("settings.admin.manageAllowedIps")}
               width={800}
               open={isAllowedIPModalVisible}
               onCancel={() => setIsAllowedIPModalVisible(false)}
@@ -322,7 +324,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
 
             {/* UI Access Control Modal */}
             <Modal
-              title="UI Access Control Settings"
+              title={t("settings.admin.uiAccessTitle")}
               open={isUIAccessControlModalVisible}
               width={600}
               footer={null}
@@ -349,7 +351,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
     },
     {
       key: "scim",
-      label: "SCIM",
+      label: t("settings.admin.tabScim"),
       children: <SCIMConfig accessToken={accessToken} userID={userID} proxySettings={proxySettings} />,
     },
     {
@@ -357,7 +359,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
       label: (
         <Space>
           <Text>
-            UI Settings <NewBadge />
+            {t("settings.admin.tabUiSettings")} <NewBadge />
           </Text>
         </Space>
       ),
@@ -365,20 +367,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
     },
     {
       key: "logging-settings",
-      label: "Logging Settings",
+      label: t("settings.admin.tabLogging"),
       children: <LoggingSettings />,
     },
     {
       key: "hashicorp-vault",
-      label: "Hashicorp Vault",
+      label: t("settings.admin.tabVault"),
       children: <HashicorpVault />,
     },
   ];
 
   return (
     <div className="w-full m-2 mt-2 p-8">
-      <Title level={4}>Admin Access </Title>
-      <Paragraph>Go to &apos;Internal Users&apos; page to add other admins.</Paragraph>
+      <Title level={4}>{t("settings.admin.title")} </Title>
+      <Paragraph>{t("settings.admin.subtitle")}</Paragraph>
       <Tabs items={tabItems} />
     </div>
   );

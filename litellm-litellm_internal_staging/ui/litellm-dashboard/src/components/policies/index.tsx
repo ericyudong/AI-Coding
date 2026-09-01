@@ -35,6 +35,7 @@ import {
 } from "./types";
 import { Guardrail } from "../guardrails/types";
 import DeleteResourceModal from "../common_components/DeleteResourceModal";
+import { useI18n } from "@/i18n";
 
 interface PoliciesPanelProps {
   accessToken: string | null;
@@ -45,6 +46,7 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({
   accessToken,
   userRole,
 }) => {
+  const { t } = useI18n();
   const [policiesList, setPoliciesList] = useState<Policy[]>([]);
   const [attachmentsList, setAttachmentsList] = useState<PolicyAttachment[]>([]);
   const [guardrailsList, setGuardrailsList] = useState<Guardrail[]>([]);
@@ -371,25 +373,25 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({
     <div className="w-full mx-auto flex-auto overflow-y-auto m-8 p-2">
       <TabGroup index={activeTab} onIndexChange={setActiveTab}>
         <TabList className="mb-4">
-          <Tab>Templates</Tab>
-          <Tab>Policies</Tab>
-          <Tab>Attachments</Tab>
-          <Tab>Policy Simulator</Tab>
+          <Tab>{t("policies.tabTemplates")}</Tab>
+          <Tab>{t("policies.tabPolicies")}</Tab>
+          <Tab>{t("policies.tabAttachments")}</Tab>
+          <Tab>{t("policies.tabSimulator")}</Tab>
         </TabList>
 
         <TabPanels>
           <TabPanel>
           <Alert
-              message="About Policies"
+              message={t("policies.about")}
               description={
                 <div>
                   <p className="mb-3">
                     Use policies to group guardrails and control which ones run for specific teams, keys, or models.
                   </p>
-                  <p className="mb-2 font-semibold">Why use policies?</p>
+                  <p className="mb-2 font-semibold">{t("policies.why")}</p>
                   <ul className="list-disc list-inside mb-3 space-y-1 ml-2">
                     <li>Enable/disable specific guardrails for teams, keys, or models</li>
-                    <li>Group guardrails into a single policy</li>
+                    <li>{t("policies.whyDesc")}</li>
                     <li>Inherit from existing policies and override what you need</li>
                   </ul>
                   <a
@@ -418,16 +420,16 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({
 
           <TabPanel>
             <Alert
-              message="About Policies"
+              message={t("policies.about")}
               description={
                 <div>
                   <p className="mb-3">
                     Use policies to group guardrails and control which ones run for specific teams, keys, or models.
                   </p>
-                  <p className="mb-2 font-semibold">Why use policies?</p>
+                  <p className="mb-2 font-semibold">{t("policies.why")}</p>
                   <ul className="list-disc list-inside mb-3 space-y-1 ml-2">
                     <li>Enable/disable specific guardrails for teams, keys, or models</li>
-                    <li>Group guardrails into a single policy</li>
+                    <li>{t("policies.whyDesc")}</li>
                     <li>Inherit from existing policies and override what you need</li>
                   </ul>
                   <a
@@ -498,9 +500,9 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({
 
             <DeleteResourceModal
               isOpen={isDeleteModalOpen}
-              title="Delete Policy"
+              title={t("policies.delete")}
               message={`Are you sure you want to delete policy: ${policyToDelete?.policy_name}? This action cannot be undone.`}
-              resourceInformationTitle="Policy Information"
+              resourceInformationTitle={t("policies.info")}
               resourceInformation={[
                 { label: "Name", value: policyToDelete?.policy_name },
                 { label: "ID", value: policyToDelete?.policy_id, code: true },
@@ -534,13 +536,13 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({
 
           <TabPanel>
             <Alert
-              message="About Policy Attachments"
+              message={t("policies.aboutAttachments")}
               description={
                 <div>
                   <p className="mb-3">
                     Policy attachments control where your policies apply. Policies don&apos;t do anything until you attach them to specific teams, keys, models, tags, or globally.
                   </p>
-                  <p className="mb-2 font-semibold">Attachment Scopes:</p>
+                  <p className="mb-2 font-semibold">{t("policies.attachmentScopes")}</p>
                   <ul className="list-disc list-inside mb-3 space-y-1 ml-2">
                     <li><strong>Global (*)</strong> - Applies to all requests</li>
                     <li><strong>Teams</strong> - Applies only to specific teams</li>

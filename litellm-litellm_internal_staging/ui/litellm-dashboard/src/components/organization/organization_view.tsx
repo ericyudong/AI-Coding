@@ -35,6 +35,7 @@ import NumericalInput from "../shared/numerical_input";
 import MemberModal from "../team/EditMembership";
 import VectorStoreSelector from "../vector_store_management/VectorStoreSelector";
 
+import { useI18n } from "@/i18n";
 interface OrganizationInfoProps {
   organizationId: string;
   onClose: () => void;
@@ -52,8 +53,9 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
   is_org_admin,
   is_proxy_admin,
   userModels,
-  editOrg,
+  editOrg
 }) => {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const { data: orgData, isLoading: loading } = useOrganization(organizationId);
   const [form] = Form.useForm();
@@ -180,11 +182,11 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
   };
 
   if (loading) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="p-4">{t("orgs.loading")}</div>;
   }
 
   if (!orgData) {
-    return <div className="p-4">Organization not found</div>;
+    return <div className="p-4">{t("orgs.notFound")}</div>;
   }
 
   const copyToClipboard = async (text: string | null | undefined, key: string) => {
@@ -199,7 +201,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
 
   const orgExtraColumns: ColumnsType<Member> = [
     {
-      title: "Spend (USD)",
+      title: t("orgs.spendUsd"),
       key: "spend",
       render: (_: unknown, record: Member) => {
         const orgMember =
@@ -214,7 +216,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
       },
     },
     {
-      title: "Created At",
+      title: t("orgs.createdAt"),
       key: "created_at",
       render: (_: unknown, record: Member) => {
         const orgMember =
@@ -237,7 +239,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
       <div className="flex justify-between items-center mb-6">
         <div>
           <TremorButton icon={ArrowLeftIcon} onClick={onClose} variant="light" className="mb-4">
-            Back to Organizations
+            {t("orgs.backToOrgs")}
           </TremorButton>
           <Title>{orgData.organization_alias}</Title>
           <div className="flex items-center cursor-pointer">
@@ -262,50 +264,52 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
         items={[
           {
             key: "overview",
-            label: "Overview",
+            label: t("orgs.tabOverview"),
             children: (
               <Grid numItems={1} numItemsSm={2} numItemsLg={3} className="gap-6">
                 <Card>
-                  <Text>Organization Details</Text>
+                  <Text>{t("orgs.details")}</Text>
                   <div className="mt-2">
-                    <Text>Created: {new Date(orgData.created_at).toLocaleDateString()}</Text>
-                    <Text>Updated: {new Date(orgData.updated_at).toLocaleDateString()}</Text>
-                    <Text>Created By: {orgData.created_by}</Text>
+                    <Text>{t("orgs.created", { date: new Date(orgData.created_at).toLocaleDateString() })}</Text>
+                    <Text>{t("orgs.updated", { date: new Date(orgData.updated_at).toLocaleDateString() })}</Text>
+                    <Text>{t("orgs.createdBy", { name: orgData.created_by })}</Text>
                   </div>
                 </Card>
 
                 <Card>
-                  <Text>Budget Status</Text>
+                  <Text>{t("orgs.budgetStatus")}</Text>
                   <div className="mt-2">
                     <Title>${formatNumberWithCommas(orgData.spend, 4)}</Title>
                     <Text>
-                      of{" "}
-                      {orgData.litellm_budget_table.max_budget === null
-                        ? "Unlimited"
-                        : `$${formatNumberWithCommas(orgData.litellm_budget_table.max_budget, 4)}`}
+                      {t("orgs.ofBudget", {
+                        budget:
+                          orgData.litellm_budget_table.max_budget === null
+                            ? t("common.unlimited")
+                            : `$${formatNumberWithCommas(orgData.litellm_budget_table.max_budget, 4)}`,
+                      })}
                     </Text>
                     {orgData.litellm_budget_table.budget_duration && (
-                      <Text className="text-gray-500">Reset: {orgData.litellm_budget_table.budget_duration}</Text>
+                      <Text className="text-gray-500">{t("orgs.resetColon", { duration: orgData.litellm_budget_table.budget_duration })}</Text>
                     )}
                   </div>
                 </Card>
 
                 <Card>
-                  <Text>Rate Limits</Text>
+                  <Text>{t("orgs.rateLimits")}</Text>
                   <div className="mt-2">
-                    <Text>TPM: {orgData.litellm_budget_table.tpm_limit || "Unlimited"}</Text>
-                    <Text>RPM: {orgData.litellm_budget_table.rpm_limit || "Unlimited"}</Text>
+                    <Text>{t("orgs.tpmColon", { value: orgData.litellm_budget_table.tpm_limit || t("common.unlimited") })}</Text>
+                    <Text>{t("orgs.rpmColon", { value: orgData.litellm_budget_table.rpm_limit || t("common.unlimited") })}</Text>
                     {orgData.litellm_budget_table.max_parallel_requests && (
-                      <Text>Max Parallel Requests: {orgData.litellm_budget_table.max_parallel_requests}</Text>
+                      <Text>{t("orgs.maxParallelRequests", { value: orgData.litellm_budget_table.max_parallel_requests })}</Text>
                     )}
                   </div>
                 </Card>
 
                 <Card>
-                  <Text>Models</Text>
+                  <Text>{t("common.models")}</Text>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {orgData.models.length === 0 ? (
-                      <Badge color="red">All proxy models</Badge>
+                      <Badge color="red">{t("orgs.allProxyModels")}</Badge>
                     ) : (
                       orgData.models.map((model, index) => (
                         <Badge key={index} color="red">
@@ -316,7 +320,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                   </div>
                 </Card>
                 <Card>
-                  <Text>Teams</Text>
+                  <Text>{t("nav.teams")}</Text>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {orgData.teams?.map((team, index) => (
                       <Badge key={index} color="red">
@@ -336,7 +340,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
           },
           {
             key: "members",
-            label: "Members",
+            label: t("orgs.tabMembers"),
             children: (
               <div className="space-y-4">
                 <MemberTable
@@ -352,22 +356,22 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                   }}
                   onDelete={(member) => handleMemberDelete(member)}
                   onAddMember={() => setIsAddMemberModalVisible(true)}
-                  roleColumnTitle="Organization Role"
+                  roleColumnTitle={t("orgs.orgRole")}
                   extraColumns={orgExtraColumns}
-                  emptyText="No members found"
+                  emptyText={t("orgs.noMembers")}
                 />
               </div>
             ),
           },
           {
             key: "settings",
-            label: "Settings",
+            label: t("orgs.tabSettings"),
             children: (
               <Card className="overflow-y-auto max-h-[65vh]">
                 <div className="flex justify-between items-center mb-4">
-                  <Title>Organization Settings</Title>
+                  <Title>{t("orgs.orgSettings")}</Title>
                   {canEditOrg && !isEditing && (
-                    <TremorButton onClick={() => setIsEditing(true)}>Edit Settings</TremorButton>
+                    <TremorButton onClick={() => setIsEditing(true)}>{t("common.editSettings")}</TremorButton>
                   )}
                 </div>
 
@@ -392,19 +396,19 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                     layout="vertical"
                   >
                     <Form.Item
-                      label="Organization Name"
+                      label={t("orgs.orgName")}
                       name="organization_alias"
                       rules={[
                         {
                           required: true,
-                          message: "Please input an organization name",
+                          message: t("orgs.nameRequired"),
                         },
                       ]}
                     >
                       <TextInput />
                     </Form.Item>
 
-                    <Form.Item label="Models" name="models">
+                    <Form.Item label={t("common.models")} name="models">
                       <ModelSelect
                         value={form.getFieldValue("models")}
                         onChange={(values) => form.setFieldValue("models", values)}
@@ -416,55 +420,55 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                       />
                     </Form.Item>
 
-                    <Form.Item label="Max Budget (USD)" name="max_budget">
+                    <Form.Item label={t("orgs.maxBudget")} name="max_budget">
                       <NumericalInput step={0.01} precision={2} style={{ width: "100%" }} />
                     </Form.Item>
 
-                    <Form.Item label="Reset Budget" name="budget_duration">
+                    <Form.Item label={t("orgs.resetBudget")} name="budget_duration">
                       <Select placeholder="n/a">
-                        <Select.Option value="24h">daily</Select.Option>
-                        <Select.Option value="7d">weekly</Select.Option>
-                        <Select.Option value="30d">monthly</Select.Option>
+                        <Select.Option value="24h">{t("orgs.budgetDaily")}</Select.Option>
+                        <Select.Option value="7d">{t("orgs.budgetWeekly")}</Select.Option>
+                        <Select.Option value="30d">{t("orgs.budgetMonthly")}</Select.Option>
                       </Select>
                     </Form.Item>
 
-                    <Form.Item label="Tokens per minute Limit (TPM)" name="tpm_limit">
+                    <Form.Item label={t("orgs.tpmLimit")} name="tpm_limit">
                       <NumericalInput step={1} style={{ width: "100%" }} />
                     </Form.Item>
 
-                    <Form.Item label="Requests per minute Limit (RPM)" name="rpm_limit">
+                    <Form.Item label={t("orgs.rpmLimit")} name="rpm_limit">
                       <NumericalInput step={1} style={{ width: "100%" }} />
                     </Form.Item>
 
-                    <Form.Item label="Vector Stores" name="vector_stores">
+                    <Form.Item label={t("orgs.vectorStores")} name="vector_stores">
                       <VectorStoreSelector
                         onChange={(values) => form.setFieldValue("vector_stores", values)}
                         value={form.getFieldValue("vector_stores")}
                         accessToken={accessToken || ""}
-                        placeholder="Select vector stores"
+                        placeholder={t("orgs.selectVectorStores")}
                       />
                     </Form.Item>
 
-                    <Form.Item label="MCP Servers & Access Groups" name="mcp_servers_and_groups">
+                    <Form.Item label={t("orgs.mcpServers")} name="mcp_servers_and_groups">
                       <MCPServerSelector
                         onChange={(values) => form.setFieldValue("mcp_servers_and_groups", values)}
                         value={form.getFieldValue("mcp_servers_and_groups")}
                         accessToken={accessToken || ""}
-                        placeholder="Select MCP servers and access groups"
+                        placeholder={t("orgs.selectMcp")}
                       />
                     </Form.Item>
 
-                    <Form.Item label="Metadata" name="metadata">
+                    <Form.Item label={t("orgs.metadata")} name="metadata">
                       <Input.TextArea rows={4} />
                     </Form.Item>
 
                     <div className="sticky z-10 bg-white p-4 border-t border-gray-200 bottom-[-1.5rem] inset-x-[-1.5rem]">
                       <div className="flex justify-end items-center gap-2">
                         <TremorButton variant="secondary" onClick={() => setIsEditing(false)} disabled={isOrgSaving}>
-                          Cancel
+                          {t("common.cancel")}
                         </TremorButton>
                         <TremorButton type="submit" loading={isOrgSaving}>
-                          Save Changes
+                          {t("common.saveChanges")}
                         </TremorButton>
                       </div>
                     </div>
@@ -472,19 +476,19 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <Text className="font-medium">Organization Name</Text>
+                      <Text className="font-medium">{t("orgs.orgName")}</Text>
                       <div>{orgData.organization_alias}</div>
                     </div>
                     <div>
-                      <Text className="font-medium">Organization ID</Text>
+                      <Text className="font-medium">{t("orgs.orgId")}</Text>
                       <div className="font-mono">{orgData.organization_id}</div>
                     </div>
                     <div>
-                      <Text className="font-medium">Created At</Text>
+                      <Text className="font-medium">{t("orgs.createdAt")}</Text>
                       <div>{new Date(orgData.created_at).toLocaleString()}</div>
                     </div>
                     <div>
-                      <Text className="font-medium">Models</Text>
+                      <Text className="font-medium">{t("common.models")}</Text>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {orgData.models.map((model, index) => (
                           <Badge key={index} color="red">
@@ -494,19 +498,19 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
                       </div>
                     </div>
                     <div>
-                      <Text className="font-medium">Rate Limits</Text>
-                      <div>TPM: {orgData.litellm_budget_table.tpm_limit || "Unlimited"}</div>
-                      <div>RPM: {orgData.litellm_budget_table.rpm_limit || "Unlimited"}</div>
+                      <Text className="font-medium">{t("orgs.rateLimits")}</Text>
+                      <div>{t("orgs.tpmColon", { value: orgData.litellm_budget_table.tpm_limit || t("common.unlimited") })}</div>
+                      <div>{t("orgs.rpmColon", { value: orgData.litellm_budget_table.rpm_limit || t("common.unlimited") })}</div>
                     </div>
                     <div>
-                      <Text className="font-medium">Budget</Text>
+                      <Text className="font-medium">{t("orgs.budget")}</Text>
                       <div>
                         Max:{" "}
                         {orgData.litellm_budget_table.max_budget !== null
                           ? `$${formatNumberWithCommas(orgData.litellm_budget_table.max_budget, 4)}`
-                          : "No Limit"}
+                          : t("orgs.noLimit")}
                       </div>
-                      <div>Reset: {orgData.litellm_budget_table.budget_duration || "Never"}</div>
+                      <div>{t("orgs.resetColon", { duration: orgData.litellm_budget_table.budget_duration || t("common.never") })}</div>
                     </div>
 
                     <ObjectPermissionsView
@@ -527,22 +531,22 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
         onCancel={() => setIsAddMemberModalVisible(false)}
         onSubmit={handleMemberAdd}
         accessToken={accessToken}
-        title="Add Organization Member"
+        title={t("orgs.addMember")}
         roles={[
           {
             label: "org_admin",
             value: "org_admin",
-            description: "Can add and remove members, and change their roles.",
+            description: t("orgs.roleOrgAdminDesc"),
           },
           {
             label: "internal_user",
             value: "internal_user",
-            description: "Can view/create keys for themselves within organization.",
+            description: t("orgs.roleInternalUserDesc"),
           },
           {
             label: "internal_user_viewer",
             value: "internal_user_viewer",
-            description: "Can only view their keys within organization.",
+            description: t("orgs.roleViewerDesc"),
           },
         ]}
         defaultRole="internal_user"
@@ -554,13 +558,13 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
         initialData={selectedEditMember}
         mode="edit"
         config={{
-          title: "Edit Member",
+          title: t("orgs.editMember"),
           showEmail: true,
           showUserId: true,
           roleOptions: [
-            { label: "Org Admin", value: "org_admin" },
-            { label: "Internal User", value: "internal_user" },
-            { label: "Internal User Viewer", value: "internal_user_viewer" },
+            { label: t("orgs.roleOrgAdmin"), value: "org_admin" },
+            { label: t("orgs.roleInternalUser"), value: "internal_user" },
+            { label: t("orgs.roleViewer"), value: "internal_user_viewer" },
           ],
         }}
       />

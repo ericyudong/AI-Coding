@@ -13,6 +13,7 @@ import React from "react";
 import TableIconActionButton from "../common_components/IconActionButton/TableIconActionButtons/TableIconActionButton";
 import { getProviderLogoAndName } from "../provider_info_helpers";
 import { VectorStore } from "./types";
+import { useI18n } from "@/i18n";
 
 interface VectorStoreTableProps {
   data: VectorStore[];
@@ -22,11 +23,12 @@ interface VectorStoreTableProps {
 }
 
 const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdit, onDelete }) => {
+  const { t } = useI18n();
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "created_at", desc: true }]);
 
   const columns: ColumnDef<VectorStore>[] = [
     {
-      header: "Vector Store ID",
+      header: t("vectorStores.id"),
       accessorKey: "vector_store_id",
       cell: ({ row }) => {
         const vectorStore = row.original;
@@ -43,7 +45,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Name",
+      header: t("vectorStores.name"),
       accessorKey: "vector_store_name",
       cell: ({ row }) => {
         const vectorStore = row.original;
@@ -55,7 +57,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Description",
+      header: t("vectorStores.description"),
       accessorKey: "vector_store_description",
       cell: ({ row }) => {
         const vectorStore = row.original;
@@ -67,7 +69,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Files",
+      header: t("vectorStores.files"),
       accessorKey: "vector_store_metadata",
       cell: ({ row }) => {
         const vectorStore = row.original;
@@ -93,7 +95,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Provider",
+      header: t("vectorStores.provider"),
       accessorKey: "custom_llm_provider",
       cell: ({ row }) => {
         const vectorStore = row.original;
@@ -107,7 +109,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Created At",
+      header: t("vectorStores.createdAt"),
       accessorKey: "created_at",
       sortingFn: "datetime",
       cell: ({ row }) => {
@@ -116,7 +118,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
       },
     },
     {
-      header: "Updated At",
+      header: t("vectorStores.updatedAt"),
       accessorKey: "updated_at",
       sortingFn: "datetime",
       cell: ({ row }) => {
@@ -133,12 +135,12 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
           <div className="flex space-x-2">
             <TableIconActionButton
               variant="Edit"
-              tooltipText="Edit vector store"
+              tooltipText={t("vectorStores.edit")}
               onClick={() => onEdit(vectorStore.vector_store_id)}
             />
             <TableIconActionButton
               variant="Delete"
-              tooltipText="Delete vector store"
+              tooltipText={t("vectorStores.deleteTooltip")}
               onClick={() => onDelete(vectorStore.vector_store_id)}
             />
           </div>
@@ -218,7 +220,7 @@ const VectorStoreTable: React.FC<VectorStoreTableProps> = ({ data, onView, onEdi
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-8 text-center">
                   <div className="text-center text-gray-500">
-                    <p>No vector stores found</p>
+                    <p>{t("vectorStores.empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>

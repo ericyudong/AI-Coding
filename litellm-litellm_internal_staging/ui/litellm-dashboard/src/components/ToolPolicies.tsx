@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button, Switch, Tooltip } from "antd";
 import { Table, TableHead, TableHeaderCell, TableBody, TableRow, TableCell } from "@tremor/react";
@@ -53,6 +54,7 @@ interface ToolPoliciesProps {
 }
 
 export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelectTool }) => {
+  const { t } = useI18n();
   const [tools, setTools] = useState<ToolRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -154,13 +156,13 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
 
   const filterOptions: FilterOption[] = [
     {
-      name: "Input Policy",
-      label: "Input Policy",
+      name: t("tools.inputPolicy"),
+      label: t("tools.inputPolicy"),
       options: INPUT_POLICY_OPTIONS.map((o) => ({ label: o.label, value: o.value })),
     },
     {
-      name: "Output Policy",
-      label: "Output Policy",
+      name: t("tools.outputPolicy"),
+      label: t("tools.outputPolicy"),
       options: OUTPUT_POLICY_OPTIONS.map((o) => ({ label: o.label, value: o.value })),
     },
     {
@@ -218,22 +220,22 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
     </div>
   );
 
-  const filtered = tools.filter((t) => {
+  const filtered = tools.filter((tool) => {
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const matchesSearch =
-        t.tool_name.toLowerCase().includes(q) ||
-        (t.team_id ?? "").toLowerCase().includes(q) ||
-        (t.key_alias ?? "").toLowerCase().includes(q) ||
-        (t.key_hash ?? "").toLowerCase().includes(q) ||
-        t.input_policy.toLowerCase().includes(q) ||
-        t.output_policy.toLowerCase().includes(q);
+        tool.tool_name.toLowerCase().includes(q) ||
+        (tool.team_id ?? "").toLowerCase().includes(q) ||
+        (tool.key_alias ?? "").toLowerCase().includes(q) ||
+        (tool.key_hash ?? "").toLowerCase().includes(q) ||
+        tool.input_policy.toLowerCase().includes(q) ||
+        tool.output_policy.toLowerCase().includes(q);
       if (!matchesSearch) return false;
     }
-    if (activeFilters["Input Policy"] && t.input_policy !== activeFilters["Input Policy"]) return false;
-    if (activeFilters["Output Policy"] && t.output_policy !== activeFilters["Output Policy"]) return false;
-    if (activeFilters["Team Name"] && t.team_id !== activeFilters["Team Name"]) return false;
-    if (activeFilters["Key Name"] && t.key_alias !== activeFilters["Key Name"]) return false;
+    if (activeFilters["Input Policy"] && tool.input_policy !== activeFilters["Input Policy"]) return false;
+    if (activeFilters["Output Policy"] && tool.output_policy !== activeFilters["Output Policy"]) return false;
+    if (activeFilters["Team Name"] && tool.team_id !== activeFilters["Team Name"]) return false;
+    if (activeFilters["Key Name"] && tool.key_alias !== activeFilters["Key Name"]) return false;
     return true;
   });
 
@@ -263,11 +265,11 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Tool Policies</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-6">{t("tools.title")}</h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
-          label="New Today"
+          label={t("tools.newToday")}
           value={newToday}
           valueColor="text-green-600"
           subtitle={trendSubtitle}
@@ -277,18 +279,18 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
             </svg>
           }
         />
-        <MetricCard label="Total Tools Discovered" value={totalTools} />
+        <MetricCard label={t("tools.totalDiscovered")} value={totalTools} />
         <MetricCard
-          label="Blocked Tools"
+          label={t("tools.blocked")}
           value={blockedCount}
           valueColor={blockedCount > 0 ? "text-red-600" : undefined}
         />
-        <MetricCard label="Active Teams" value={activeTeamsCount > 0 ? activeTeamsCount : "—"} />
+        <MetricCard label={t("tools.activeTeams")} value={activeTeamsCount > 0 ? activeTeamsCount : "—"} />
       </div>
 
       {needsReviewTools.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-amber-900 mb-1">Needs Review</h2>
+          <h2 className="text-sm font-semibold text-amber-900 mb-1">{t("tools.needsReview")}</h2>
           <p className="text-sm text-amber-800 mb-3">
             {needsReviewTools.length} new tool{needsReviewTools.length !== 1 ? "s" : ""} discovered that require
             policy decisions.
@@ -322,7 +324,7 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
               <div className="relative w-64">
                 <input
                   type="text"
-                  placeholder="Search by Tool Name"
+                  placeholder={t("tools.searchByName")}
                   className="w-full px-3 py-2 pl-8 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={searchTerm}
                   onChange={(e) => {
@@ -432,10 +434,10 @@ export const ToolPolicies: React.FC<ToolPoliciesProps> = ({ accessToken, onSelec
                 <SortHeader label="Tool Name" field="tool_name" />
               </TableHeaderCell>
               <TableHeaderCell className="py-1 h-8">
-                <SortHeader label="Input Policy" field="input_policy" />
+                <SortHeader label={t("tools.inputPolicy")} field="input_policy" />
               </TableHeaderCell>
               <TableHeaderCell className="py-1 h-8">
-                <SortHeader label="Output Policy" field="output_policy" />
+                <SortHeader label={t("tools.outputPolicy")} field="output_policy" />
               </TableHeaderCell>
               <TableHeaderCell className="py-1 h-8">
                 <SortHeader label="# Calls" field="call_count" />

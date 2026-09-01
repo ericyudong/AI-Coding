@@ -25,6 +25,7 @@ import { adminGlobalCacheActivity, cachingHealthCheckCall } from "./networking";
 // Import the new component
 import { CacheHealthTab } from "./cache_health";
 import CacheSettings from "./cache_settings";
+import { useI18n } from "@/i18n";
 
 const formatDateWithoutTZ = (date: Date | undefined) => {
   if (!date) return undefined;
@@ -97,6 +98,7 @@ const deepParse = (input: any) => {
 };
 
 const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole, userID, premiumUser }) => {
+  const { t } = useI18n();
   const [filteredData, setFilteredData] = useState<uiData[]>([]);
   const [selectedApiKeys, setSelectedApiKeys] = useState<string[]>([]);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -270,9 +272,9 @@ const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole
     <TabGroup className="gap-2 p-8 h-full w-full mt-2 mb-8">
       <TabList className="flex justify-between mt-2 w-full items-center">
         <div className="flex">
-          <Tab>Cache Analytics</Tab>
-          <Tab>Cache Health</Tab>
-          <Tab>Cache Settings</Tab>
+          <Tab>{t("caching.tabAnalytics")}</Tab>
+          <Tab>{t("caching.tabHealth")}</Tab>
+          <Tab>{t("caching.tabSettings")}</Tab>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -292,7 +294,7 @@ const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole
             <Grid numItems={3} className="gap-4 mt-4">
               <Col>
                 <MultiSelect
-                  placeholder="Select Virtual Keys"
+                  placeholder={t("caching.selectKeys")}
                   value={selectedApiKeys}
                   onValueChange={setSelectedApiKeys}
                 >
@@ -304,7 +306,7 @@ const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole
                 </MultiSelect>
               </Col>
               <Col>
-                <MultiSelect placeholder="Select Models" value={selectedModels} onValueChange={setSelectedModels}>
+                <MultiSelect placeholder={t("caching.selectModels")} value={selectedModels} onValueChange={setSelectedModels}>
                   {uniqueModels.map((model) => (
                     <MultiSelectItem key={model} value={model}>
                       {model}
@@ -357,9 +359,9 @@ const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole
               </Card>
             </div>
 
-            <Subtitle className="mt-4">Cache Hits vs API Requests</Subtitle>
+            <Subtitle className="mt-4">{t("caching.hitsVsRequests")}</Subtitle>
             <BarChart
-              title="Cache Hits vs API Requests"
+              title={t("caching.hitsVsRequests")}
               data={filteredData}
               stack={true}
               index="name"
@@ -369,7 +371,7 @@ const CacheDashboard: React.FC<CachePageProps> = ({ accessToken, token, userRole
               yAxisWidth={48}
             />
 
-            <Subtitle className="mt-4">Cached Completion Tokens vs Generated Completion Tokens</Subtitle>
+            <Subtitle className="mt-4">{t("caching.cachedVsGenerated")}</Subtitle>
             <BarChart
               className="mt-6"
               data={filteredData}

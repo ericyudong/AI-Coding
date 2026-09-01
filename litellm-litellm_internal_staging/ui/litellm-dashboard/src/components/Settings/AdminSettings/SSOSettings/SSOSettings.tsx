@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import { useSSOSettings, type SSOSettingsValues } from "@/app/(dashboard)/hooks/sso/useSSOSettings";
 import { Button, Card, Descriptions, Space, Tag, Typography } from "antd";
 import { Edit, Shield, Trash2 } from "lucide-react";
@@ -17,6 +18,7 @@ import { detectSSOProvider } from "./utils";
 const { Title, Text } = Typography;
 
 export default function SSOSettings() {
+  const { t } = useI18n();
   const { data: ssoSettings, refetch, isLoading } = useSSOSettings();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -37,11 +39,11 @@ export default function SSOSettings() {
   );
 
   const renderSimpleValue = (value?: string | null) =>
-    value ? value : <span className="text-gray-400 italic">Not configured</span>;
+    value ? value : <span className="text-gray-400 italic">{t("settings.sso.notConfigured")}</span>;
 
   const renderTeamMappingsField = (values: SSOSettingsValues) => {
     if (!values.team_mappings?.team_ids_jwt_field) {
-      return <span className="text-gray-400 italic">Not configured</span>;
+      return <span className="text-gray-400 italic">{t("settings.sso.notConfigured")}</span>;
     }
     return (
       <Tag>{values.team_mappings.team_ids_jwt_field}</Tag>
@@ -195,8 +197,8 @@ export default function SSOSettings() {
                 <div className="flex items-center gap-3">
                   <Shield className="w-6 h-6 text-gray-400" />
                   <div>
-                    <Title level={3}>SSO Configuration</Title>
-                    <Text type="secondary">Manage Single Sign-On authentication settings</Text>
+                    <Title level={3}>{t("settings.sso.title")}</Title>
+                    <Text type="secondary">{t("settings.sso.subtitle")}</Text>
                   </div>
                 </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import { useUISettings } from "@/app/(dashboard)/hooks/uiSettings/useUISettings";
 import { useUpdateUISettings } from "@/app/(dashboard)/hooks/uiSettings/useUpdateUISettings";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
@@ -8,6 +9,7 @@ import PageVisibilitySettings from "./PageVisibilitySettings";
 import { Alert, Card, Divider, Skeleton, Space, Switch, Typography } from "antd";
 
 export default function UISettings() {
+  const { t } = useI18n();
   const { accessToken } = useAuthorized();
   const { data, isLoading, isError, error } = useUISettings();
   const { mutate: updateSettings, isPending: isUpdating, error: updateError } = useUpdateUISettings(accessToken);
@@ -214,7 +216,7 @@ export default function UISettings() {
   };
 
   return (
-    <Card title="UI Settings">
+    <Card title={t("settings.ui.title")}>
       {isLoading ? (
         <Skeleton active />
       ) : isError ? (
@@ -243,10 +245,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggle}
-              aria-label={property?.description ?? "Disable model add for internal users"}
+              aria-label={property?.description ?? t("settings.ui.disableModelAdd")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Disable model add for internal users</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.disableModelAdd")}</Typography.Text>
               {property?.description && <Typography.Text type="secondary">{property.description}</Typography.Text>}
             </Space>
           </Space>
@@ -257,10 +259,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleTeamAdminDelete}
-              aria-label={disableTeamAdminDeleteProperty?.description ?? "Disable team admin delete team user"}
+              aria-label={disableTeamAdminDeleteProperty?.description ?? t("settings.ui.disableTeamAdminDelete")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Disable team admin delete team user</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.disableTeamAdminDelete")}</Typography.Text>
               {disableTeamAdminDeleteProperty?.description && (
                 <Typography.Text type="secondary">{disableTeamAdminDeleteProperty.description}</Typography.Text>
               )}
@@ -273,10 +275,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleRequireAuthForPublicAIHub}
-              aria-label={requireAuthForPublicAIHubProperty?.description ?? "Require authentication for public AI Hub"}
+              aria-label={requireAuthForPublicAIHubProperty?.description ?? t("settings.ui.requireAuthHub")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Require authentication for public AI Hub</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.requireAuthHub")}</Typography.Text>
               {requireAuthForPublicAIHubProperty?.description && (
                 <Typography.Text type="secondary">{requireAuthForPublicAIHubProperty.description}</Typography.Text>
               )}
@@ -289,10 +291,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleForwardClientHeaders}
-              aria-label={forwardClientHeadersProperty?.description ?? "Forward client headers to LLM API"}
+              aria-label={forwardClientHeadersProperty?.description ?? t("settings.ui.forwardClientHeaders")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Forward client headers to LLM API</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.forwardClientHeaders")}</Typography.Text>
               <Typography.Text type="secondary">
                 {forwardClientHeadersProperty?.description ??
                   "Forwards client headers (Authorization, anthropic-beta, and x-* custom headers) to the upstream LLM. Enable for Claude Code with a Max subscription (forwards the OAuth token) or to pass custom/tracing headers through to the provider. Independent of the BYOK toggle — enable only the one(s) you need."}
@@ -307,12 +309,11 @@ export default function UISettings() {
               loading={isUpdating}
               onChange={handleToggleForwardLLMProviderAuthHeaders}
               aria-label={
-                forwardLLMProviderAuthHeadersProperty?.description ??
-                "Forward LLM provider auth headers"
+                forwardLLMProviderAuthHeadersProperty?.description ?? t("settings.ui.forwardProviderAuth")
               }
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Forward LLM provider auth headers</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.forwardProviderAuth")}</Typography.Text>
               <Typography.Text type="secondary">
                 {forwardLLMProviderAuthHeadersProperty?.description ??
                   "Forwards provider auth headers (x-api-key, x-goog-api-key, api-key, ocp-apim-subscription-key) to the upstream LLM, overriding any deployment-configured key for that request. Enable for Claude Code BYOK (clients bring their own API key). Independent of the client-headers toggle — enable only the one(s) you need."}
@@ -327,7 +328,7 @@ export default function UISettings() {
                 disabled={isUpdating}
                 loading={isUpdating}
                 onChange={handleToggleEnableProjectsUI}
-                aria-label={enableProjectsUIProperty.description ?? "Enable Projects UI"}
+                aria-label={enableProjectsUIProperty.description ?? t("settings.ui.enableProjects")}
               />
               <Space direction="vertical" size={4}>
                 <Typography.Text strong>[BETA] Enable Projects (page will refresh)</Typography.Text>
@@ -348,10 +349,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleDisableAgents}
-              aria-label={disableAgentsProperty?.description ?? "Disable agents for internal users"}
+              aria-label={disableAgentsProperty?.description ?? t("settings.ui.disableAgents")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Disable agents for internal users</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.disableAgents")}</Typography.Text>
               {disableAgentsProperty?.description && (
                 <Typography.Text type="secondary">{disableAgentsProperty.description}</Typography.Text>
               )}
@@ -364,11 +365,11 @@ export default function UISettings() {
               disabled={isUpdating || !isAgentsDisabled}
               loading={isUpdating}
               onChange={handleToggleAllowAgentsTeamAdmins}
-              aria-label={allowAgentsTeamAdminsProperty?.description ?? "Allow agents for team admins"}
+              aria-label={allowAgentsTeamAdminsProperty?.description ?? t("settings.ui.allowAgentsTeamAdmin")}
             />
             <Space direction="vertical" size={4}>
               <Typography.Text strong type={!isAgentsDisabled ? "secondary" : undefined}>
-                Allow agents for team admins
+                {t("settings.ui.allowAgentsTeamAdmin")}
               </Typography.Text>
               {allowAgentsTeamAdminsProperty?.description && (
                 <Typography.Text type="secondary">{allowAgentsTeamAdminsProperty.description}</Typography.Text>
@@ -385,10 +386,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleDisableVectorStores}
-              aria-label={disableVectorStoresProperty?.description ?? "Disable vector stores for internal users"}
+              aria-label={disableVectorStoresProperty?.description ?? t("settings.ui.disableVectorStores")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Disable vector stores for internal users</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.disableVectorStores")}</Typography.Text>
               {disableVectorStoresProperty?.description && (
                 <Typography.Text type="secondary">{disableVectorStoresProperty.description}</Typography.Text>
               )}
@@ -401,11 +402,11 @@ export default function UISettings() {
               disabled={isUpdating || !isVectorStoresDisabled}
               loading={isUpdating}
               onChange={handleToggleAllowVectorStoresTeamAdmins}
-              aria-label={allowVectorStoresTeamAdminsProperty?.description ?? "Allow vector stores for team admins"}
+              aria-label={allowVectorStoresTeamAdminsProperty?.description ?? t("settings.ui.allowVectorStoresTeamAdmin")}
             />
             <Space direction="vertical" size={4}>
               <Typography.Text strong type={!isVectorStoresDisabled ? "secondary" : undefined}>
-                Allow vector stores for team admins
+                {t("settings.ui.allowVectorStoresTeamAdmin")}
               </Typography.Text>
               {allowVectorStoresTeamAdminsProperty?.description && (
                 <Typography.Text type="secondary">{allowVectorStoresTeamAdminsProperty.description}</Typography.Text>
@@ -422,10 +423,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleScopeUserSearch}
-              aria-label={scopeUserSearchProperty?.description ?? "Scope user search to organization"}
+              aria-label={scopeUserSearchProperty?.description ?? t("settings.ui.scopeUserSearch")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Scope user search to organization</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.scopeUserSearch")}</Typography.Text>
               <Typography.Text type="secondary">
                 {scopeUserSearchProperty?.description ??
                   "If enabled, the user search endpoint restricts results by organization. When off, any authenticated user can search all users."}
@@ -442,10 +443,10 @@ export default function UISettings() {
               disabled={isUpdating}
               loading={isUpdating}
               onChange={handleToggleDisableCustomApiKeys}
-              aria-label={disableCustomApiKeysProperty?.description ?? "Disable custom Virtual key values"}
+              aria-label={disableCustomApiKeysProperty?.description ?? t("settings.ui.disableCustomKeyValues")}
             />
             <Space direction="vertical" size={4}>
-              <Typography.Text strong>Disable custom Virtual key values</Typography.Text>
+              <Typography.Text strong>{t("settings.ui.disableCustomKeyValues")}</Typography.Text>
               <Typography.Text type="secondary">
                 {disableCustomApiKeysProperty?.description ??
                   "If true, users cannot specify custom key values. All keys must be auto-generated."}

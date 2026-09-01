@@ -22,6 +22,7 @@ import {
 import { Tooltip } from "antd";
 import React from "react";
 import { Tag } from "./types";
+import { useI18n } from "@/i18n";
 
 interface TagTableProps {
   data: Tag[];
@@ -34,11 +35,12 @@ const DYNAMIC_SPEND_TAG_DESCRIPTION =
   "This is just a spend tag that was passed dynamically in a request. It does not control any LLM models.";
 
 const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag }) => {
+  const { t } = useI18n();
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "created_at", desc: true }]);
 
   const columns: ColumnDef<Tag>[] = [
     {
-      header: "Tag Name",
+      header: t("tags.colName"),
       accessorKey: "name",
       cell: ({ row }) => {
         const tag = row.original;
@@ -65,7 +67,7 @@ const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag
       },
     },
     {
-      header: "Description",
+      header: t("tags.colDescription"),
       accessorKey: "description",
       cell: ({ row }) => {
         const tag = row.original;
@@ -77,7 +79,7 @@ const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag
       },
     },
     {
-      header: "Allowed Models",
+      header: t("tags.colAllowedModels"),
       accessorKey: "models",
       cell: ({ row }) => {
         const tag = row.original;
@@ -101,7 +103,7 @@ const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag
       },
     },
     {
-      header: "Created",
+      header: t("tags.colCreated"),
       accessorKey: "created_at",
       sortingFn: "datetime",
       cell: ({ row }) => {
@@ -111,7 +113,7 @@ const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t("common.actions"),
       cell: ({ row }) => {
         const tag = row.original;
         const isDynamicSpendTag = tag.description === DYNAMIC_SPEND_TAG_DESCRIPTION;
@@ -232,7 +234,7 @@ const TagTable: React.FC<TagTableProps> = ({ data, onEdit, onDelete, onSelectTag
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-8 text-center">
                   <div className="text-center text-gray-500">
-                    <p>No tags found</p>
+                    <p>{t("tags.empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>

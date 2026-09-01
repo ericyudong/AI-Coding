@@ -7,6 +7,9 @@ import { getProviderLogoAndName } from "../provider_info_helpers";
 import { TableHeaderSortDropdown } from "../common_components/TableHeaderSortDropdown/TableHeaderSortDropdown";
 import { TimeCell } from "./time_cell";
 import { AGENT_CALL_TYPES, MCP_CALL_TYPES } from "./constants";
+import en from "@/i18n/locales/en";
+import type { MessageKey, TranslateParams } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { AgentBadge, AgentIcon, LlmBadge, McpBadge, SparkleIcon, WrenchIcon } from "./TypeBadges";
 
 /** API sort field mapping for /spend/logs/ui endpoint */
@@ -105,24 +108,28 @@ const SortableHeader = ({
   </div>
 );
 
-export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] => [
+type TranslateFn = (key: MessageKey, params?: TranslateParams) => string;
+
+export const createColumns = (sortProps?: LogsSortProps, t?: TranslateFn): ColumnDef<LogEntry>[] => {
+  const tr: TranslateFn = t ?? ((key) => (en as Record<string, string>)[key] ?? key);
+  return [
   {
     header: sortProps
       ? () => (
           <SortableHeader
-            label="Time"
+            label={tr("logs.colTime")}
             field="startTime"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "Time",
+      : tr("logs.colTime"),
     accessorKey: "startTime",
     cell: (info: any) => <TimeCell utcTime={info.getValue()} />,
   },
   {
-    header: "Type",
+    header: tr("logs.colType"),
     id: "type",
     cell: (info: any) => {
       const row = info.row.original;
@@ -170,7 +177,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     },
   },
   {
-    header: "Status",
+    header: tr("logs.colStatus"),
     accessorKey: "metadata.status",
     cell: (info: any) => {
       const status = info.getValue() || "Success";
@@ -182,13 +189,13 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
             isSuccess ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
           }`}
         >
-          {isSuccess ? "Success" : "Failure"}
+          {isSuccess ? tr("logs.success") : tr("logs.failure")}
         </span>
       );
     },
   },
   {
-    header: "Session ID",
+    header: tr("logs.colSessionId"),
     accessorKey: "session_id",
     cell: (info: any) => {
       const value = String(info.getValue() || "");
@@ -209,7 +216,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
   },
 
   {
-    header: "Request ID",
+    header: tr("logs.colRequestId"),
     accessorKey: "request_id",
     cell: (info: any) => (
       <Tooltip title={String(info.getValue() || "")}>
@@ -221,14 +228,14 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     header: sortProps
       ? () => (
           <SortableHeader
-            label="Cost"
+            label={tr("logs.colCost")}
             field="spend"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "Cost",
+      : tr("logs.colCost"),
     accessorKey: "spend",
     cell: (info: any) => {
       const row = info.row.original;
@@ -253,14 +260,14 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     header: sortProps
       ? () => (
           <SortableHeader
-            label="Duration (s)"
+            label={tr("logs.colDuration")}
             field="request_duration_ms"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "Duration (s)",
+      : tr("logs.colDuration"),
     accessorKey: "request_duration_ms",
     cell: (info: any) => {
       const ms = info.getValue();
@@ -277,14 +284,14 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     header: sortProps
       ? () => (
           <SortableHeader
-            label="TTFT (s)"
+            label={tr("logs.colTtft")}
             field="ttft_ms"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "TTFT (s)",
+      : tr("logs.colTtft"),
     accessorKey: "completionStartTime",
     cell: (info: any) => {
       const row = info.row.original;
@@ -303,7 +310,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     },
   },
   {
-    header: "Team Name",
+    header: tr("logs.colTeamName"),
     accessorKey: "metadata.user_api_key_team_alias",
     cell: (info: any) => (
       <Tooltip title={String(info.getValue() || "-")}>
@@ -312,7 +319,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     ),
   },
   {
-    header: "Key Hash",
+    header: tr("logs.colKeyHash"),
     accessorKey: "metadata.user_api_key",
     cell: (info: any) => {
       const value = String(info.getValue() || "-");
@@ -331,7 +338,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     },
   },
   {
-    header: "Key Name",
+    header: tr("logs.colKeyName"),
     accessorKey: "metadata.user_api_key_alias",
     cell: (info: any) => (
       <Tooltip title={String(info.getValue() || "-")}>
@@ -343,14 +350,14 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     header: sortProps
       ? () => (
           <SortableHeader
-            label="Model"
+            label={tr("logs.colModel")}
             field="model"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "Model",
+      : tr("logs.colModel"),
     accessorKey: "model",
     cell: (info: any) => {
       const row = info.row.original;
@@ -380,14 +387,14 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     header: sortProps
       ? () => (
           <SortableHeader
-            label="Tokens"
+            label={tr("logs.colTokens")}
             field="total_tokens"
             sortBy={sortProps.sortBy}
             sortOrder={sortProps.sortOrder}
             onSortChange={sortProps.onSortChange}
           />
         )
-      : "Tokens",
+      : tr("logs.colTokens"),
     accessorKey: "total_tokens",
     cell: (info: any) => {
       const row = info.row.original;
@@ -402,7 +409,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     },
   },
   {
-    header: "Internal User",
+    header: tr("logs.colInternalUser"),
     accessorKey: "user",
     cell: (info: any) => (
       <Tooltip title={String(info.getValue() || "-")}>
@@ -411,7 +418,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     ),
   },
   {
-    header: "End User",
+    header: tr("logs.colEndUser"),
     accessorKey: "end_user",
     cell: (info: any) => (
       <Tooltip title={String(info.getValue() || "-")}>
@@ -421,7 +428,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
   },
 
   {
-    header: "Tags",
+    header: tr("logs.colTags"),
     accessorKey: "request_tags",
     cell: (info: any) => {
       const tags = info.getValue();
@@ -454,6 +461,7 @@ export const createColumns = (sortProps?: LogsSortProps): ColumnDef<LogEntry>[] 
     },
   },
 ];
+};
 
 /** Default columns without sort (for backward compatibility) */
 export const columns = createColumns();
@@ -472,6 +480,7 @@ const formatMessage = (message: any): string => {
 
 // Add this new component for displaying request/response with copy buttons
 export const RequestResponsePanel = ({ request, response }: { request: any; response: any }) => {
+  const { t } = useI18n();
   const requestStr = typeof request === "object" ? JSON.stringify(request, null, 2) : String(request || "{}");
   const responseStr = typeof response === "object" ? JSON.stringify(response, null, 2) : String(response || "{}");
 
@@ -487,11 +496,11 @@ export const RequestResponsePanel = ({ request, response }: { request: any; resp
     <div className="grid grid-cols-2 gap-4 mt-4">
       <div className="rounded-lg border border-gray-200 bg-gray-50">
         <div className="flex justify-between items-center p-3 border-b border-gray-200">
-          <h3 className="text-sm font-medium">Request</h3>
+          <h3 className="text-sm font-medium">{t("logs.request")}</h3>
           <button
             onClick={() => copyToClipboard(requestStr)}
             className="p-1 hover:bg-gray-200 rounded"
-            title="Copy request"
+            title={t("logs.copyRequest")}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -514,11 +523,11 @@ export const RequestResponsePanel = ({ request, response }: { request: any; resp
 
       <div className="rounded-lg border border-gray-200 bg-gray-50">
         <div className="flex justify-between items-center p-3 border-b border-gray-200">
-          <h3 className="text-sm font-medium">Response</h3>
+          <h3 className="text-sm font-medium">{t("logs.response")}</h3>
           <button
             onClick={() => copyToClipboard(responseStr)}
             className="p-1 hover:bg-gray-200 rounded"
-            title="Copy response"
+            title={t("logs.copyResponse")}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -544,6 +553,7 @@ export const RequestResponsePanel = ({ request, response }: { request: any; resp
 
 // New component for collapsible JSON display
 const CollapsibleJsonCell = ({ jsonData }: { jsonData: any }) => {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = React.useState(false);
   const jsonString = JSON.stringify(jsonData, null, 2);
 
@@ -554,7 +564,7 @@ const CollapsibleJsonCell = ({ jsonData }: { jsonData: any }) => {
   return (
     <div>
       <button onClick={() => setIsExpanded(!isExpanded)} className="text-blue-500 hover:text-blue-700 text-xs">
-        {isExpanded ? "Hide JSON" : "Show JSON"} ({Object.keys(jsonData).length} fields)
+        {isExpanded ? t("logs.hideJson") : t("logs.showJson")} ({Object.keys(jsonData).length} fields)
       </button>
       {isExpanded && (
         <pre className="mt-2 p-2 bg-gray-50 border rounded text-xs overflow-auto max-h-60">{jsonString}</pre>
@@ -583,7 +593,9 @@ const getActionBadge = (action: string) => {
   );
 };
 
-export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
+export const getAuditLogColumns = (t?: TranslateFn): ColumnDef<AuditLogEntry>[] => {
+  const tr: TranslateFn = t ?? ((key) => (en as Record<string, string>)[key] ?? key);
+  return [
   {
     id: "expander",
     header: () => null,
@@ -600,7 +612,7 @@ export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
           <button
             onClick={toggleHandler}
             style={{ cursor: "pointer" }}
-            aria-label={localExpanded ? "Collapse row" : "Expand row"}
+            aria-label={localExpanded ? tr("logs.collapseRow") : tr("logs.expandRow")}
             className="w-6 h-6 flex items-center justify-center focus:outline-none"
           >
             <svg
@@ -621,31 +633,31 @@ export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
     },
   },
   {
-    header: "Timestamp",
+    header: tr("logs.colTimestamp"),
     accessorKey: "updated_at",
     cell: (info: any) => <TimeCell utcTime={info.getValue()} />,
   },
   {
-    header: "Table Name",
+    header: tr("logs.colTableName"),
     accessorKey: "table_name",
     cell: (info: any) => {
       const tableName = info.getValue();
       let displayValue = tableName;
       switch (tableName) {
         case "LiteLLM_VerificationToken":
-          displayValue = "Keys";
+          displayValue = tr("logs.tableKeys");
           break;
         case "LiteLLM_TeamTable":
-          displayValue = "Teams";
+          displayValue = tr("logs.tableTeams");
           break;
         case "LiteLLM_OrganizationTable":
-          displayValue = "Organizations";
+          displayValue = tr("logs.tableOrgs");
           break;
         case "LiteLLM_UserTable":
-          displayValue = "Users";
+          displayValue = tr("logs.tableUsers");
           break;
         case "LiteLLM_ProxyModelTable":
-          displayValue = "Models";
+          displayValue = tr("logs.tableModels");
           break;
         default:
           displayValue = tableName;
@@ -654,12 +666,12 @@ export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
     },
   },
   {
-    header: "Action",
+    header: tr("logs.colAction"),
     accessorKey: "action",
     cell: (info: any) => <span>{getActionBadge(info.getValue())}</span>,
   },
   {
-    header: "Changed By",
+    header: tr("logs.colChangedBy"),
     accessorKey: "changed_by",
     cell: (info: any) => {
       const changedBy = info.row.original.changed_by;
@@ -681,7 +693,7 @@ export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
     },
   },
   {
-    header: "Affected Item ID",
+    header: tr("logs.colAffectedItemId"),
     accessorKey: "object_id",
     cell: (props) => {
       const ObjectIdDisplay = () => {
@@ -712,3 +724,6 @@ export const auditLogColumns: ColumnDef<AuditLogEntry>[] = [
     },
   },
 ];
+};
+
+export const auditLogColumns = getAuditLogColumns();

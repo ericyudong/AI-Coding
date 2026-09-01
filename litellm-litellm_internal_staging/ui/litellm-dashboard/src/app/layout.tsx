@@ -5,6 +5,7 @@ import "./globals.css";
 import AntdGlobalProvider from "@/contexts/AntdGlobalProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ReactQueryProvider from "@/contexts/ReactQueryProvider";
+import { I18nProvider } from "@/i18n";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,12 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body className={inter.className}>
         <ReactQueryProvider>
-          <AntdGlobalProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </AntdGlobalProvider>
+          <I18nProvider>
+            <AntdGlobalProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </AntdGlobalProvider>
+          </I18nProvider>
         </ReactQueryProvider>
       </body>
     </html>

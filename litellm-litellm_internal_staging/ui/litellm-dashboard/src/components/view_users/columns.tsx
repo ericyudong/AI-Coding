@@ -5,6 +5,8 @@ import { UserInfo } from "./types";
 import { PencilAltIcon, TrashIcon, InformationCircleIcon, RefreshIcon } from "@heroicons/react/outline";
 import { CopyOutlined } from "@ant-design/icons";
 import { formatNumberWithCommas, copyToClipboard } from "@/utils/dataUtils";
+import en from "@/i18n/locales/en";
+import type { MessageKey, TranslateParams } from "@/i18n";
 
 interface SelectionOptions {
   selectedUsers: UserInfo[];
@@ -15,6 +17,8 @@ interface SelectionOptions {
   isIndeterminate: boolean;
 }
 
+type TranslateFn = (key: MessageKey, params?: TranslateParams) => string;
+
 export const columns = (
   possibleUIRoles: Record<string, Record<string, string>>,
   handleEdit: (user: UserInfo) => void,
@@ -22,11 +26,13 @@ export const columns = (
   handleResetPassword: (userId: string) => void,
   handleUserClick: (userId: string, openInEditMode?: boolean) => void,
   selectionOptions?: SelectionOptions,
+  t?: TranslateFn,
 ): ColumnDef<UserInfo>[] => {
-  // Backend sortable columns: user_id, user_email, created_at, spend, user_alias, user_role
+  const tr: TranslateFn = t ?? ((key) => (en as Record<string, string>)[key] ?? key);
+
   const baseColumns: ColumnDef<UserInfo>[] = [
     {
-      header: "User ID",
+      header: tr("users.userId"),
       accessorKey: "user_id",
       enableSorting: true,
       cell: ({ row }) => (
@@ -35,11 +41,11 @@ export const columns = (
             <span className="text-xs">{row.original.user_id ? `${row.original.user_id.slice(0, 7)}...` : "-"}</span>
           </Tooltip>
           {row.original.user_id && (
-            <Tooltip title="Copy User ID">
+            <Tooltip title={tr("users.copyUserId")}>
               <CopyOutlined
                 onClick={(e) => {
                   e.stopPropagation();
-                  copyToClipboard(row.original.user_id, "User ID copied to clipboard");
+                  copyToClipboard(row.original.user_id, tr("users.copiedUserId"));
                 }}
                 className="cursor-pointer text-gray-500 hover:text-blue-500 text-xs"
               />
@@ -49,49 +55,50 @@ export const columns = (
       ),
     },
     {
-      header: "Email",
+      header: tr("users.email"),
       accessorKey: "user_email",
       enableSorting: true,
       cell: ({ row }) => <span className="text-xs">{row.original.user_email || "-"}</span>,
     },
     {
       id: "status",
-      header: "Status",
+      header: tr("models.status"),
       enableSorting: false,
       cell: ({ row }) => {
         const isScimInactive =
-          (row.original.metadata as Record<string, unknown> | null | undefined)
-            ?.scim_active === false;
+          (row.original.metadata as Record<string, unknown> | null | undefined)?.scim_active === false;
         if (isScimInactive) {
           return (
             <Tooltip title="Deactivated via SCIM (external identity provider). The user's virtual keys are blocked.">
               <Tag color="red" data-testid={`user-status-${row.original.user_id}`}>
-                Inactive
+                {tr("users.inactive")}
               </Tag>
             </Tooltip>
           );
         }
         return (
           <Tag color="green" data-testid={`user-status-${row.original.user_id}`}>
-            Active
+            {tr("common.active")}
           </Tag>
         );
       },
     },
     {
-      header: "Global Proxy Role",
+      header: tr("users.globalProxyRole"),
       accessorKey: "user_role",
       enableSorting: true,
-      cell: ({ row }) => <span className="text-xs">{possibleUIRoles?.[row.original.user_role]?.ui_label || "-"}</span>,
+      cell: ({ row }) => (
+        <span className="text-xs">{possibleUIRoles?.[row.original.user_role]?.ui_label || "-"}</span>
+      ),
     },
     {
-      header: "User Alias",
+      header: tr("users.userAlias"),
       accessorKey: "user_alias",
       enableSorting: false,
       cell: ({ row }) => <span className="text-xs">{row.original.user_alias || "-"}</span>,
     },
     {
-      header: "Spend (USD)",
+      header: tr("keys.spendUsd"),
       accessorKey: "spend",
       enableSorting: true,
       cell: ({ row }) => (
@@ -99,17 +106,19 @@ export const columns = (
       ),
     },
     {
-      header: "Budget (USD)",
+      header: tr("keys.budgetUsd"),
       accessorKey: "max_budget",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.max_budget !== null ? row.original.max_budget : "Unlimited"}</span>
+        <span className="text-xs">
+          {row.original.max_budget !== null ? row.original.max_budget : tr("common.unlimited")}
+        </span>
       ),
     },
     {
       header: () => (
         <div className="flex items-center gap-2">
-          <span>SSO ID</span>
+          <span>{tr("users.ssoId")}</span>
           <Tooltip title="SSO ID is the ID of the user in the SSO provider. If the user is not using SSO, this will be null.">
             <InformationCircleIcon className="w-4 h-4" />
           </Tooltip>
@@ -122,25 +131,25 @@ export const columns = (
       ),
     },
     {
-      header: "Virtual Keys",
+      header: tr("users.virtualKeys"),
       accessorKey: "key_count",
       enableSorting: false,
       cell: ({ row }) => (
         <Grid numItems={2}>
           {row.original.key_count > 0 ? (
             <Badge size="xs" color="indigo">
-              {row.original.key_count} {row.original.key_count === 1 ? "Key" : "Keys"}
+              {row.original.key_count} {row.original.key_count === 1 ? tr("users.key") : tr("users.keys")}
             </Badge>
           ) : (
             <Badge size="xs" color="gray">
-              No Keys
+              {tr("users.noKeys")}
             </Badge>
           )}
         </Grid>
       ),
     },
     {
-      header: "Created At",
+      header: tr("keys.createdAt"),
       accessorKey: "created_at",
       enableSorting: true,
       cell: ({ row }) => (
@@ -150,7 +159,7 @@ export const columns = (
       ),
     },
     {
-      header: "Updated At",
+      header: tr("keys.updatedAt"),
       accessorKey: "updated_at",
       enableSorting: false,
       cell: ({ row }) => (
@@ -161,11 +170,11 @@ export const columns = (
     },
     {
       id: "actions",
-      header: "Actions",
+      header: tr("common.actions"),
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <Tooltip title="Edit user details">
+          <Tooltip title={tr("users.editUser")}>
             <Icon
               icon={PencilAltIcon}
               size="sm"
@@ -173,7 +182,7 @@ export const columns = (
               className="cursor-pointer hover:text-blue-600"
             />
           </Tooltip>
-          <Tooltip title="Delete user">
+          <Tooltip title={tr("users.deleteUser")}>
             <Icon
               icon={TrashIcon}
               size="sm"
@@ -181,7 +190,7 @@ export const columns = (
               className="cursor-pointer hover:text-red-600"
             />
           </Tooltip>
-          <Tooltip title="Reset Password">
+          <Tooltip title={tr("users.resetPassword")}>
             <Icon
               icon={RefreshIcon}
               size="sm"
@@ -194,7 +203,6 @@ export const columns = (
     },
   ];
 
-  // Add selection column if selection is enabled
   if (selectionOptions) {
     const { onSelectUser, onSelectAll, isUserSelected, isAllSelected, isIndeterminate } = selectionOptions;
 

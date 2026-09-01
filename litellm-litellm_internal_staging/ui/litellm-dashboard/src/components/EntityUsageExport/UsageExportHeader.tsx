@@ -2,6 +2,7 @@ import type { DateRangePickerValue } from "@tremor/react";
 import { Button, Text } from "@tremor/react";
 import { Select } from "antd";
 import React, { useState } from "react";
+import { useI18n } from "@/i18n";
 import EntityUsageExportModal from "./EntityUsageExportModal";
 import type { EntitySpendData, EntityType } from "./types";
 import type { Team } from "@/components/key_team_helpers/key_list";
@@ -38,6 +39,7 @@ const UsageExportHeader: React.FC<UsageExportHeaderProps> = ({
   compactLayout = false,
   teams = [],
 }) => {
+  const { t } = useI18n();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Determine grid layout based on what's visible
@@ -92,7 +94,7 @@ const UsageExportHeader: React.FC<UsageExportHeaderProps> = ({
                 </svg>
               )}
             >
-              Export Data
+              {t("common.exportData")}
             </Button>
           </div>
         </div>

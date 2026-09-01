@@ -10,6 +10,7 @@ import { FilterInput } from "@/components/common_components/Filters/FilterInput"
 import { FiltersButton } from "@/components/common_components/Filters/FiltersButton";
 import { ResetFiltersButton } from "@/components/common_components/Filters/ResetFiltersButton";
 import { Search, User, CircleUserRound } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 interface FilterState {
   email: string;
@@ -76,6 +77,7 @@ export function UserDataTable({
   currentPage,
   handlePageChange,
 }: UserDataTableProps) {
+  const { t } = useI18n();
   const [sorting, setSorting] = React.useState<SortingState>([
     {
       id: currentSort?.sortBy || "created_at",
@@ -143,6 +145,7 @@ export function UserDataTable({
               isIndeterminate,
             }
           : undefined,
+        t,
       );
     }
     return originalColumns;
@@ -157,6 +160,7 @@ export function UserDataTable({
     selectedUsers,
     isAllSelected,
     isIndeterminate,
+    t,
   ]);
 
   const table = useReactTable({
@@ -220,7 +224,7 @@ export function UserDataTable({
           <div className="flex flex-wrap items-center gap-3">
             {/* Email Search */}
             <FilterInput
-              placeholder="Search by email..."
+              placeholder={t("users.searchByEmail")}
               value={filters.email}
               onChange={(value) => updateFilters({ email: value })}
               icon={Search}
@@ -246,14 +250,14 @@ export function UserDataTable({
             <div className="flex flex-wrap items-center gap-3 mt-3">
               {/* User ID Search */}
               <FilterInput
-                placeholder="Filter by User ID"
+                placeholder={t("users.filterByUserId")}
                 value={filters.user_id}
                 onChange={(value) => updateFilters({ user_id: value })}
                 icon={User}
               />
 
               <FilterInput
-                placeholder="Filter by SSO ID"
+                placeholder={t("users.filterBySsoId")}
                 value={filters.sso_user_id}
                 onChange={(value) => updateFilters({ sso_user_id: value })}
                 icon={CircleUserRound}
@@ -264,7 +268,7 @@ export function UserDataTable({
                 <Select
                   value={filters.user_role}
                   onValueChange={(value) => updateFilters({ user_role: value })}
-                  placeholder="Select Role"
+                  placeholder={t("users.selectRole")}
                 >
                   {possibleUIRoles &&
                     Object.entries(possibleUIRoles).map(([key, value]) => (
@@ -280,7 +284,7 @@ export function UserDataTable({
                 <Select
                   value={filters.team}
                   onValueChange={(value) => updateFilters({ team: value })}
-                  placeholder="Select Team"
+                  placeholder={t("users.selectTeam")}
                 >
                   {teams?.map((team) => (
                     <SelectItem key={team.team_id} value={team.team_id}>

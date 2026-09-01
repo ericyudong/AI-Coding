@@ -17,6 +17,7 @@ import { LogDetailsDrawer } from "./LogDetailsDrawer";
 import { LogsTableToolbar } from "./LogsTableToolbar";
 import { DataTable } from "./table";
 import { AntDLoadingSpinner } from "../ui/AntDLoadingSpinner";
+import { useI18n } from "@/i18n";
 
 interface SpendLogsTableProps {
   accessToken: string | null;
@@ -27,6 +28,7 @@ interface SpendLogsTableProps {
 }
 
 export default function SpendLogsTable({ accessToken, token, userRole, userID, premiumUser }: SpendLogsTableProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(50);
@@ -128,8 +130,8 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
   }, []);
 
   const columns = useMemo(
-    () => createColumns({ sortBy, sortOrder, onSortChange: handleSortChange }),
-    [sortBy, sortOrder, handleSortChange],
+    () => createColumns({ sortBy, sortOrder, onSortChange: handleSortChange }, t),
+    [sortBy, sortOrder, handleSortChange, t],
   );
 
   const filteredData = useMemo(() => {
@@ -237,15 +239,15 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
     <div className="w-full max-w-screen p-6 overflow-x-hidden box-border">
       <TabGroup defaultIndex={0} onIndexChange={(index) => setActiveTab(index === 0 ? "request logs" : "audit logs")}>
         <TabList>
-          <Tab>Request Logs</Tab>
-          <Tab>Audit Logs</Tab>
-          <Tab>Deleted Keys</Tab>
-          <Tab>Deleted Teams</Tab>
+          <Tab>{t("logs.tabRequest")}</Tab>
+          <Tab>{t("logs.tabAudit")}</Tab>
+          <Tab>{t("logs.tabDeletedKeys")}</Tab>
+          <Tab>{t("logs.tabDeletedTeams")}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-semibold">Request Logs</h1>
+              <h1 className="text-xl font-semibold">{t("logs.tabRequest")}</h1>
             </div>
             {selectedKeyInfo && selectedKeyIdInfoView && selectedKeyInfo.api_key === selectedKeyIdInfoView ? (
               <KeyInfoView
@@ -253,7 +255,7 @@ export default function SpendLogsTable({ accessToken, token, userRole, userID, p
                 keyData={selectedKeyInfo}
                 teams={allTeams ?? []}
                 onClose={() => setSelectedKeyIdInfoView(null)}
-                backButtonText="Back to Logs"
+                backButtonText={t("logs.backToLogs")}
               />
             ) : (
               <>

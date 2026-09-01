@@ -5,6 +5,7 @@ import Title from "antd/es/typography/Title";
 import React from "react";
 import TableIconActionButton from "../../../common_components/IconActionButton/TableIconActionButtons/TableIconActionButton";
 import { AlertingObject } from "./types";
+import { useI18n } from "@/i18n";
 
 type LoggingCallbacksProps = {
   callbacks: AlertingObject[];
@@ -27,11 +28,7 @@ type CallbackRow = AlertingObject & {
   mode?: "success" | "failure" | "info" | string;
 };
 
-const CALLBACK_MODES: { value: string; label: string }[] = [
-  { value: "success", label: "Success" },
-  { value: "failure", label: "Failure" },
-  { value: "success_and_failure", label: "Success & Failure" },
-];
+
 
 export const LoggingCallbacksTable: React.FC<LoggingCallbacksProps> = ({
   callbacks,
@@ -41,9 +38,10 @@ export const LoggingCallbacksTable: React.FC<LoggingCallbacksProps> = ({
   onDelete = () => {},
   onAdd = () => {},
 }) => {
+  const { t } = useI18n();
   const columns: TableProps<CallbackRow>["columns"] = [
     {
-      title: <span className="font-medium text-gray-700">Callback Name</span>,
+      title: <span className="font-medium text-gray-700">{t("settings.logging.callbackName")}</span>,
       dataIndex: "name",
       key: "name",
       render: (_: string, record: CallbackRow) => {
@@ -54,11 +52,16 @@ export const LoggingCallbacksTable: React.FC<LoggingCallbacksProps> = ({
       },
     },
     {
-      title: <span className="font-medium text-gray-700">Mode</span>,
+      title: <span className="font-medium text-gray-700">{t("settings.logging.mode")}</span>,
       key: "mode",
       render: (_: unknown, record: CallbackRow) => {
         const mode = record.mode || "success";
-        const label = CALLBACK_MODES.find((m) => m.value === mode)?.label || mode;
+        const modeLabelMap: Record<string, string> = {
+          success: t("settings.logging.modeSuccess"),
+          failure: t("settings.logging.modeFailure"),
+          success_and_failure: t("settings.logging.modeBoth"),
+        };
+        const label = modeLabelMap[mode] || mode;
         const badgeClass =
           mode === "success"
             ? "bg-green-100 text-green-800"
@@ -74,14 +77,14 @@ export const LoggingCallbacksTable: React.FC<LoggingCallbacksProps> = ({
       width: 240,
     },
     {
-      title: <span className="font-medium text-gray-700 text-right w-full block">Actions</span>,
+      title: <span className="font-medium text-gray-700 text-right w-full block">{t("common.actions")}</span>,
       key: "actions",
       align: "right",
       render: (_: unknown, record: CallbackRow) => (
         <div className="flex justify-end gap-2">
-          <TableIconActionButton variant="Test" tooltipText="Test Callback" onClick={() => onTest(record)} />
-          <TableIconActionButton variant="Edit" tooltipText="Edit Callback" onClick={() => onEdit(record)} />
-          <TableIconActionButton variant="Delete" tooltipText="Delete Callback" onClick={() => onDelete(record)} />
+          <TableIconActionButton variant="Test" tooltipText={t("settings.logging.testCallback")} onClick={() => onTest(record)} />
+          <TableIconActionButton variant="Edit" tooltipText={t("settings.logging.editCallback")} onClick={() => onEdit(record)} />
+          <TableIconActionButton variant="Delete" tooltipText={t("settings.logging.deleteCallback")} onClick={() => onDelete(record)} />
         </div>
       ),
       width: 240,
@@ -91,17 +94,17 @@ export const LoggingCallbacksTable: React.FC<LoggingCallbacksProps> = ({
     <>
       <div className="w-full mt-4">
         <Button onClick={onAdd} className="mx-auto">
-          + Add Callback
+          {t("settings.logging.addCallback")}
         </Button>
         <div className="flex justify-between items-center my-2">
-          <Title level={4}>Active Logging Callbacks</Title>
+          <Title level={4}>{t("settings.logging.activeCallbacks")}</Title>
         </div>
         {/* Empty state */}
         {callbacks.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 bg-gray-50 border border-gray-200 rounded-lg">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">No callbacks configured</h3>
-              <p className="text-gray-500">Add your first callback to start logging data to external services.</p>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">{t("settings.logging.noCallbacks")}</h3>
+              <p className="text-gray-500">{t("settings.logging.noCallbacksHint")}</p>
             </div>
           </div>
         ) : (

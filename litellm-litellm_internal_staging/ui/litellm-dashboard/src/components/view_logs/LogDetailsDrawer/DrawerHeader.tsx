@@ -3,6 +3,7 @@ import { CloseOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { LogEntry } from "../columns";
 import { getProviderLogoAndName } from "../../provider_info_helpers";
+import { useI18n } from "@/i18n";
 import {
   DRAWER_HEADER_PADDING,
   COLOR_BORDER,
@@ -81,12 +82,13 @@ function ModelProviderSection({
   providerLogo?: string;
   providerName?: string;
 }) {
+  const { t } = useI18n();
   return (
     <Space size={SPACING_MEDIUM} style={{ marginBottom: SPACING_MEDIUM }}>
       {providerLogo && (
         <img
           src={providerLogo}
-          alt={providerName || "Provider"}
+          alt={providerName || t("logs.provider")}
           style={{ width: 24, height: 24 }}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -112,12 +114,13 @@ function ModelProviderSection({
  * Request ID display with copy functionality
  */
 function RequestIdSection({ requestId }: { requestId: string }) {
+  const { t } = useI18n();
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <Tooltip title={requestId}>
         <Text
           strong
-          copyable={{ text: requestId, tooltips: ["Copy Request ID", "Copied!"] }}
+          copyable={{ text: requestId, tooltips: [t("logs.copyRequestId"), t("common.copied")] }}
           style={{
             fontSize: FONT_SIZE_HEADER,
             fontFamily: FONT_FAMILY_MONO,
@@ -147,6 +150,7 @@ function NavigationSection({
   onNext: () => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const keyboardShortcutStyle = {
     border: "1px solid #d9d9d9",
     borderRadius: 4,
@@ -167,7 +171,7 @@ function NavigationSection({
         <DownOutlined />
         <span style={keyboardShortcutStyle}>J</span>
       </Button>
-      <Tooltip title="ESC to close">
+      <Tooltip title={t("logs.escToClose")}>
         <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
       </Tooltip>
     </Space>
@@ -188,10 +192,11 @@ function StatusBar({
   statusColor: "error" | "success";
   environment: string;
 }) {
+  const { t } = useI18n();
   return (
     <Space size={SPACING_LARGE}>
       <Tag color={statusColor}>{statusLabel}</Tag>
-      <Tag>Env: {environment}</Tag>
+      <Tag>{t("logs.env", { environment })}</Tag>
       <Space size={SPACING_MEDIUM}>
         <Text type="secondary" style={{ fontSize: FONT_SIZE_MEDIUM }}>
           {moment(log.startTime).format("MMM D, YYYY h:mm:ss A")}

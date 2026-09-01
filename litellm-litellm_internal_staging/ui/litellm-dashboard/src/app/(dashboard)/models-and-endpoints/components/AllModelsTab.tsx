@@ -18,6 +18,7 @@ import debounce from "lodash/debounce";
 import { useEffect, useMemo, useState } from "react";
 import { useModelsInfo } from "../../hooks/models/useModels";
 import { transformModelData } from "../utils/modelDataTransformer";
+import { useI18n } from "@/i18n";
 type ModelViewMode = "all" | "current_team";
 const { Text } = Typography;
 
@@ -38,6 +39,7 @@ const AllModelsTab = ({
   setSelectedModelId,
   setSelectedTeamId,
 }: AllModelsTabProps) => {
+  const { t } = useI18n();
   const { data: modelCostMapData, isLoading: isLoadingModelCostMap } = useModelCostMap();
   const { accessToken, userId, userRole, premiumUser } = useAuthorized();
   const { data: teams, isLoading: isLoadingTeams } = useTeams();
@@ -321,7 +323,7 @@ const AllModelsTab = ({
                             label: (
                               <Space direction="horizontal" align="center">
                                 <Badge color="purple" size="small" />
-                                <Text style={{ fontSize: 16 }}>Current Team Models</Text>
+                                <Text style={{ fontSize: 16 }}>{t("models.currentTeamModels")}</Text>
                               </Space>
                             ),
                           },
@@ -330,7 +332,7 @@ const AllModelsTab = ({
                             label: (
                               <Space direction="horizontal" align="center">
                                 <Badge color="gray" size="small" />
-                                <Text style={{ fontSize: 16 }}>All Available Models</Text>
+                                <Text style={{ fontSize: 16 }}>{t("models.allAvailable")}</Text>
                               </Space>
                             ),
                           },
@@ -383,7 +385,7 @@ const AllModelsTab = ({
                     <div className="relative w-64">
                       <input
                         type="text"
-                        placeholder="Search model names..."
+                        placeholder={t("models.searchPlaceholder")}
                         data-testid="model-search-input"
                         className="w-full px-3 py-2 pl-8 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         value={modelNameSearch}
@@ -557,6 +559,7 @@ const AllModelsTab = ({
                 setDeleteModalModelId,
                 handleTogglePause,
                 pausingModelId,
+                t,
               )}
               data={filteredData}
               isLoading={isLoadingModelsInfo}
@@ -573,26 +576,26 @@ const AllModelsTab = ({
 
       <DeleteResourceModal
         isOpen={!!deleteModalModelId}
-        title="Delete Model"
-        alertMessage="This action cannot be undone."
-        message="Are you sure you want to delete this model?"
-        resourceInformationTitle="Model Information"
+        title={t("models.deleteTitle")}
+        alertMessage={t("models.deleteIrreversible")}
+        message={t("models.deleteConfirm")}
+        resourceInformationTitle={t("models.modelInfo")}
         resourceInformation={modelToDelete ? [
           {
-            label: "Model Name",
-            value: modelToDelete.model_name || "Not Set",
+            label: t("models.modelName"),
+            value: modelToDelete.model_name || t("common.notSet"),
           },
           {
-            label: "LiteLLM Model Name",
-            value: modelToDelete.litellm_model_name || "Not Set",
+            label: t("models.litellmModelName"),
+            value: modelToDelete.litellm_model_name || t("common.notSet"),
           },
           {
-            label: "Provider",
-            value: modelToDelete.provider || "Not Set",
+            label: t("models.provider"),
+            value: modelToDelete.provider || t("common.notSet"),
           },
           {
-            label: "Created By",
-            value: modelToDelete.model_info?.created_by || "Not Set",
+            label: t("keys.createdBy"),
+            value: modelToDelete.model_info?.created_by || t("common.notSet"),
           },
         ] : []}
         onCancel={() => setDeleteModalModelId(null)}

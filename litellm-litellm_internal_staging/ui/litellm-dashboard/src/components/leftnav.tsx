@@ -44,6 +44,7 @@ import NewBadge from "./common_components/NewBadge";
 import type { Organization } from "./networking";
 import UsageIndicator from "./UsageIndicator";
 import { serverRootPath } from "./networking";
+import { useI18n, type MessageKey } from "@/i18n";
 const { Sider } = Layout;
 
 /**
@@ -85,7 +86,8 @@ interface SidebarProps {
 interface MenuItem {
   key: string;
   page: string;
-  label: string | React.ReactNode;
+  labelKey: MessageKey;
+  badge?: "new" | "newDot";
   roles?: string[];
   children?: MenuItem[];
   icon?: React.ReactNode;
@@ -94,6 +96,8 @@ interface MenuItem {
 
 // Group configuration
 interface MenuGroup {
+  groupLabelKey: MessageKey;
+  /** English group title kept for page_utils / settings metadata */
   groupLabel: string;
   items: MenuItem[];
   roles?: string[];
@@ -102,25 +106,26 @@ interface MenuGroup {
 // Menu groups organized by category - defined outside component for export
 const menuGroups: MenuGroup[] = [
   {
+    groupLabelKey: "nav.group.aiGateway",
     groupLabel: "AI GATEWAY",
     items: [
       {
         key: "api-keys",
         page: "api-keys",
-        label: "Virtual Keys",
+        labelKey: "nav.virtualKeys",
         icon: <KeyOutlined />,
       },
       {
         key: "llm-playground",
         page: "llm-playground",
-        label: "Playground",
+        labelKey: "nav.playground",
         icon: <PlayCircleOutlined />,
         roles: rolesWithWriteAccess,
       },
       {
         key: "models",
         page: "models",
-        label: "Models + Endpoints",
+        labelKey: "nav.models",
         icon: <BlockOutlined />,
         // Admin Viewer can view models read-only (write actions are
         // hidden inside the page); Playground above stays write-only.
@@ -129,13 +134,13 @@ const menuGroups: MenuGroup[] = [
       {
         key: "agentic",
         page: "agentic",
-        label: "Agentic",
+        labelKey: "nav.agentic",
         icon: <RobotOutlined />,
         children: [
           {
             key: "agents",
             page: "agents",
-            label: "Agents",
+            labelKey: "nav.agents",
             icon: <RobotOutlined />,
             // Admin Viewer can view agents read-only (write actions are
             // hidden inside the page); Playground above stays write-only.
@@ -144,13 +149,13 @@ const menuGroups: MenuGroup[] = [
           {
             key: "workflows",
             page: "workflows",
-            label: "Workflow Runs",
+            labelKey: "nav.workflowRuns",
             icon: <ApartmentOutlined />,
           },
           {
             key: "memory",
             page: "memory",
-            label: "Memory",
+            labelKey: "nav.memory",
             icon: <BookOutlined />,
           },
         ],
@@ -158,55 +163,51 @@ const menuGroups: MenuGroup[] = [
       {
         key: "mcp-servers",
         page: "mcp-servers",
-        label: "MCP Servers",
+        labelKey: "nav.mcpServers",
         icon: <ToolOutlined />,
       },
       {
         key: "skills",
         page: "skills",
-        label: "Skills",
+        labelKey: "nav.skills",
         icon: <ApiOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "guardrails",
         page: "guardrails",
-        label: "Guardrails",
+        labelKey: "nav.guardrails",
         icon: <SafetyOutlined />,
       },
       {
         key: "policies",
         page: "policies",
-        label: (
-          <span className="flex items-center gap-4">
-            Policies
-          </span>
-        ),
+        labelKey: "nav.policies",
         icon: <AuditOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "tools",
         page: "tools",
-        label: "Tools",
+        labelKey: "nav.tools",
         icon: <ToolOutlined />,
         children: [
           {
             key: "search-tools",
             page: "search-tools",
-            label: "Search Tools",
+            labelKey: "nav.searchTools",
             icon: <SearchOutlined />,
           },
           {
             key: "vector-stores",
             page: "vector-stores",
-            label: "Vector Stores",
+            labelKey: "nav.vectorStores",
             icon: <DatabaseOutlined />,
           },
           {
             key: "tool-policies",
             page: "tool-policies",
-            label: "Tool Policies",
+            labelKey: "nav.toolPolicies",
             icon: <SafetyOutlined />,
           },
         ],
@@ -214,6 +215,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    groupLabelKey: "nav.group.observability",
     groupLabel: "OBSERVABILITY",
     items: [
       {
@@ -221,134 +223,133 @@ const menuGroups: MenuGroup[] = [
         page: "new_usage",
         icon: <BarChartOutlined />,
         roles: [...all_admin_roles, ...internalUserRoles],
-        label: "Usage",
+        labelKey: "nav.usage",
       },
       {
         key: "logs",
         page: "logs",
-        label: "Logs",
+        labelKey: "nav.logs",
         icon: <LineChartOutlined />,
       },
       {
         key: "guardrails-monitor",
         page: "guardrails-monitor",
-        label: "Guardrails Monitor",
+        labelKey: "nav.guardrailsMonitor",
         icon: <SafetyOutlined />,
         roles: [...all_admin_roles, ...internalUserRoles],
       },
     ],
   },
   {
+    groupLabelKey: "nav.group.accessControl",
     groupLabel: "ACCESS CONTROL",
     items: [
       {
         key: "teams",
         page: "teams",
-        label: "Teams",
+        labelKey: "nav.teams",
         icon: <TeamOutlined />,
       },
       {
         key: "projects",
         page: "projects",
-        label: (
-          <span className="flex items-center gap-2">
-            Projects <NewBadge />
-          </span>
-        ),
+        labelKey: "nav.projects",
+        badge: "new",
         icon: <FolderOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "users",
         page: "users",
-        label: "Internal Users",
+        labelKey: "nav.users",
         icon: <UserOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "organizations",
         page: "organizations",
-        label: "Organizations",
+        labelKey: "nav.organizations",
         icon: <BankOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "access-groups",
         page: "access-groups",
-        label: "Access Groups",
+        labelKey: "nav.accessGroups",
         icon: <BlockOutlined />,
         roles: all_admin_roles,
       },
       {
         key: "budgets",
         page: "budgets",
-        label: "Budgets",
+        labelKey: "nav.budgets",
         icon: <CreditCardOutlined />,
         roles: all_admin_roles,
       },
     ],
   },
   {
+    groupLabelKey: "nav.group.developerTools",
     groupLabel: "DEVELOPER TOOLS",
     items: [
       {
         key: "api_ref",
         page: "api_ref",
-        label: "API Reference",
+        labelKey: "nav.apiReference",
         icon: <ApiOutlined />,
       },
       {
         key: "model-hub-table",
         page: "model-hub-table",
-        label: "AI Hub",
+        labelKey: "nav.aiHub",
         icon: <AppstoreOutlined />,
       },
 
       {
         key: "learning-resources",
         page: "learning-resources",
-        label: "Learning Resources",
+        labelKey: "nav.learningResources",
         icon: <BookOutlined />,
         external_url: "https://models.litellm.ai/cookbook",
       },
       {
         key: "experimental",
         page: "experimental",
-        label: "Experimental",
+        labelKey: "nav.experimental",
         icon: <ExperimentOutlined />,
         children: [
           {
             key: "caching",
             page: "caching",
-            label: "Caching",
+            labelKey: "nav.caching",
             icon: <DatabaseOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "prompts",
             page: "prompts",
-            label: "Prompts",
+            labelKey: "nav.prompts",
             icon: <FileTextOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "transform-request",
             page: "transform-request",
-            label: "API Playground",
+            labelKey: "nav.apiPlayground",
             icon: <ApiOutlined />,
             roles: [...all_admin_roles, ...internalUserRoles],
           },
           {
             key: "tag-management",
             page: "tag-management",
-            label: "Tag Management",
+            labelKey: "nav.tagManagement",
             icon: <TagsOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "4",
             page: "usage",
-            label: "Old Usage",
+            labelKey: "nav.oldUsage",
             icon: <BarChartOutlined />,
           }
         ],
@@ -356,56 +357,51 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    groupLabelKey: "nav.group.settings",
     groupLabel: "SETTINGS",
     roles: all_admin_roles,
     items: [
       {
         key: "settings",
         page: "settings",
-        label: (
-          <span className="flex items-center gap-2">
-            Settings <NewBadge />
-          </span>
-        ),
+        labelKey: "nav.settings",
+        badge: "new",
         icon: <SettingOutlined />,
         roles: all_admin_roles,
         children: [
           {
             key: "router-settings",
             page: "router-settings",
-            label: "Router Settings",
+            labelKey: "nav.routerSettings",
             icon: <SettingOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "logging-and-alerts",
             page: "logging-and-alerts",
-            label: "Logging & Alerts",
+            labelKey: "nav.loggingAlerts",
             icon: <SettingOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "admin-panel",
             page: "admin-panel",
-            label: (
-              <span className="flex items-center gap-2">
-                Admin Settings <NewBadge dot><span /></NewBadge>
-              </span>
-            ),
+            labelKey: "nav.adminSettings",
+            badge: "newDot",
             icon: <SettingOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "cost-tracking",
             page: "cost-tracking",
-            label: "Cost Tracking",
+            labelKey: "nav.costTracking",
             icon: <BarChartOutlined />,
             roles: all_admin_roles,
           },
           {
             key: "ui-theme",
             page: "ui-theme",
-            label: "UI Theme",
+            labelKey: "nav.uiTheme",
             icon: <BgColorsOutlined />,
             roles: all_admin_roles,
           },
@@ -419,6 +415,29 @@ const Sidebar: React.FC<SidebarProps> = ({ setPage, defaultSelectedKey, collapse
   const { userId, accessToken, userRole } = useAuthorized();
   const { data: organizations } = useOrganizations();
   const { data: teams } = useTeams();
+  const { t } = useI18n();
+
+  const resolveMenuLabel = (item: Pick<MenuItem, "labelKey" | "badge">): React.ReactNode => {
+    const text = t(item.labelKey);
+    if (item.badge === "new") {
+      return (
+        <span className="flex items-center gap-2">
+          {text} <NewBadge />
+        </span>
+      );
+    }
+    if (item.badge === "newDot") {
+      return (
+        <span className="flex items-center gap-2">
+          {text}{" "}
+          <NewBadge dot>
+            <span />
+          </NewBadge>
+        </span>
+      );
+    }
+    return text;
+  };
 
   // Check if user is an org_admin
   const isOrgAdmin = useMemo(() => {
@@ -580,17 +599,17 @@ const Sidebar: React.FC<SidebarProps> = ({ setPage, defaultSelectedKey, collapse
               marginBottom: "2px",
             }}
           >
-            {group.groupLabel}
+            {t(group.groupLabelKey)}
           </span>
         ),
         children: filteredItems.map((item) => ({
           key: item.key,
           icon: item.icon,
-          label: renderNavLink(item.label, item.page, item.external_url),
+          label: renderNavLink(resolveMenuLabel(item), item.page, item.external_url),
           children: item.children?.map((child) => ({
             key: child.key,
             icon: child.icon,
-            label: renderNavLink(child.label, child.page, child.external_url),
+            label: renderNavLink(resolveMenuLabel(child), child.page, child.external_url),
             onClick: () => {
               if (child.external_url) {
                 window.open(child.external_url, "_blank");

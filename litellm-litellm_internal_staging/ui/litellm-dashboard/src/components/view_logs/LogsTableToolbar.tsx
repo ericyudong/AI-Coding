@@ -2,9 +2,9 @@ import moment from "moment";
 import { useEffect, useRef, useState } from "react";
 import { SyncOutlined } from "@ant-design/icons";
 import { Button, Switch } from "antd";
-import { QUICK_SELECT_OPTIONS } from "./constants";
 import { getTimeRangeDisplay } from "./logs_utils";
 import type { PaginatedResponse } from "./log_filter_logic";
+import { useI18n } from "@/i18n";
 
 interface LogsTableToolbarProps {
   searchTerm: string;
@@ -47,8 +47,9 @@ export function LogsTableToolbar({
   isLoading,
   isButtonLoading,
   onRefetch,
-  filteredLogs,
+  filteredLogs
 }: LogsTableToolbarProps) {
+  const { t } = useI18n();
   const [quickSelectOpen, setQuickSelectOpen] = useState(false);
   const quickSelectRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +63,15 @@ export function LogsTableToolbar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedOption = QUICK_SELECT_OPTIONS.find(
+  const quickSelectOptions = [
+    { label: t("logs.lastMinute"), value: 1, unit: "minutes" },
+    { label: t("logs.last15Minutes"), value: 15, unit: "minutes" },
+    { label: t("logs.lastHour"), value: 1, unit: "hours" },
+    { label: t("logs.last4Hours"), value: 4, unit: "hours" },
+    { label: t("logs.last24Hours"), value: 24, unit: "hours" },
+    { label: t("logs.last7Days"), value: 7, unit: "days" },
+  ];
+  const selectedOption = quickSelectOptions.find(
     (option) => option.value === selectedTimeInterval.value && option.unit === selectedTimeInterval.unit,
   );
   const displayLabel = isCustomDate ? getTimeRangeDisplay(isCustomDate, startTime, endTime) : selectedOption?.label;
@@ -75,7 +84,7 @@ export function LogsTableToolbar({
             <div className="relative w-64 min-w-0 flex-shrink-0">
               <input
                 type="text"
-                placeholder="Search by Request ID"
+                placeholder={t("logs.searchByRequestId")}
                 className="w-full px-3 py-2 pl-8 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -115,7 +124,7 @@ export function LogsTableToolbar({
                 {quickSelectOpen && (
                   <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border p-2 z-50">
                     <div className="space-y-1">
-                      {QUICK_SELECT_OPTIONS.map((option) => (
+                      {quickSelectOptions.map((option) => (
                         <button
                           key={option.label}
                           className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded-md ${displayLabel === option.label ? "bg-blue-50 text-blue-600" : ""}`}
@@ -140,7 +149,7 @@ export function LogsTableToolbar({
                         className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded-md ${isCustomDate ? "bg-blue-50 text-blue-600" : ""}`}
                         onClick={() => onIsCustomDateChange(!isCustomDate)}
                       >
-                        Custom Range
+                        {t("logs.customRange")}
                       </button>
                     </div>
                   </div>
@@ -148,7 +157,7 @@ export function LogsTableToolbar({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">Live Tail</span>
+                <span className="text-sm font-medium text-gray-900">{t("logs.liveTail")}</span>
                 <Switch checked={isLiveTail} defaultChecked={true} onChange={onIsLiveTailChange} />
               </div>
 
@@ -157,9 +166,9 @@ export function LogsTableToolbar({
                 icon={<SyncOutlined spin={isButtonLoading} />}
                 onClick={onRefetch}
                 disabled={isButtonLoading}
-                title="Fetch data"
+                title={t("common.fetchData")}
               >
-                {isButtonLoading ? "Fetching" : "Fetch"}
+                {isButtonLoading ? t("common.fetching") : t("common.fetch")}
               </Button>
             </div>
 
@@ -176,7 +185,7 @@ export function LogsTableToolbar({
                     className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <span className="text-gray-500">to</span>
+                <span className="text-gray-500">{t("logs.to")}</span>
                 <div>
                   <input
                     type="datetime-local"
@@ -194,32 +203,33 @@ export function LogsTableToolbar({
 
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-700 whitespace-nowrap">
-              Showing {isLoading ? "..." : filteredLogs ? (currentPage - 1) * pageSize + 1 : 0} -{" "}
-              {isLoading
-                ? "..."
-                : filteredLogs
-                  ? Math.min(currentPage * pageSize, filteredLogs.total)
-                  : 0}{" "}
-              of {isLoading ? "..." : filteredLogs ? filteredLogs.total : 0} results
+              {t("common.showingResults", {
+                range: `${isLoading ? "..." : filteredLogs ? (currentPage - 1) * pageSize + 1 : 0} - ${
+                  isLoading ? "..." : filteredLogs ? Math.min(currentPage * pageSize, filteredLogs.total) : 0
+                }`,
+                total: isLoading ? "..." : filteredLogs ? filteredLogs.total : 0,
+              })}
             </span>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-700 min-w-[90px]">
-                Page {isLoading ? "..." : currentPage} of{" "}
-                {isLoading ? "..." : filteredLogs ? filteredLogs.total_pages : 1}
+                {t("common.pageOf", {
+                  page: isLoading ? "..." : currentPage,
+                  total: isLoading ? "..." : filteredLogs ? filteredLogs.total_pages : 1,
+                })}
               </span>
               <button
                 onClick={() => onCurrentPageChange((p: number) => Math.max(1, p - 1))}
                 disabled={isLoading || currentPage === 1}
                 className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                {t("common.previous")}
               </button>
               <button
                 onClick={() => onCurrentPageChange((p: number) => Math.min(filteredLogs.total_pages || 1, p + 1))}
                 disabled={isLoading || currentPage === (filteredLogs.total_pages || 1)}
                 className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                {t("common.next")}
               </button>
             </div>
           </div>
@@ -228,13 +238,13 @@ export function LogsTableToolbar({
       {isLiveTail && currentPage === 1 && (
         <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-md flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-green-700">Auto-refreshing every 15 seconds</span>
+            <span className="text-sm text-green-700">{t("logs.autoRefresh")}</span>
           </div>
           <button
             onClick={() => onIsLiveTailChange(false)}
             className="text-sm text-green-600 hover:text-green-800"
           >
-            Stop
+            {t("logs.stop")}
           </button>
         </div>
       )}

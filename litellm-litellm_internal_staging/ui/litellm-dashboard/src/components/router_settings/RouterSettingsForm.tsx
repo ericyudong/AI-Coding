@@ -3,6 +3,7 @@ import LatencyBasedConfiguration from "./LatencyBasedConfiguration";
 import ReliabilityRetriesSection from "./ReliabilityRetriesSection";
 import RoutingStrategySelector from "./RoutingStrategySelector";
 import TagFilteringToggle from "./TagFilteringToggle";
+import { useI18n } from "@/i18n";
 
 export interface RouterSettingsFormValue {
   routerSettings: { [key: string]: any };
@@ -25,6 +26,7 @@ const RouterSettingsForm: React.FC<RouterSettingsFormProps> = ({
   availableRoutingStrategies,
   routingStrategyDescriptions,
 }) => {
+  const { t } = useI18n();
   const handleStrategyChange = (strategy: string) => {
     onChange({
       ...value,
@@ -41,11 +43,11 @@ const RouterSettingsForm: React.FC<RouterSettingsFormProps> = ({
 
   return (
     <div className="w-full space-y-8 py-2">
-      {/* Routing Settings Section */}
+      {/* {t("settings.router.routingTitle")} Section */}
       <div className="space-y-6">
         <div className="max-w-3xl">
-          <h3 className="text-sm font-medium text-gray-900">Routing Settings</h3>
-          <p className="text-xs text-gray-500 mt-1">Configure how requests are routed to deployments</p>
+          <h3 className="text-sm font-medium text-gray-900">{t("settings.router.routingTitle")}</h3>
+          <p className="text-xs text-gray-500 mt-1">{t("settings.router.routingSubtitle")}</p>
         </div>
 
         {/* Routing Strategy */}

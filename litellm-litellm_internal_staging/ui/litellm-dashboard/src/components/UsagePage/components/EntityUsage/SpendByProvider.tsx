@@ -1,3 +1,4 @@
+import { useI18n } from "@/i18n";
 import { formatNumberWithCommas } from "@/utils/dataUtils";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import {
@@ -35,6 +36,7 @@ interface SpendByProviderProps {
 }
 
 const SpendByProvider: React.FC<SpendByProviderProps> = ({ loading, isDateChanging, providerSpend }) => {
+  const { t } = useI18n();
   const [includeZeroSpend, setIncludeZeroSpend] = useState(false);
   const [includeUnknown, setIncludeUnknown] = useState(false);
 
@@ -58,7 +60,7 @@ const SpendByProvider: React.FC<SpendByProviderProps> = ({ loading, isDateChangi
   return (
     <Card className="h-full">
       <div className="flex justify-between items-center mb-4">
-        <Title>Spend by Provider</Title>
+        <Title>{t("usage.spendByProvider")}</Title>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-700">Show Zero Spend</label>
@@ -93,11 +95,11 @@ const SpendByProvider: React.FC<SpendByProviderProps> = ({ loading, isDateChangi
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableHeaderCell>Provider</TableHeaderCell>
-                  <TableHeaderCell>Spend</TableHeaderCell>
-                  <TableHeaderCell className="text-green-600">Successful</TableHeaderCell>
-                  <TableHeaderCell className="text-red-600">Failed</TableHeaderCell>
-                  <TableHeaderCell>Tokens</TableHeaderCell>
+                  <TableHeaderCell>{t("usage.provider")}</TableHeaderCell>
+                  <TableHeaderCell>{t("common.spend")}</TableHeaderCell>
+                  <TableHeaderCell className="text-green-600">{t("usage.successful")}</TableHeaderCell>
+                  <TableHeaderCell className="text-red-600">{t("usage.failed")}</TableHeaderCell>
+                  <TableHeaderCell>{t("usage.tokens")}</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>

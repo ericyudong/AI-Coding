@@ -4,6 +4,7 @@ import { Typography } from "antd";
 import NotificationManager from "./molecules/notifications_manager";
 import { serviceHealthCheck, setCallbacksCall } from "./networking";
 import { EmailEventSettings } from "./email_events";
+import { useI18n } from "@/i18n";
 
 const { Title } = Typography;
 
@@ -14,6 +15,7 @@ interface EmailSettingsProps {
 }
 
 const EmailSettings: React.FC<EmailSettingsProps> = ({ accessToken, premiumUser, alerts }) => {
+  const { t } = useI18n();
   const handleSaveEmailSettings = async () => {
     if (!accessToken) {
       return;
@@ -55,7 +57,7 @@ const EmailSettings: React.FC<EmailSettingsProps> = ({ accessToken, premiumUser,
         <EmailEventSettings accessToken={accessToken} />
       </div>
       <Card>
-        <Title level={4}>Email Server Settings</Title>
+        <Title level={4}>{t("settings.email.title")}</Title>
         <Text>
           <a href="https://docs.litellm.ai/docs/proxy/email" target="_blank" style={{ color: "blue" }}>
             {" "}

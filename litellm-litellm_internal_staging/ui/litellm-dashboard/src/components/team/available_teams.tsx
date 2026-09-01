@@ -1,3 +1,4 @@
+import { useI18n } from "@/i18n";
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -28,6 +29,7 @@ interface AvailableTeamsProps {
 }
 
 const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userID }) => {
+  const { t } = useI18n();
   const [availableTeams, setAvailableTeams] = useState<AvailableTeam[]>([]);
 
   useEffect(() => {
@@ -69,11 +71,11 @@ const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userI
       <Table>
         <TableHead>
           <TableRow>
-            <TableHeaderCell>Team Name</TableHeaderCell>
-            <TableHeaderCell>Description</TableHeaderCell>
-            <TableHeaderCell>Members</TableHeaderCell>
-            <TableHeaderCell>Models</TableHeaderCell>
-            <TableHeaderCell>Actions</TableHeaderCell>
+            <TableHeaderCell>{t("teams.teamName")}</TableHeaderCell>
+            <TableHeaderCell>{t("common.description")}</TableHeaderCell>
+            <TableHeaderCell>{t("common.members")}</TableHeaderCell>
+            <TableHeaderCell>{t("common.models")}</TableHeaderCell>
+            <TableHeaderCell>{t("common.actions")}</TableHeaderCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -83,7 +85,7 @@ const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userI
                 <Text>{team.team_alias}</Text>
               </TableCell>
               <TableCell>
-                <Text>{team.description || "No description available"}</Text>
+                <Text>{team.description || t("teams.noDescription")}</Text>
               </TableCell>
               <TableCell>
                 <Text>{team.members_with_roles.length} members</Text>
@@ -92,7 +94,7 @@ const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userI
                 <div className="flex flex-col">
                   {!team.models || team.models.length === 0 ? (
                     <Badge size="xs" color="red">
-                      <Text>All Proxy Models</Text>
+                      <Text>{t("keys.allProxyModels")}</Text>
                     </Badge>
                   ) : (
                     team.models.map((model, index) => (
@@ -105,7 +107,7 @@ const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userI
               </TableCell>
               <TableCell>
                 <Button size="xs" variant="secondary" onClick={() => handleJoinTeam(team.team_id)}>
-                  Join Team
+                  {t("teams.joinTeam")}
                 </Button>
               </TableCell>
             </TableRow>
@@ -113,7 +115,7 @@ const AvailableTeamsPanel: React.FC<AvailableTeamsProps> = ({ accessToken, userI
           {availableTeams.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="text-center">
-                <Text>No available teams to join. See how to set available teams{" "}
+                <Text>{t("teams.noAvailable")}{" "}
                   <a
                     href="https://docs.litellm.ai/docs/proxy/self_serve#all-settings-for-self-serve--sso-flow"
                     target="_blank"

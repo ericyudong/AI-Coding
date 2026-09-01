@@ -1,10 +1,12 @@
 "use client";
+import { useI18n } from "@/i18n";
 import { Alert } from "antd";
 import { useDeletedTeams } from "@/app/(dashboard)/hooks/teams/useTeams";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { DeletedTeamsTable } from "./DeletedTeamsTable/DeletedTeamsTable";
 
 export default function DeletedTeamsPage() {
+  const { t } = useI18n();
   const { premiumUser } = useAuthorized();
   const {
     data: teamsData,
@@ -19,8 +21,8 @@ export default function DeletedTeamsPage() {
           type="info"
           banner
           showIcon
-          message="Coming soon to Enterprise"
-          description="Deleted team auditing is graduating from beta into our Enterprise audit & compliance suite."
+          message={t("deletedTeams.enterpriseTitle")}
+          description={t("deletedTeams.enterpriseDesc")}
         />
       )}
       <DeletedTeamsTable

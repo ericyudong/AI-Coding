@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import {
   ApiOutlined,
   ArrowUpOutlined,
@@ -113,6 +114,7 @@ const ChatUI: React.FC<ChatUIProps> = ({
   simplified = false,
   fixedModel,
 }) => {
+  const { t } = useI18n();
   const [mcpServers, setMCPServers] = useState<MCPServer[]>([]);
   const [mcpToolsets, setMCPToolsets] = useState<MCPToolset[]>([]);
   const [isToolsetsInfoModalVisible, setIsToolsetsInfoModalVisible] = useState(false);
@@ -1022,8 +1024,8 @@ const ChatUI: React.FC<ChatUIProps> = ({
     const { Title, Paragraph } = Typography;
     return (
       <div>
-        <Title level={1}>Access Denied</Title>
-        <Paragraph>Ask your proxy admin for access to test models</Paragraph>
+        <Title level={1}>{t("testKey.accessDenied")}</Title>
+        <Paragraph>{t("testKey.askAdmin")}</Paragraph>
       </div>
     );
   }
@@ -1057,7 +1059,7 @@ const ChatUI: React.FC<ChatUIProps> = ({
           {/* Left Sidebar with Controls - hidden in simplified mode */}
           {!simplified && (
           <div className="w-1/4 p-4 bg-gray-50 overflow-y-auto">
-            <Title className="text-xl font-semibold mb-6 mt-2">Configurations</Title>
+            <Title className="text-xl font-semibold mb-6 mt-2">{t("testKey.configurations")}</Title>
             <div className="space-y-4">
               <div>
                 <Text className="font-medium block mb-2 text-gray-700 flex items-center">
@@ -1071,15 +1073,15 @@ const ChatUI: React.FC<ChatUIProps> = ({
                     setApiKeySource(value as "session" | "custom");
                   }}
                   options={[
-                    { value: "session", label: "Current UI Session" },
-                    { value: "custom", label: "Virtual Key" },
+                    { value: "session", label: t("testKey.currentSession") },
+                    { value: "custom", label: t("testKey.virtualKey") },
                   ]}
                   className="rounded-md"
                 />
                 {apiKeySource === "custom" && (
                   <TextInput
                     className="mt-2"
-                    placeholder="Enter custom Virtual Key"
+                    placeholder={t("testKey.enterCustomKey")}
                     type="password"
                     onValueChange={setApiKey}
                     value={apiKey}
@@ -1213,7 +1215,7 @@ const ChatUI: React.FC<ChatUIProps> = ({
                             onMockTestFallbacksChange={setMockTestFallbacks}
                           />
                         }
-                        title="Model Settings"
+                        title={t("testKey.modelSettings")}
                         trigger="click"
                         placement="right"
                       >
@@ -1222,12 +1224,12 @@ const ChatUI: React.FC<ChatUIProps> = ({
                           size="small"
                           icon={<SettingOutlined />}
                           className="text-gray-500 hover:text-gray-700"
-                          aria-label="Model Settings"
+                          aria-label={t("testKey.modelSettings")}
                           data-testid="model-settings-button"
                         />
                       </Popover>
                     ) : (
-                      <Tooltip title="Advanced parameters are only supported for chat models currently">
+                      <Tooltip title={t("testKey.advancedParamsHint")}>
                         <Button
                           type="text"
                           size="small"
@@ -1240,7 +1242,7 @@ const ChatUI: React.FC<ChatUIProps> = ({
                   </Text>
                   <Select
                     value={selectedModel}
-                    placeholder="Select a Model"
+                    placeholder={t("testKey.selectModel")}
                     onChange={onModelChange}
                     options={[
                       { value: "custom", label: "Enter custom model", key: "custom" },

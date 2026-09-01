@@ -34,6 +34,7 @@ import { Team } from "../key_team_helpers/key_list";
 import MCPServerSelector from "../mcp_server_management/MCPServerSelector";
 import MCPToolPermissions from "../mcp_server_management/MCPToolPermissions";
 import NotificationsManager from "../molecules/notifications_manager";
+import { useI18n } from "@/i18n";
 import {
   getAgentsList,
   getGuardrailsList,
@@ -163,6 +164,7 @@ export const fetchUserModels = async (
  * ─────────────────────────────────────────────────────────────────────────
  */
 const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOpenCreate, prefillData }) => {
+  const { t } = useI18n();
   const { accessToken, userId: userID, userRole, premiumUser } = useAuthorized();
   const canEditGuardrails = premiumUser || (userRole != null && rolesWithWriteAccess.includes(userRole));
   const { data: organizations, isLoading: isOrganizationsLoading } = useOrganizations();
@@ -549,7 +551,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
 
       setApiKey(response["key"]);
       setSoftBudget(response["soft_budget"]);
-      NotificationsManager.success("Virtual Key Created");
+      NotificationsManager.success(t("keys.createdToast"));
       form.resetFields();
       setBudgetLimits([]);
       localStorage.removeItem("userData" + userID);
@@ -679,18 +681,18 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
     <div>
       {userRole && rolesWithWriteAccess.includes(userRole) && (
         <Button className="mx-auto" onClick={() => setIsModalVisible(true)} data-testid="create-key-button">
-          + Create New Key
+          {t("keys.createNew")}
         </Button>
       )}
       <Modal open={isModalVisible} width={1000} footer={null} onOk={handleOk} onCancel={handleCancel}>
         <Form form={form} onFinish={handleCreate} labelCol={{ span: 8 }} wrapperCol={{ span: 16 }} labelAlign="left">
           {/* Section 1: Key Ownership */}
           <div className="mb-8">
-            <Title className="mb-4">Key Ownership</Title>
+            <Title className="mb-4">{t("keys.ownership")}</Title>
             <Form.Item
               label={
                 <span>
-                  Owned By{" "}
+                  {t("keys.ownedBy")}{" "}
                   <Tooltip title="Select who will own this Virtual Key">
                     <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                   </Tooltip>
@@ -699,11 +701,11 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               className="mb-4"
             >
               <Radio.Group onChange={(e) => setKeyOwner(e.target.value)} value={keyOwner}>
-                <Radio value="you">You</Radio>
-                <Radio value="service_account">Service Account</Radio>
-                {userRole === "Admin" && <Radio value="another_user">Another User</Radio>}
+                <Radio value="you">{t("keys.you")}</Radio>
+                <Radio value="service_account">{t("keys.serviceAccount")}</Radio>
+                {userRole === "Admin" && <Radio value="another_user">{t("keys.anotherUser")}</Radio>}
                 <Radio value="agent">
-                  Agent <Tag color="purple">New</Tag>
+                  {t("keys.agent")} <Tag color="purple">{t("keys.newBadge")}</Tag>
                 </Radio>
               </Radio.Group>
             </Form.Item>
@@ -712,7 +714,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               <Form.Item
                 label={
                   <span>
-                    User ID{" "}
+                    {t("keys.userId")}{" "}
                     <Tooltip title="The user who will own this key and be responsible for its usage">
                       <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                     </Tooltip>
@@ -731,7 +733,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                   <div style={{ display: "flex", marginBottom: "8px" }}>
                     <Select
                       showSearch
-                      placeholder="Type email to search for users"
+                      placeholder={t("keys.searchUsersPlaceholder")}
                       filterOption={false}
                       onSearch={handleUserSearch}
                       onSelect={(value, option) => handleUserSelect(value, option as UserOption)}
@@ -739,10 +741,10 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                       loading={userSearchLoading}
                       allowClear
                       style={{ width: "100%" }}
-                      notFoundContent={userSearchLoading ? "Searching..." : "No users found"}
+                      notFoundContent={userSearchLoading ? t("keys.searching") : t("keys.noUsersFound")}
                     />
                     <Button2 onClick={() => setIsCreateUserModalVisible(true)} style={{ marginLeft: "8px" }}>
-                      Create User
+                      {t("keys.createUser")}
                     </Button2>
                   </div>
                   <div className="text-xs text-gray-500">Search by email to find users</div>
@@ -753,12 +755,12 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md">
                 <div className="mb-3">
                   <span className="text-sm font-medium text-gray-700">
-                    Select Agent <span className="text-red-500">*</span>
+                    {t("keys.selectAgent")} <span className="text-red-500">*</span>
                   </span>
                 </div>
                 <Select
                   showSearch
-                  placeholder="Select an agent"
+                  placeholder={t("keys.selectAnAgent")}
                   style={{ width: "100%" }}
                   value={selectedAgentId}
                   onChange={(value) => setSelectedAgentId(value)}
@@ -778,7 +780,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
             <Form.Item
               label={
                 <span>
-                  Organization{" "}
+                  {t("common.organization")}{" "}
                   <Tooltip title="The organization this key belongs to. Selecting an organization filters the available teams.">
                     <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                   </Tooltip>
@@ -883,11 +885,11 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
           {/* Section 2: Key Details */}
           {!isFormDisabled && (
             <div className="mb-8">
-              <Title className="mb-4">Key Details</Title>
+              <Title className="mb-4">{t("keys.details")}</Title>
               <Form.Item
                 label={
                   <span>
-                    {keyOwner === "you" || keyOwner === "another_user" ? "Key Name" : "Service Account ID"}{" "}
+                    {keyOwner === "you" || keyOwner === "another_user" ? t("keys.keyName") : t("keys.serviceAccountId")}{" "}
                     <Tooltip
                       title={
                         keyOwner === "you" || keyOwner === "another_user"
@@ -931,7 +933,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               >
                 <Select
                   mode="multiple"
-                  placeholder="Select models"
+                  placeholder={t("keys.selectModels")}
                   style={{ width: "100%" }}
                   disabled={keyType === "management" || keyType === "read_only"}
                   onChange={(values) => {
@@ -942,7 +944,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                 >
                   {!selectedProjectId && (
                     <Option key="all-team-models" value="all-team-models">
-                      All Team Models
+                      {t("keys.allTeamModels")}
                     </Option>
                   )}
                   {modelsToPick.map((model: string) => (
@@ -956,7 +958,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               <Form.Item
                 label={
                   <span>
-                    Key Type{" "}
+                    {t("keys.keyType")}{" "}
                     <Tooltip title="Select the type of key to determine what routes and operations this key can access">
                       <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                     </Tooltip>
@@ -968,7 +970,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
               >
                 <Select
                   defaultValue="llm_api"
-                  placeholder="Select key type"
+                  placeholder={t("keys.selectKeyType")}
                   style={{ width: "100%" }}
                   optionLabelProp="label"
                   onChange={(value) => {
@@ -979,25 +981,25 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                     }
                   }}
                 >
-                  <Option value="llm_api" label="AI APIs">
+                  <Option value="llm_api" label={t("keys.aiApis")}>
                     <div style={{ padding: "4px 0" }}>
-                      <Typography.Text strong>AI APIs</Typography.Text>
+                      <Typography.Text strong>{t("keys.aiApis")}</Typography.Text>
                       <Typography.Paragraph type="secondary" style={{ fontSize: 11, margin: "2px 0 0" }}>
                         Can call only AI API routes (chat/completions, embeddings, etc.)
                       </Typography.Paragraph>
                     </div>
                   </Option>
-                  <Option value="management" label="Management">
+                  <Option value="management" label={t("keys.management")}>
                     <div style={{ padding: "4px 0" }}>
-                      <Typography.Text strong>Management</Typography.Text>
+                      <Typography.Text strong>{t("keys.management")}</Typography.Text>
                       <Typography.Paragraph type="secondary" style={{ fontSize: 11, margin: "2px 0 0" }}>
                         Can call only management routes (user/team/key management)
                       </Typography.Paragraph>
                     </div>
                   </Option>
-                  <Option value="default" label="Full Access">
+                  <Option value="default" label={t("keys.fullAccess")}>
                     <div style={{ padding: "4px 0" }}>
-                      <Typography.Text strong>Full Access</Typography.Text>
+                      <Typography.Text strong>{t("keys.fullAccess")}</Typography.Text>
                       <Typography.Paragraph type="secondary" style={{ fontSize: 11, margin: "2px 0 0" }}>
                         Can call all routes (AI APIs, Management, and read-only)
                       </Typography.Paragraph>
@@ -1013,14 +1015,14 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
             <div className="mb-8">
               <Accordion className="mt-4 mb-4">
                 <AccordionHeader>
-                  <Title className="m-0">Optional Settings</Title>
+                  <Title className="m-0">{t("keys.optionalSettings")}</Title>
                 </AccordionHeader>
                 <AccordionBody>
                   <Form.Item
                     className="mt-4"
                     label={
                       <span>
-                        Max Budget (USD){" "}
+                        {t("keys.maxBudgetUsd")}{" "}
                         <Tooltip title="Maximum amount in USD this key can spend. When reached, the key will be blocked from making further requests">
                           <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                         </Tooltip>
@@ -1046,7 +1048,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                     className="mt-4"
                     label={
                       <span>
-                        Reset Budget{" "}
+                        {t("keys.resetBudget")}{" "}
                         <Tooltip title="How often the budget should reset. For example, setting 'daily' will reset the budget every 24 hours">
                           <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                         </Tooltip>
@@ -1077,7 +1079,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                     className="mt-4"
                     label={
                       <span>
-                        Tokens per minute Limit (TPM){" "}
+                        {t("keys.tpmLimit")}{" "}
                         <Tooltip title="Maximum number of tokens this key can process per minute. Helps control usage and costs">
                           <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                         </Tooltip>
@@ -1109,7 +1111,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
                     className="mt-4"
                     label={
                       <span>
-                        Requests per minute Limit (RPM){" "}
+                        {t("keys.rpmLimit")}{" "}
                         <Tooltip title="Maximum number of API requests this key can make per minute. Helps prevent abuse and manage load">
                           <InfoCircleOutlined style={{ marginLeft: "4px" }} />
                         </Tooltip>
@@ -1624,7 +1626,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
 
           <div style={{ textAlign: "right", marginTop: "10px" }}>
             <Button2 htmlType="submit" disabled={isFormDisabled} style={{ opacity: isFormDisabled ? 0.5 : 1 }}>
-              Create Key
+              {t("keys.create")}
             </Button2>
           </div>
         </Form>
@@ -1633,7 +1635,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
       {/* Add the Create User Modal */}
       {isCreateUserModalVisible && (
         <Modal
-          title="Create New User"
+          title={t("keys.createNewUser")}
           open={isCreateUserModalVisible}
           onCancel={() => setIsCreateUserModalVisible(false)}
           footer={null}
@@ -1653,7 +1655,7 @@ const CreateKey: React.FC<CreateKeyProps> = ({ team, teams, data, addKey, autoOp
       {apiKey && (
         <Modal open={isModalVisible} onOk={handleOk} onCancel={handleCancel} footer={null}>
           <Grid numItems={1} className="gap-2 w-full">
-            <Title>Save your Key</Title>
+            <Title>{t("keys.saveTitle")}</Title>
             <Col numColSpan={1}>
               {apiKey != null ? (
                 <CreatedKeyDisplay apiKey={apiKey} />

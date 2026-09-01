@@ -4,24 +4,28 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge, Button, Icon } from "@tremor/react";
 import { Divider, Flex, Popover, Space, Switch, Tooltip, Typography } from "antd";
 import { ModelData } from "../../model_dashboard/types";
+import en from "@/i18n/locales/en";
+import type { MessageKey, TranslateParams } from "@/i18n";
 import { ProviderLogo } from "./ProviderLogo";
 
 const { Text, Title } = Typography;
 
-const credentialsInfoPopoverContent = (
+type TranslateFn = (key: MessageKey, params?: TranslateParams) => string;
+
+const getCredentialsInfoPopoverContent = (tr: TranslateFn) => (
   <Space direction="vertical" size={12}>
     <Text strong style={{ fontSize: 13 }}>
-      Credential types
+      {tr("models.credentialTypes")}
     </Text>
     <Space direction="vertical" size={8}>
       <Flex align="center" gap={8}>
         <Space direction="vertical">
           <Flex align="center" gap={8}>
             <SyncOutlined style={{ color: "#1890ff" }} />
-            <Title level={5} style={{ margin: 0, color: "#1890ff" }}>Reusable</Title>
+            <Title level={5} style={{ margin: 0, color: "#1890ff" }}>{tr("models.reusable")}</Title>
           </Flex>
           <Text type="secondary">
-            Credentials saved in LiteLLM that can be added to models repeatedly.
+            {tr("models.reusableDesc")}
           </Text>
         </Space>
       </Flex>
@@ -30,10 +34,10 @@ const credentialsInfoPopoverContent = (
         <Space direction="vertical" size={8}>
           <Flex align="center" gap={8}>
             <EditOutlined style={{ color: "#8c8c8c", fontSize: 14, flexShrink: 0 }} />
-            <Title level={5} style={{ margin: 0 }}>Manual</Title>
+            <Title level={5} style={{ margin: 0 }}>{tr("models.manual")}</Title>
           </Flex>
           <Text type="secondary">
-            Credentials added directly during model creation or defined in the config file.
+            {tr("models.manualDesc")}
           </Text>
         </Space>
       </Flex>
@@ -55,9 +59,12 @@ export const columns = (
   onDeleteClick?: (modelId: string) => void,
   onTogglePauseClick?: (modelId: string, blocked: boolean) => void | Promise<void>,
   pausingModelId?: string | null,
-): ColumnDef<ModelData>[] => [
+  t?: TranslateFn,
+): ColumnDef<ModelData>[] => {
+  const tr: TranslateFn = t ?? ((key) => (en as Record<string, string>)[key] ?? key);
+  return [
     {
-      header: () => <span className="text-sm font-semibold">Model ID</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colModelId")}</span>,
       accessorKey: "model_info.id",
       enableSorting: false,
       size: 130,
@@ -82,7 +89,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Model Information</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colModelInfo")}</span>,
       accessorKey: "model_name",
       size: 250,
       minSize: 120,
@@ -102,14 +109,14 @@ export const columns = (
                 style={{ fontSize: 12 }}
                 ellipsis
               >
-                {model.provider || "Unknown provider"}
+                {model.provider || tr("models.unknownProvider")}
               </Text>
             </Flex>
 
             <Space direction="vertical" size={6}>
               <Space direction="vertical" size={2} style={{ width: "100%" }}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  Public Model Name
+                  {tr("models.publicModelName")}
                 </Text>
                 <Text
                   strong
@@ -123,7 +130,7 @@ export const columns = (
 
               <Space direction="vertical" size={2}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  LiteLLM Model Name
+                  {tr("models.litellmModelName")}
                 </Text>
                 <Text
                   style={{ fontSize: 13 }}
@@ -169,9 +176,9 @@ export const columns = (
     {
       header: () => (
         <span className="flex items-center gap-1">
-          <span className="text-sm font-semibold">Credentials</span>
+          <span className="text-sm font-semibold">{tr("models.colCredentials")}</span>
           <Popover
-            content={credentialsInfoPopoverContent}
+            content={getCredentialsInfoPopoverContent(tr)}
             placement="bottom"
             arrow={{ pointAtCenter: true }}
           >
@@ -203,7 +210,7 @@ export const columns = (
             ) : (
               <>
                 <EditOutlined className="flex-shrink-0" style={{ color: "#8c8c8c", fontSize: 14 }} />
-                <span className="text-xs text-gray-500">Manual</span>
+                <span className="text-xs text-gray-500">{tr("models.manual")}</span>
               </>
             )}
           </div>
@@ -211,7 +218,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Created By</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colCreatedBy")}</span>,
       accessorKey: "model_info.created_by",
       sortingFn: "datetime",
       size: 160,
@@ -243,7 +250,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Updated At</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colUpdatedAt")}</span>,
       accessorKey: "model_info.updated_at",
       sortingFn: "datetime",
       size: 120,
@@ -258,7 +265,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Costs</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colCosts")}</span>,
       accessorKey: "input_cost",
       size: 120,
       minSize: 80,
@@ -277,19 +284,27 @@ export const columns = (
         }
 
         return (
-          <Tooltip title="Cost per 1M tokens">
+          <Tooltip title={tr("models.costPer1M")}>
             <div className="flex flex-col min-w-0 w-full">
               {/* Input Cost - Primary */}
-              {inputCost != null && <div className="text-xs font-medium text-gray-900 truncate">In: ${inputCost}</div>}
+              {inputCost != null && (
+                <div className="text-xs font-medium text-gray-900 truncate">
+                  {tr("models.in")} ${inputCost}
+                </div>
+              )}
               {/* Output Cost - Secondary */}
-              {outputCost != null && <div className="text-xs text-gray-500 truncate mt-0.5">Out: ${outputCost}</div>}
+              {outputCost != null && (
+                <div className="text-xs text-gray-500 truncate mt-0.5">
+                  {tr("models.out")} ${outputCost}
+                </div>
+              )}
             </div>
           </Tooltip>
         );
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Team ID</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colTeamId")}</span>,
       accessorKey: "model_info.team_id",
       enableSorting: false,
       size: 130,
@@ -318,7 +333,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Model Access Group</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colAccessGroup")}</span>,
       accessorKey: "model_info.model_access_group",
       enableSorting: false,
       size: 180,
@@ -379,7 +394,7 @@ export const columns = (
       },
     },
     {
-      header: () => <span className="text-sm font-semibold">Status</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colStatus")}</span>,
       accessorKey: "model_info.db_model",
       size: 120,
       minSize: 80,
@@ -392,14 +407,14 @@ export const columns = (
           ${model.model_info.db_model ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-600"}
         `}
           >
-            {model.model_info.db_model ? "DB Model" : "Config Model"}
+            {model.model_info.db_model ? tr("models.dbModel") : tr("models.configModel")}
           </div>
         );
       },
     },
     {
       id: "actions",
-      header: () => <span className="text-sm font-semibold">Actions</span>,
+      header: () => <span className="text-sm font-semibold">{tr("models.colActions")}</span>,
       size: 100,
       minSize: 80,
       enableResizing: false,
@@ -447,7 +462,7 @@ export const columns = (
                 <Icon icon={TrashIcon} size="sm" className="opacity-50 cursor-not-allowed" />
               </Tooltip>
             ) : (
-              <Tooltip title="Delete model">
+              <Tooltip title={tr("models.deleteModel")}>
                 <Icon
                   icon={TrashIcon}
                   size="sm"
@@ -466,3 +481,4 @@ export const columns = (
       },
     },
   ];
+};

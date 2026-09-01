@@ -5,6 +5,7 @@
 import { menuGroups } from "./leftnav";
 import { pageDescriptions, PageMetadata } from "./page_metadata";
 import { internalUserRoles } from "@/utils/roles";
+import en from "@/i18n/locales/en";
 
 /**
  * Check if a page is accessible to internal users
@@ -43,10 +44,9 @@ export const getAvailablePages = (): PageMetadata[] => {
         item.page !== "settings" &&
         isPageAccessibleToInternalUsers(item.roles)
       ) {
-        const label = typeof item.label === "string" ? item.label : item.key;
         pages.push({
           page: item.page,
-          label: label,
+          label: en[item.labelKey],
           group: group.groupLabel,
           description: pageDescriptions[item.page] || "No description available",
         });
@@ -54,14 +54,13 @@ export const getAvailablePages = (): PageMetadata[] => {
 
       // Add children items (also skip those internal users cannot access)
       if (item.children) {
-        const parentLabel = typeof item.label === "string" ? item.label : item.key;
+        const parentLabel = en[item.labelKey];
         item.children.forEach((child) => {
           // Include if internal users can access
           if (isPageAccessibleToInternalUsers(child.roles)) {
-            const childLabel = typeof child.label === "string" ? child.label : child.key;
             pages.push({
               page: child.page,
-              label: childLabel,
+              label: en[child.labelKey],
               group: `${group.groupLabel} > ${parentLabel}`,
               description: pageDescriptions[child.page] || "No description available",
             });

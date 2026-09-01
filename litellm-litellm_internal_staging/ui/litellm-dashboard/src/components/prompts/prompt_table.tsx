@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { getProviderLogoAndName } from "@/components/provider_info_helpers";
 import { extractModel, getProviderFromModelHub } from "./prompt_utils";
+import { useI18n } from "@/i18n";
 
 interface PromptTableProps {
   promptsList: PromptSpec[];
@@ -38,6 +39,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
   accessToken,
   isAdmin,
 }) => {
+  const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: "created_at", desc: true }]);
   const [modelHubData, setModelHubData] = useState<Map<string, ModelGroupInfo>>(new Map());
 
@@ -75,7 +77,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
 
   const columns: ColumnDef<PromptSpec>[] = [
     {
-      header: "Prompt ID",
+      header: t("prompts.colId"),
       accessorKey: "prompt_id",
       cell: (info: any) => {
         const fullId = String(info.getValue() || "");
@@ -92,7 +94,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
                 {displayId}
               </Button>
             </Tooltip>
-            <Tooltip title="Copy prompt ID">
+            <Tooltip title={t("prompts.copyId")}>
               <CopyOutlined
                 onClick={(e) => {
                   e.stopPropagation();
@@ -106,7 +108,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
       },
     },
     {
-      header: "Model",
+      header: t("prompts.colModel"),
       accessorKey: "model",
       cell: ({ row }) => {
         const prompt = row.original;
@@ -161,7 +163,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
       },
     },
     {
-      header: "Created At",
+      header: t("prompts.colCreatedAt"),
       accessorKey: "created_at",
       cell: ({ row }) => {
         const prompt = row.original;
@@ -173,7 +175,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
       },
     },
     {
-      header: "Updated At",
+      header: t("prompts.colUpdatedAt"),
       accessorKey: "updated_at",
       cell: ({ row }) => {
         const prompt = row.original;
@@ -185,7 +187,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
       },
     },
     {
-      header: "Environment",
+      header: t("prompts.colEnvironment"),
       accessorKey: "environment",
       cell: ({ row }) => {
         const prompt = row.original;
@@ -203,7 +205,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
       },
     },
     {
-      header: "Created By",
+      header: t("prompts.colCreatedBy"),
       accessorKey: "created_by",
       cell: ({ row }) => {
         const prompt = row.original;
@@ -229,16 +231,16 @@ const PromptTable: React.FC<PromptTableProps> = ({
     ...(isAdmin
       ? [
           {
-            header: "Actions",
+            header: t("common.actions"),
             id: "actions",
             enableSorting: false,
             cell: ({ row }: any) => {
               const prompt = row.original;
-              const promptName = prompt.prompt_id || "Unknown Prompt";
+              const promptName = prompt.prompt_id || t("prompts.unknown");
 
               return (
                 <div className="flex items-center gap-1">
-                  <Tooltip title="Delete prompt">
+                  <Tooltip title={t("prompts.deleteTooltip")}>
                     <Button
                       size="xs"
                       variant="light"
@@ -309,7 +311,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-8 text-center">
                   <div className="text-center text-gray-500">
-                    <p>Loading...</p>
+                    <p>{t("common.loading")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -327,7 +329,7 @@ const PromptTable: React.FC<PromptTableProps> = ({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-8 text-center">
                   <div className="text-center text-gray-500">
-                    <p>No prompts found</p>
+                    <p>{t("prompts.empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>

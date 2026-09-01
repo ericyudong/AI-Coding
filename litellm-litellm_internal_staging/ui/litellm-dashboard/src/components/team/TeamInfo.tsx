@@ -38,6 +38,7 @@ import MCPServerSelector from "../mcp_server_management/MCPServerSelector";
 import MCPToolPermissions from "../mcp_server_management/MCPToolPermissions";
 import { ModelSelect } from "../ModelSelect/ModelSelect";
 import NotificationsManager from "../molecules/notifications_manager";
+import { useI18n } from "@/i18n";
 import { fetchMCPAccessGroups } from "../networking";
 import ObjectPermissionsView from "../object_permissions_view";
 import NumericalInput from "../shared/numerical_input";
@@ -202,6 +203,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
   const routerSettingsRef = React.useRef<RouterSettingsAccordionRef>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const { userRole, userId } = useAuthorized();
+  const { t } = useI18n();
   const { data: userOrganizations = [] } = useOrganizations();
   const queryClient = useQueryClient();
 
@@ -716,7 +718,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
             onClick={onClose}
             className="mb-4"
           >
-            Back to Teams
+            {t("teams.backToTeams")}
           </Button>
           <Title>{info.team_alias}</Title>
           <div className="flex items-center">
@@ -741,7 +743,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
         items={[
           {
             key: TEAM_INFO_TAB_KEYS.OVERVIEW,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.OVERVIEW],
+            label: t("teams.tabOverview"),
             children: (
               <Grid numItems={1} numItemsSm={2} numItemsLg={3} className="gap-6">
                 <Card>
@@ -873,12 +875,12 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
           },
           {
             key: TEAM_INFO_TAB_KEYS.MY_USER,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.MY_USER],
+            label: t("teams.tabMyUser"),
             children: <MyUserTab teamId={teamId} />,
           },
           {
             key: TEAM_INFO_TAB_KEYS.VIRTUAL_KEYS,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.VIRTUAL_KEYS],
+            label: t("teams.tabVirtualKeys"),
             children: (
               <TeamVirtualKeysTable
                 teamId={teamId}
@@ -889,7 +891,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
           },
           {
             key: TEAM_INFO_TAB_KEYS.MEMBERS,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.MEMBERS],
+            label: t("teams.tabMembers"),
             children: (
               <TeamMembersComponent
                 teamData={teamData}
@@ -903,14 +905,14 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
           },
           {
             key: TEAM_INFO_TAB_KEYS.MEMBER_PERMISSIONS,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.MEMBER_PERMISSIONS],
+            label: t("teams.tabMemberPermissions"),
             children: (
               <MemberPermissions teamId={teamId} accessToken={accessToken} canEditTeam={canEditTeam} />
             ),
           },
           {
             key: TEAM_INFO_TAB_KEYS.SETTINGS,
-            label: TEAM_INFO_TAB_LABELS[TEAM_INFO_TAB_KEYS.SETTINGS],
+            label: t("teams.tabSettings"),
             children: (
               <Card className="overflow-y-auto max-h-[65vh]">
                 <div className="flex justify-between items-center mb-4">

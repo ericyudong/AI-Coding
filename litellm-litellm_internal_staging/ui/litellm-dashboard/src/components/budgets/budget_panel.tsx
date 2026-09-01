@@ -30,6 +30,7 @@ import EditBudgetModal from "./edit_budget_modal";
 import { CREATE_END_USER_CURL_COMMAND, CHAT_COMPLETIONS_CURL_COMMAND, OPENAI_SDK_PYTHON_CODE } from "./constants";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { isProxyAdminRole } from "@/utils/roles";
+import { useI18n } from "@/i18n";
 
 interface BudgetSettingsPageProps {
   accessToken: string | null;
@@ -44,6 +45,7 @@ export interface budgetItem {
 }
 
 const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
+  const { t } = useI18n();
   const [isCreateModelVisible, setIsCreateModelVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<budgetItem | null>(null);
@@ -97,13 +99,13 @@ const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
     <div className="w-full mx-auto flex-auto overflow-y-auto m-8 p-2">
       {canModify && (
         <Button size="sm" variant="primary" className="mb-2" onClick={() => setIsCreateModelVisible(true)}>
-          + Create Budget
+          {t("budgets.create")}
         </Button>
       )}
       <TabGroup>
         <TabList>
-          <Tab>Budgets</Tab>
-          <Tab>Examples</Tab>
+          <Tab>{t("budgets.title")}</Tab>
+          <Tab>{t("budgets.examples")}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -120,12 +122,12 @@ const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
                 />
               )}
               <Card>
-                <Text>Create a budget to assign to customers.</Text>
+                <Text>{t("budgets.createHint")}</Text>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableHeaderCell>Budget ID</TableHeaderCell>
-                      <TableHeaderCell>Max Budget</TableHeaderCell>
+                      <TableHeaderCell>{t("budgets.colId")}</TableHeaderCell>
+                      <TableHeaderCell>{t("budgets.colMax")}</TableHeaderCell>
                       <TableHeaderCell>TPM</TableHeaderCell>
                       <TableHeaderCell>RPM</TableHeaderCell>
                     </TableRow>
@@ -145,13 +147,13 @@ const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
                             <>
                               <TableIconActionButton
                                 variant="Edit"
-                                tooltipText="Edit budget"
+                                tooltipText={t("budgets.edit")}
                                 onClick={() => handleEditCall(value)}
                                 dataTestId="edit-budget-button"
                               />
                               <TableIconActionButton
                                 variant="Delete"
-                                tooltipText="Delete budget"
+                                tooltipText={t("budgets.delete")}
                                 onClick={() => handleDeleteClick(value)}
                                 dataTestId="delete-budget-button"
                               />
@@ -164,9 +166,9 @@ const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
               </Card>
               <DeleteResourceModal
                 isOpen={isDeleteModalVisible}
-                title="Delete Budget?"
+                title={t("budgets.deleteTitle")}
                 message="Are you sure you want to delete this budget? This action cannot be undone."
-                resourceInformationTitle="Budget Information"
+                resourceInformationTitle={t("budgets.info")}
                 resourceInformation={[
                   { label: "Budget ID", value: selectedBudget?.budget_id, code: true },
                   { label: "Max Budget", value: selectedBudget?.max_budget },
@@ -181,12 +183,12 @@ const BudgetPanel: React.FC<BudgetSettingsPageProps> = ({ accessToken }) => {
           </TabPanel>
           <TabPanel>
             <div className="mt-6">
-              <Text className="text-base">How to use budget id</Text>
+              <Text className="text-base">{t("budgets.howToUse")}</Text>
               <TabGroup>
                 <TabList>
-                  <Tab>Assign Budget to Customer</Tab>
-                  <Tab>Test it (Curl)</Tab>
-                  <Tab>Test it (OpenAI SDK)</Tab>
+                  <Tab>{t("budgets.assignCustomer")}</Tab>
+                  <Tab>{t("budgets.testCurl")}</Tab>
+                  <Tab>{t("budgets.testSdk")}</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>

@@ -1,5 +1,6 @@
 import { useOrganizations } from "@/app/(dashboard)/hooks/organizations/useOrganizations";
 import AvailableTeamsPanel from "@/components/team/available_teams";
+import { useI18n } from "@/i18n";
 import TeamInfoView from "@/components/team/TeamInfo";
 import TeamSSOSettings from "@/components/TeamSSOSettings";
 import { isProxyAdminRole } from "@/utils/roles";
@@ -196,6 +197,7 @@ const Teams: React.FC<TeamProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const { t } = useI18n();
   const [totalTeams, setTotalTeams] = useState(0);
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [currentOrgForCreateTeam, setCurrentOrgForCreateTeam] = useState<Organization | null>(null);
@@ -697,7 +699,7 @@ const Teams: React.FC<TeamProps> = ({
 
   const teamColumns: ColumnsType<Team> = useMemo(() => [
     {
-      title: "Team ID",
+      title: t("teams.teamId"),
       dataIndex: "team_id",
       key: "team_id",
       width: 170,
@@ -717,7 +719,7 @@ const Teams: React.FC<TeamProps> = ({
       ),
     },
     {
-      title: "Team Alias",
+      title: t("teams.teamAlias"),
       dataIndex: "team_alias",
       key: "team_alias",
       ellipsis: true,
@@ -729,7 +731,7 @@ const Teams: React.FC<TeamProps> = ({
       ),
     },
     {
-      title: "Organization",
+      title: t("common.organization"),
       key: "organization",
       width: 160,
       ellipsis: true,
@@ -739,7 +741,7 @@ const Teams: React.FC<TeamProps> = ({
       },
     },
     {
-      title: "Resources",
+      title: t("common.resources"),
       key: "resources",
       width: 240,
       render: (_: unknown, record: Team) => {
@@ -777,7 +779,7 @@ const Teams: React.FC<TeamProps> = ({
       },
     },
     {
-      title: "Spend / Budget",
+      title: t("common.spend") + " / " + t("common.budget"),
       key: "spend",
       width: 200,
       sorter: true,
@@ -809,7 +811,7 @@ const Teams: React.FC<TeamProps> = ({
       },
     },
     {
-      title: "Created",
+      title: t("common.created"),
       dataIndex: "created_at",
       key: "created_at",
       width: 130,
@@ -822,7 +824,7 @@ const Teams: React.FC<TeamProps> = ({
       ),
     },
     {
-      title: "Actions",
+      title: t("common.actions"),
       key: "actions",
       width: 120,
       align: "right" as const,
@@ -830,10 +832,10 @@ const Teams: React.FC<TeamProps> = ({
         <Space size={4}>
           <TableIconActionButton
             variant="Copy"
-            tooltipText="Copy Team ID"
+            tooltipText={t("teams.copyId")}
             onClick={() => {
               navigator.clipboard.writeText(record.team_id)
-                .then(() => message.success("Team ID copied"))
+                .then(() => message.success(t("teams.copiedId")))
                 .catch(() => message.error("Failed to copy"));
             }}
           />
@@ -859,7 +861,7 @@ const Teams: React.FC<TeamProps> = ({
         </Space>
       ),
     },
-  ], [userRole, perTeamInfo, organizationsData, organizations]);
+  ], [userRole, perTeamInfo, organizationsData, organizations, t]);
 
   const displayTeams = useMemo(() => teams ?? [], [teams]);
 
@@ -900,11 +902,11 @@ const Teams: React.FC<TeamProps> = ({
             <div style={{ padding: "64px 0", textAlign: "center" }}>
               <TeamOutlined style={{ fontSize: 40, color: "#d9d9d9", marginBottom: 12 }} />
               <div>
-                <Text style={{ fontSize: 15, color: "#595959" }}>No teams yet</Text>
+                <Text style={{ fontSize: 15, color: "#595959" }}>{t("teams.empty")}</Text>
               </div>
               <div style={{ marginTop: 4 }}>
                 <Text type="secondary" style={{ fontSize: 13 }}>
-                  Create your first team to organize members and manage access to models.
+                  {t("teams.emptyHint")}
                 </Text>
               </div>
               {canCreateOrManageTeams(userRole, userID, organizations) && (
@@ -915,7 +917,7 @@ const Teams: React.FC<TeamProps> = ({
                   style={{ marginTop: 16 }}
                   data-testid="create-team-button"
                 >
-                  Create Team
+                  {t("teams.create")}
                 </Button>
               )}
             </div>
@@ -930,7 +932,7 @@ const Teams: React.FC<TeamProps> = ({
   const tabItems = [
     {
       key: "your-teams",
-      label: "Your Teams",
+      label: t("teams.yourTeams"),
       children: (
         <>
           <Card styles={{ body: { padding: 0 } }}>
@@ -943,7 +945,7 @@ const Teams: React.FC<TeamProps> = ({
                 <Input
                   prefix={<SearchIcon size={16} />}
                   suffix={isSearching ? <AntDLoadingSpinner size="small" /> : null}
-                  placeholder="Search teams by name or ID..."
+                  placeholder={t("teams.searchPlaceholder")}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   allowClear
                   style={{ maxWidth: 400 }}
@@ -985,7 +987,7 @@ const Teams: React.FC<TeamProps> = ({
             message="Are you sure you want to delete this team and all its keys? This action cannot be undone."
             resourceInformationTitle="Team Information"
             resourceInformation={[
-              { label: "Team ID", value: teamToDelete?.team_id, code: true },
+              { label: t("teams.teamId"), value: teamToDelete?.team_id, code: true },
               { label: "Team Name", value: teamToDelete?.team_alias },
               { label: "Keys", value: teamToDelete?.keys?.length },
               { label: "Members", value: teamToDelete?.members_with_roles?.length },
@@ -1000,14 +1002,14 @@ const Teams: React.FC<TeamProps> = ({
     },
     {
       key: "available-teams",
-      label: "Available Teams",
+      label: t("teams.availableTeams"),
       children: <AvailableTeamsPanel accessToken={accessToken} userID={userID} />,
     },
     ...(isProxyAdminRole(userRole || "")
       ? [
           {
             key: "default-settings",
-            label: "Default Team Settings",
+            label: t("teams.defaultSettings"),
             children: <TeamSSOSettings accessToken={accessToken} userID={userID || ""} userRole={userRole || ""} />,
           },
         ]
@@ -1050,15 +1052,15 @@ const Teams: React.FC<TeamProps> = ({
             <Space direction="vertical" size={0}>
               <Title level={2} style={{ margin: 0 }}>
                 <TeamOutlined style={{ marginRight: 8 }} />
-                Teams
+                {t("teams.title")}
               </Title>
               <Text type="secondary">
-                Manage teams, members, and their access to models and budgets
+                {t("teams.subtitle")}
               </Text>
             </Space>
             {canCreateOrManageTeams(userRole, userID, organizations) && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsTeamModalVisible(true)} data-testid="create-team-button">
-                Create Team
+                {t("teams.create")}
               </Button>
             )}
           </Flex>
@@ -1069,7 +1071,7 @@ const Teams: React.FC<TeamProps> = ({
 
       {canCreateOrManageTeams(userRole, userID, organizations) && (
             <Modal
-              title="Create Team"
+              title={t("teams.create")}
               open={isTeamModalVisible}
               width={1000}
               footer={null}
@@ -1635,7 +1637,7 @@ const Teams: React.FC<TeamProps> = ({
                   </Accordion>
                 </>
                 <div style={{ textAlign: "right", marginTop: "10px" }}>
-                  <Button htmlType="submit" data-testid="create-team-submit">Create Team</Button>
+                  <Button htmlType="submit" data-testid="create-team-submit">{t("teams.create")}</Button>
                 </div>
               </Form>
             </Modal>

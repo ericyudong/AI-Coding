@@ -13,6 +13,7 @@ import {
 import React from "react";
 import { Table, TableHead, TableHeaderCell, TableBody, TableRow, TableCell } from "@tremor/react";
 import { TableHeaderSortDropdown, SortState } from "../common_components/TableHeaderSortDropdown/TableHeaderSortDropdown";
+import { useI18n } from "@/i18n";
 
 // Extend the column meta type to include className
 declare module "@tanstack/react-table" {
@@ -44,6 +45,7 @@ export function AllModelsDataTable<TData, TValue>({
   enablePagination = false,
   onRowClick,
 }: AllModelsDataTableProps<TData, TValue>) {
+  const { t } = useI18n();
   const [columnResizeMode] = React.useState<ColumnResizeMode>("onChange");
   const [columnSizing, setColumnSizing] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -203,7 +205,7 @@ export function AllModelsDataTable<TData, TValue>({
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-8 text-center">
                     <div className="text-center text-gray-500">
-                      <p>No models found</p>
+                      <p>{t("models.noModelsFound")}</p>
                     </div>
                   </TableCell>
                 </TableRow>

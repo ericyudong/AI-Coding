@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import {
   ConfigType,
   GeneralSettingsFieldName,
@@ -17,6 +18,7 @@ import { Button, Card, Form, Input, Skeleton, Space, Switch, Typography } from "
 import React, { useMemo } from "react";
 
 const LoggingSettings: React.FC = () => {
+  const { t } = useI18n();
   const [form] = Form.useForm();
   const { mutate, isPending } = useStoreRequestInSpendLogs();
   const { mutate: deleteField, isPending: isDeletingField } = useDeleteProxyConfigField();
@@ -78,7 +80,7 @@ const LoggingSettings: React.FC = () => {
   };
 
   return (
-    <Card title="Logging Settings">
+    <Card title={t("settings.loggingDeep.title")}>
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary">
           Proxy-wide settings that control how request and response data are written to spend logs.
@@ -92,7 +94,7 @@ const LoggingSettings: React.FC = () => {
           initialValues={initialValues}
         >
           <Form.Item
-            label="Store Prompts in Spend Logs"
+            label={t("settings.loggingDeep.storePrompts")}
             name="store_prompts_in_spend_logs"
             tooltip={
               proxyConfigData?.find((f) => f.field_name === "store_prompts_in_spend_logs")?.field_description ||
@@ -111,7 +113,7 @@ const LoggingSettings: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            label="Maximum Spend Logs Retention Period (Optional)"
+            label={t("settings.loggingDeep.retention")}
             name="maximum_spend_logs_retention_period"
             tooltip={
               proxyConfigData?.find((f) => f.field_name === "maximum_spend_logs_retention_period")
@@ -133,7 +135,7 @@ const LoggingSettings: React.FC = () => {
               loading={isPending || isDeletingField}
               disabled={isLoadingConfig}
             >
-              {isPending || isDeletingField ? "Saving..." : "Save Settings"}
+              {isPending || isDeletingField ? t("common.saving") : t("settings.loggingDeep.save")}
             </Button>
           </Form.Item>
         </Form>

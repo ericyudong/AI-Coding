@@ -9,6 +9,7 @@ import AddPromptForm from "./prompts/add_prompt_form";
 import PromptEditorView from "./prompts/prompt_editor_view";
 import NotificationsManager from "./molecules/notifications_manager";
 import { isAdminRole, isProxyAdminRole } from "@/utils/roles";
+import { useI18n } from "@/i18n";
 
 interface PromptsProps {
   accessToken: string | null;
@@ -16,6 +17,7 @@ interface PromptsProps {
 }
 
 const PromptsPanel: React.FC<PromptsProps> = ({ accessToken, userRole }) => {
+  const { t } = useI18n();
   const [promptsList, setPromptsList] = useState<PromptSpec[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEnvironment, setSelectedEnvironment] = useState<string | undefined>(undefined);
@@ -150,7 +152,7 @@ const PromptsPanel: React.FC<PromptsProps> = ({ accessToken, userRole }) => {
               )}
             </div>
             <Select
-              placeholder="All Environments"
+              placeholder={t("prompts.allEnvironments")}
               allowClear
               value={selectedEnvironment}
               onChange={(value) => setSelectedEnvironment(value)}
@@ -183,7 +185,7 @@ const PromptsPanel: React.FC<PromptsProps> = ({ accessToken, userRole }) => {
 
       {promptToDelete && (
         <Modal
-          title="Delete Prompt"
+          title={t("prompts.delete")}
           open={promptToDelete !== null}
           onOk={handleDeleteConfirm}
           onCancel={handleDeleteCancel}
@@ -192,7 +194,7 @@ const PromptsPanel: React.FC<PromptsProps> = ({ accessToken, userRole }) => {
           okButtonProps={{ danger: true }}
         >
           <p>Are you sure you want to delete prompt: {promptToDelete.name} ?</p>
-          <p>This action cannot be undone.</p>
+          <p>{t("prompts.deleteIrreversible")}</p>
         </Modal>
       )}
     </div>

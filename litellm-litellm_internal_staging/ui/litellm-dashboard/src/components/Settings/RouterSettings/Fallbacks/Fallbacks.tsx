@@ -10,6 +10,7 @@ import NotificationsManager from "../../../molecules/notifications_manager";
 import { getCallbacksCall, setCallbacksCall } from "../../../networking";
 import { isProxyAdminRole } from "@/utils/roles";
 import AddFallbacks from "./AddFallbacks";
+import { useI18n } from "@/i18n";
 
 type FallbackEntry = { [modelName: string]: string[] };
 type Fallbacks = FallbackEntry[];
@@ -124,6 +125,7 @@ async function testFallbackModelResponse(selectedModel: string, accessToken: str
 }
 
 const Fallbacks: React.FC<FallbacksProps> = ({ accessToken, userRole, userID, modelData }) => {
+  const { t } = useI18n();
   const [routerSettings, setRouterSettings] = useState<{ [key: string]: any }>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [fallbackToDelete, setFallbackToDelete] = useState<FallbackEntry | null>(null);
@@ -287,7 +289,7 @@ const Fallbacks: React.FC<FallbacksProps> = ({ accessToken, userRole, userID, mo
                   <TableCell className="align-top">
                     {canModify && (
                       <>
-                        <Tooltip title="Test fallback">
+                        <Tooltip title={t("settings.router.testFallback")}>
                           <Icon
                             icon={PlayIcon}
                             size="sm"
@@ -295,7 +297,7 @@ const Fallbacks: React.FC<FallbacksProps> = ({ accessToken, userRole, userID, mo
                             className="cursor-pointer hover:text-blue-600"
                           />
                         </Tooltip>
-                        <Tooltip title="Delete fallback">
+                        <Tooltip title={t("settings.router.deleteFallbackTooltip")}>
                           <span
                             data-testid="delete-fallback-button"
                             role="button"
@@ -322,9 +324,9 @@ const Fallbacks: React.FC<FallbacksProps> = ({ accessToken, userRole, userID, mo
       )}
       <DeleteResourceModal
         isOpen={isDeleteModalOpen}
-        title="Delete Fallback?"
+        title={t("settings.router.deleteFallback")}
         message="Are you sure you want to delete this fallback? This action cannot be undone."
-        resourceInformationTitle="Fallback Information"
+        resourceInformationTitle={t("settings.router.fallbackInfo")}
         resourceInformation={[
           {
             label: "Model Name",
