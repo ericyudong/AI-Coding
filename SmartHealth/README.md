@@ -1,8 +1,8 @@
-# SmartHealth · 蓝天健康病理垂类多模态大模型与智慧医疗 Agent 平台
+# SmartHealth · 病理垂类多模态大模型与智慧医疗 Agent 平台
 
 把多年积累、**已由医生完成标注**的病理切片，转化为可注册、可交付、可持续迭代的医疗 AI 能力。
 
-本仓库是《蓝天健康病理垂类多模态大模型与智慧医疗Agent方案设计》的**代码实现**，
+本仓库是《病理垂类多模态大模型与智慧医疗Agent方案设计》的**代码实现**，
 按设计文档 11 章的结构落地为 **15 个业务模块、69 张数据表、319 个 REST 接口**、1 条 WebSocket 通道与一个自包含控制台；支持**真实 WSI 读取**与**真实 ONNX 权重推理**。
 
 ---
@@ -422,7 +422,7 @@ SmartHealth/
 | 第一章 项目背景与战略机会 | `ops`（政策/支付节点）、`registry/guidelines` | `/registry/guidelines` |
 | 第二章 业内同类方案对标 | `agents/architecture`、`models` | `/agents/architecture` |
 | 第三章 数据资产盘点与治理 | `assets`、`labels` | `/assets/overview`、`/labels/coverage` |
-| 第四章 蓝天健康模型技术方案 | `models`、`pipeline` | `/models/encoders`、`/models/train` |
+| 第四章 病理垂类模型技术方案 | `models`、`pipeline` | `/models/encoders`、`/models/train` |
 | 第五章 智慧医疗 Agent 设计 | `agents` | `/agents/run`、`/agents/sessions/{id}/detail` |
 | 第六章 技术栈、算力与部署架构 | `edge` | `/edge/overview`、`/edge/federated-jobs/{id}/detail` |
 | 第七章 合规与注册路径 | `compliance`、`registry` | `/compliance/readiness`、`/registry/timeline` |

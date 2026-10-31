@@ -271,7 +271,7 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 - **Key Features**: Frontend `:3001`, backend API `:7860`, MySQL / Redis / Milvus / ES / OpenFGA
 - **Path**: [bisheng/](./bisheng/) · start: `cd bisheng/docker && docker compose -f docker-compose.yml -p bisheng up -d`
 
-### SmartHealth (蓝天健康) 🩺
+### SmartHealth 🩺
 - **Description**: Vertical pathology multimodal foundation model + medical agent platform. Turns years of physician-labelled whole-slide images (WSI) into a commercially deployable diagnostic-assist system, with an auditable path toward an NMPA Class III registration.
 - **Key Features**:
   - **Real WSI pipeline**: pyramid TIFF block-level decoding, tile extraction, Reinhard stain normalisation, colour deconvolution, heatmap generation — no stubs
