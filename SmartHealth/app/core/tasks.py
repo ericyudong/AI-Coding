@@ -731,9 +731,60 @@ class TaskEngine:
     def _run_wrapper(self, job_id: int) -> None:
         try:
             self._execute(job_id)
+        except Exception:
+            # 线程池会**静默吞掉**未被 .result() 取出的异常 —— 这里是最后一道防线。
+            #
+            # _execute 在它的主 try 之外仍有可抛路径：领取后的首次 DB 读（连接池
+            # 超时/网络抖动）、以及 finally 里的终态回写本身。异常一旦从这里逃逸：
+            #   1) 作业行永远停在 running（终态写入不会再来）；
+            #   2) 本方法的 finally 把它移出 _inflight，心跳线程随之停止刷新；
+            #   3) 邻居 Worker 的 sweep 在 180s 后按「失联」回收。
+            # 实测形态（CI 复现两次）：succeeded=15/16、失败作业 0 条进度事件、
+            # attempts=1、error_text=「Worker 心跳丢失」、总耗时恰为 ~180s+。
+            # 兜底动作：按引擎的重试语义写终态（未达上限 → 重新排队重跑）。
+            logger.exception("作业 %s 执行器外抛异常，执行兜底终态写入", job_id)
+            self._emergency_terminal(job_id)
         finally:
             with self._inflight_lock:
                 self._inflight.discard(job_id)
+
+    def _emergency_terminal(self, job_id: int) -> None:
+        """兜底终态写入：仅在作业仍处于 running 时生效，绝不覆盖已有终态。
+
+        自身也可能失败（数据库不可达）—— 重试 3 次仍失败则交还给
+        sweep 的失联回收作为最后防线（约 180s 后），那是慢但正确的收敛。
+        """
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                with WriterSessionLocal() as db:
+                    row = db.get(AsyncJob, job_id)
+                    if row is None or row.status != "running":
+                        # 已有终态（正常路径或并发兜底先到一步）—— 不能覆盖
+                        return
+                    if row.attempts < row.max_attempts:
+                        row.status = "queued"
+                        row.progress = 0.0
+                        row.stage_text = (f"执行器异常退出，自动重试"
+                                          f"（第 {row.attempts} 次尝试，上限 {row.max_attempts}）")
+                        row.queued_at = _now()
+                        event = "retry"
+                    else:
+                        row.status = "dead"
+                        row.stage_text = (f"重试次数已耗尽（{row.attempts}/{row.max_attempts}），"
+                                          f"执行器异常退出")
+                        row.finished_at = _now()
+                        event = "error"
+                    db.add(AsyncJobEvent(job_id=job_id, seq=self._next_seq(db, job_id),
+                                         event=event, message=f"执行器兜底：{row.stage_text}",
+                                         actor="engine", at=_now()))
+                    db.commit()
+                return
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(0.5 * (attempt + 1))
+        logger.error("作业 %s 兜底终态写入失败（3 次尝试）：%s —— "
+                     "等待 sweep 失联回收作为最后防线", job_id, last_exc)
 
     def _execute(self, job_id: int) -> None:
         with SessionLocal() as db:
