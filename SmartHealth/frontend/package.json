@@ -1,0 +1,14 @@
+{
+  "name": "smarthealth-console",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SmartHealth 前端控制台（零 npm 依赖：内置 http 静态服务 + API 反向代理）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:prod": "node server.js --api http://127.0.0.1:8100"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

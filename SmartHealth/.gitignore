@@ -1,0 +1,37 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# 运行时数据（院内本地数据目录，不入库）
+data/smarthealth.db
+data/wsi/
+data/tile_cache/
+data/features/
+data/artifacts/
+
+# SQLite 库一律不入库。注意必须把 -wal / -shm / -journal 三个**边车文件**一起忽略：
+# 只写 `*.db` 会让 `data/smarthealth.db-wal` 这类文件被当成待提交内容混进仓库 ——
+# 它们体积不小（可达数 MB），而且每次运行都变，会把 diff 搅得毫无可读性。
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+*.log
+.DS_Store
+.idea/
+.vscode/
+node_modules/
+.workbuddy/
+
+# 模型权重：体积大，靠 SHA256 保证一致（见 configs/model_registry.json）
+models/**
+!models/.gitkeep
+*.onnx
+*.onnx.incoming
+
+# 自测用样例切片（可由 scripts/make_sample_wsi.py 重新生成）
+data/samples/
+data/_probe_*.tif

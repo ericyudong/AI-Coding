@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartHealth · 蓝天健康病理垂类模型与智慧医疗 Agent 平台</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- 登录页 -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">SH</div>
+        <div>
+          <h1>SmartHealth</h1>
+          <p>蓝天健康病理垂类模型与智慧医疗 Agent 平台</p>
+        </div>
+      </div>
+      <form id="login-form" autocomplete="off">
+        <label>账号<input type="text" id="username" value="admin" required /></label>
+        <label>密码<input type="password" id="password" value="Admin@2026" required /></label>
+        <button type="submit" id="login-btn">登录</button>
+        <div id="login-error" class="login-error"></div>
+      </form>
+      <div class="login-hint">
+        <span>演示账号（口令均满足密码策略）</span>
+        <code>admin/Admin@2026</code><code>cmo/Cmo@2026</code>
+        <code>algo01/Algo@2026</code><code>doctor01/Doctor@2026</code>
+        <code>reg01/Reg@2026</code><code>ops01/Ops@2026</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主控制台 -->
+  <div id="console" class="console hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small">SH</div>
+        <div class="brand-text">
+          <strong>SmartHealth</strong>
+          <span id="env-badge" class="env-badge">research</span>
+        </div>
+      </div>
+      <nav id="nav" class="nav"></nav>
+      <div class="sidebar-foot" id="sidebar-foot"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs" id="crumbs">概览</div>
+        <div class="topbar-right">
+          <span id="scope-badge" class="pill" title="当前账号的数据可见范围"></span>
+          <span id="deploy-env" class="pill"></span>
+          <span id="whoami" class="whoami"></span>
+          <button id="logout" class="ghost-btn">退出</button>
+        </div>
+      </header>
+      <section id="content" class="content"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="modal" class="modal hidden"><div class="modal-box"><div class="modal-head"><h3 id="modal-title"></h3><button id="modal-close" class="ghost-btn">关闭</button></div><div id="modal-body" class="modal-body"></div></div></div>
+
+  <script src="/api.js"></script>
+  <script src="/views.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

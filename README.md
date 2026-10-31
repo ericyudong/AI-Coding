@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-Latest-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Projects-26-orange.svg" alt="Project Count">
+  <img src="https://img.shields.io/badge/Projects-29-orange.svg" alt="Project Count">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -271,6 +271,19 @@ Open-source agent frameworks, multi-agent systems, enterprise AI agent platforms
 - **Key Features**: Frontend `:3001`, backend API `:7860`, MySQL / Redis / Milvus / ES / OpenFGA
 - **Path**: [bisheng/](./bisheng/) · start: `cd bisheng/docker && docker compose -f docker-compose.yml -p bisheng up -d`
 
+### SmartHealth (蓝天健康) 🩺
+- **Description**: Vertical pathology multimodal foundation model + medical agent platform. Turns years of physician-labelled whole-slide images (WSI) into a commercially deployable diagnostic-assist system, with an auditable path toward an NMPA Class III registration.
+- **Key Features**:
+  - **Real WSI pipeline**: pyramid TIFF block-level decoding, tile extraction, Reinhard stain normalisation, colour deconvolution, heatmap generation — no stubs
+  - **Real ONNX inference**: encoder registry with SHA256 weight governance and a licence gate that blocks non-commercial weights (UNI2-h / Virchow2) for `product` deployments
+  - **ABMIL** attention-based multiple-instance learning head, Platt calibration, bootstrap confidence intervals
+  - **Production-shaped async job engine**: durable queue, multi-process workers, `FOR UPDATE SKIP LOCKED` claiming in PostgreSQL, heartbeat reclamation, idempotent dedup, Redis distributed locks
+  - **Realtime job events**: SSE with `Last-Event-ID` resume (plus WebSocket and a polling fallback), token auth on the event channel, log redaction
+  - **Three-tier CI gate**: `fast` (SQLite) / `staging` (real PostgreSQL + Redis) / `release` (go-live gate, binds `environment: release` for human approval)
+- **Tech Stack**: Python 3.12, FastAPI + SQLAlchemy 2.0, PostgreSQL / SQLite, Redis, onnxruntime, tifffile, vanilla-JS console (zero npm deps)
+- **Path**: [SmartHealth/](./SmartHealth/) · start: `cd SmartHealth && python -m app.seed --reset --quick && python run.py`
+- **CI**: [`.github/workflows/smarthealth-ci.yml`](./.github/workflows/smarthealth-ci.yml) — go-live gate runs on `SmartHealth-v*` tags
+
 ---
 
 ## 🗂️ Project Architecture Overview
@@ -322,7 +335,8 @@ Eric's AI Project Collection
         ├── deepseek-qa-system/       # DeepSeek Q&A system
         ├── ai-qa-system/             # Intelligent Q&A system
         ├── legal-agent/              # Intelligent legal agent (+ AgentScope demo)
-        └── legal-agent-mcp/          # MCP Server for Legal Agent (Cursor/Codex/DSH)
+        ├── legal-agent-mcp/          # MCP Server for Legal Agent (Cursor/Codex/DSH)
+        └── SmartHealth/              # Pathology WSI foundation model + medical agent (+ CI gate)
 ```
 
 ---
@@ -436,6 +450,24 @@ npm install && npm run build
 # Configure in ~/.cursor/mcp.json — see legal-agent-mcp/README.md
 ```
 
+### 🩺 Run SmartHealth Locally
+
+```bash
+cd SmartHealth
+pip install -r requirements.txt
+python -m app.seed --reset --quick     # seed demo pathology data
+python run.py                          # backend on 127.0.0.1:8100
+
+node frontend/server.js --port 8477 --api http://127.0.0.1:8100   # console (zero npm deps)
+```
+
+```bash
+# Three-tier CI gate (the same command CI runs — no YAML duplication)
+bash scripts/ci.sh fast                # every push: SQLite, no external services
+bash scripts/ci.sh staging             # needs PostgreSQL + Redis: SKIP LOCKED, locks, multi-process workers
+bash scripts/ci.sh release             # go-live gate: real WSI + real ONNX + --fail-on-warn
+```
+
 ---
 
 ## 📖 Detailed Documentation
@@ -477,6 +509,7 @@ npm install && npm run build
 | **DeepSeek Harness** | [deepseek-harness-master/](./deepseek-harness-master/) |
 | **OpenAI Codex** | [codex/](./codex/) · [架构分析](./codex/docs/architecture-analysis/) |
 | **JIRA System** | [jira-system/](./jira-system/) |
+| **SmartHealth** | [SmartHealth/README.md](./SmartHealth/README.md) · [CI workflow](./.github/workflows/smarthealth-ci.yml) |
 
 ---
 
@@ -577,12 +610,12 @@ Special thanks to all contributors in the open-source community, especially:
 
 ## 📊 Project Statistics
 
-- **Total Projects**: 28
-- **Categories**: AI Infra (13), AI Agent (15)
+- **Total Projects**: 29
+- **Categories**: AI Infra (13), AI Agent (16)
 - **Language Support**: Python, TypeScript, JavaScript, Go, Rust (Codex)
 - **Total Lines of Code**: 100,000+
 - **Open Source Licenses**: MIT, AGPL-3.0
-- **Highlights**: Legal Agent MCP + AgentScope demo, BiSheng platform, DeepSeek Harness + Recruit Agent plugin, OpenAI Codex architecture, AI/ML Factory (KFP → KServe → GPU), ClawManager, OpenAkita, AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway
+- **Highlights**: Legal Agent MCP + AgentScope demo, BiSheng platform, DeepSeek Harness + Recruit Agent plugin, OpenAI Codex architecture, AI/ML Factory (KFP → KServe → GPU), ClawManager, OpenAkita, AIGateway (6-layer guardrails), OCM Hub–Spoke explorer + cluster gateway, SmartHealth (pathology WSI foundation model + medical agent with a three-tier go-live gate)
 
 ---
 

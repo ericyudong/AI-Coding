@@ -1,0 +1,134 @@
+# GitLab CI：与 .github/workflows/ci.yml 等价，同样只是 scripts/ci.sh 的薄壳。
+#
+# ⚠️ 在 AI-Coding monorepo 里，本文件同样**不会自动生效**：
+#   GitLab 只读取仓库根的 .gitlab-ci.yml。SmartHealth 位于子目录时，这份配置
+#   只有两种用法 ——
+#     (1) 用根级 .gitlab-ci.yml 里的 `include: local: SmartHealth/.gitlab-ci.yml`
+#         （并在 include 的 default 里补 `before_script: cd SmartHealth`）把它拉进来；
+#     (2) SmartHealth 拆成独立仓库后，直接放到新仓库根。
+#   仓库根的 `.github/workflows/smarthealth-ci.yml` 是当前真正生效的那一份。
+#
+# 为什么两个平台各留一份、而不做抽象：
+# 抽象层（生成 YAML）比直接写两份更难维护，也更容易在换平台时出现"模板渲染出来的
+# 东西和你以为的不一样"。而真正的逻辑（跑哪些检查、门禁判据）**已经在 ci.sh 里**了，
+# 这里只剩"用什么镜像、挂什么服务、什么时候触发"，本来就没多少可复用的。
+#
+# 三个 stage 对应三个档位：
+#   fast    每次推送都跑（6 分钟，SQLite，零外部服务）
+#   staging 主干与 MR 跑（10 分钟，真实 PG + Redis，验证生产形态）
+#   release 打 tag 时跑（13 分钟，上线门禁）
+
+stages:
+  - fast
+  - staging
+  - release
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PYTHONUNBUFFERED: '1'
+  # 用项目的 requirements.txt 做缓存键，依赖变了缓存自动失效
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  image: python:3.12-slim
+  cache:
+    key:
+      files:
+        - requirements.txt
+    paths:
+      - .cache/pip/
+  # 每个档位都把步骤日志收集起来：失败时能直接下载完整输出，
+  # 而不是只能看到 GitLab 截断后的尾部几百行。
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - ci-*.log
+
+# ------------------------------------------------------------------ 快速检查
+fast:
+  stage: fast
+  timeout: 25m
+  script:
+    - set -o pipefail
+    # GitLab 的 python:3.12-slim 里没有 curl/编译工具，
+    # 有些依赖（imagecodecs 等）需要编译兜底，先装基础构建件。
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends build-essential >/dev/null
+    - bash scripts/ci.sh fast 2>&1 | tee ci-fast.log
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+# ------------------------------------------------------ 生产形态（PG + Redis）
+staging:
+  stage: staging
+  timeout: 35m
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_USER: smarthealth
+        POSTGRES_PASSWORD: smarthealth
+        POSTGRES_DB: smarthealth_ci
+    - name: redis:7-alpine
+      alias: redis
+  variables:
+    # 服务以 alias 作为主机名可达；这与 GitHub Actions 的 services 语义一致，
+    # 所以两个平台的 env 值几乎相同，排查时不用切换心智。
+    SMARTHEALTH_DATABASE_URL: "postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci"
+    SMARTHEALTH_REDIS_URL: "redis://redis:6379/0"
+    SMARTHEALTH_DEPLOYMENT_ENV: "product"
+  script:
+    - set -o pipefail
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends build-essential postgresql-client >/dev/null
+    # 等服务真正可用：service 容器启动是异步的，"容器起来了"不等于"端口能连"。
+    # 少了这一步会出现偶发的连接失败，看起来像代码问题。
+    - until pg_isready -h postgres -U smarthealth -d smarthealth_ci; do sleep 1; done
+    - until (echo -e 'PING\r'; sleep 1) | timeout 2 bash -c 'cat > /dev/tcp/redis/6379' 2>/dev/null; do sleep 1; done
+    - bash scripts/ci.sh staging 2>&1 | tee ci-staging.log
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------- 上线门禁
+release:
+  stage: release
+  timeout: 45m
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+      variables:
+        POSTGRES_USER: smarthealth
+        POSTGRES_PASSWORD: smarthealth
+        POSTGRES_DB: smarthealth_ci
+    - name: redis:7-alpine
+      alias: redis
+  variables:
+    SMARTHEALTH_DATABASE_URL: "postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci"
+    SMARTHEALTH_REDIS_URL: "redis://redis:6379/0"
+    SMARTHEALTH_DEPLOYMENT_ENV: "product"
+    CI_SEED_MODE: "full"
+  script:
+    - set -o pipefail
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends build-essential postgresql-client >/dev/null
+    - until pg_isready -h postgres -U smarthealth -d smarthealth_ci; do sleep 1; done
+    - until (echo -e 'PING\r'; sleep 1) | timeout 2 bash -c 'cat > /dev/tcp/redis/6379' 2>/dev/null; do sleep 1; done
+    - bash scripts/ci.sh release 2>&1 | tee ci-release.log
+    - |
+      # 把摘要行抽出来作为"门禁结论"，便于在 MR / Release 页面一眼看到
+      echo "===== 上线门禁结论 ====="
+      grep -aE 'DOCTOR_SUMMARY|CI_SUMMARY|结论|✗|⊘' ci-release.log | tail -40 || true
+  # 只在 tag 上跑：门禁是**放行判定**，不该由普通提交频繁触发，
+  # 否则"门禁通过"这句话会因为说得太多次而失去分量。
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+      allow_failure: false
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - ci-release.log

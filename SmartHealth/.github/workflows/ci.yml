@@ -1,0 +1,221 @@
+name: CI
+
+# ⚠️ 在 AI-Coding monorepo 里，**本文件不会被执行**。
+#
+#   原因：GitHub Actions 只加载仓库根的 .github/workflows/ 目录，子目录里的
+#   workflow 不会被注册。SmartHealth 现在位于 AI-Coding/SmartHealth/，所以
+#   真正生效的是仓库根的 `.github/workflows/smarthealth-ci.yml`。
+#   那一份与本文件内容一致，只多了两处 monorepo 适配：
+#     - `defaults.run.working-directory: SmartHealth`（把执行目录钉在子项目里）
+#     - `cache-dependency-path: SmartHealth/requirements.txt`
+#     - tag 触发收窄为 `SmartHealth-v*`，避免其它子项目的 tag 误触发本项目门禁
+#
+#   之所以保留本文件：SmartHealth 一旦拆成独立仓库，把这份文件挪到新仓库根的
+#   .github/workflows/ 下即可开箱使用，无需改写。
+#
+# 触发策略与 scripts/ci.sh 的三个档位一一对应：
+#   push/PR            → fast（6 分钟，零外部服务，快速反馈）
+#   PR 命中主干 / 主干  → staging（10 分钟，真实 PG + Redis，验证生产形态）
+#   tag v* / 手动      → release（13 分钟，上线门禁，需人工批准）
+#
+# 所有档位都只是 `bash scripts/ci.sh <profile>` 的薄壳：检查项本身写在脚本里。
+# 这样做的好处是本地与 CI 完全一致 —— 排查时把 CI 的最后一行命令抄下来就能复现。
+
+on:
+  push:
+    branches: [main, master, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: '要运行的档位'
+        required: true
+        default: staging
+        type: choice
+        options: [fast, staging, release]
+
+concurrency:
+  # 同一分支的旧运行自动取消：CI 排队只会浪费算力，快速反馈更重要
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  # ------------------------------------------------------------------ 快速检查
+  fast:
+    name: 快速检查（SQLite）
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: 运行快速档
+        run: bash scripts/ci.sh fast
+
+      - name: 失败时上传步骤日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-fast-logs
+          # ci.sh 把每一步的完整输出放在临时目录里并把路径打印在汇总里；
+          # 这里把整个临时目录收集起来，避免"CI 上失败但看不到细节"。
+          path: |
+            ${{ runner.temp }}/**/*.log
+            /tmp/tmp.*/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ------------------------------------------------------ 生产形态（PG + Redis）
+  staging:
+    name: 生产形态（PostgreSQL + Redis）
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    # 为什么 PR 也跑这一档：fast 档用 SQLite，覆盖不到 SKIP LOCKED 领取、
+    # 真实并发写与 Redis 分布式锁 —— 而这些恰恰是最容易出问题的地方，
+    # 等合并到主干才发现，代价高得多。
+    #
+    # 触发范围交给上面的 `on:` 控制，这里不再写 if ——
+    # 写一个恒真的 if 只会让人误以为"有什么额外筛选"。
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: smarthealth
+          POSTGRES_PASSWORD: smarthealth
+          POSTGRES_DB: smarthealth_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U smarthealth -d smarthealth_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      # service 容器以服务名作为主机名可达
+      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci
+      SMARTHEALTH_REDIS_URL: redis://redis:6379/0
+      SMARTHEALTH_DEPLOYMENT_ENV: product
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: 运行生产形态档
+        run: bash scripts/ci.sh staging
+
+      - name: 失败时上传步骤日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-staging-logs
+          path: |
+            ${{ runner.temp }}/**/*.log
+            /tmp/tmp.*/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ---------------------------------------------------------------- 上线门禁
+  release-gate:
+    name: 上线门禁（release）
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [fast, staging]
+    # 只在打 tag 或手动触发时跑：这一档是**放行判定**，不该由普通提交触发，
+    # 否则"门禁通过"会因为跑得太频繁而失去严肃性。
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    # environment 是 GitHub 的批准闸门：可在仓库 Settings → Environments 里
+    # 给 release 环境配置"必须由指定人员批准"，让门禁与放行权绑定。
+    environment:
+      name: release
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: smarthealth
+          POSTGRES_PASSWORD: smarthealth
+          POSTGRES_DB: smarthealth_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U smarthealth -d smarthealth_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci
+      SMARTHEALTH_REDIS_URL: redis://redis:6379/0
+      SMARTHEALTH_DEPLOYMENT_ENV: product
+      # 发布用种子含完整模型产物，让依赖训练/推理结果的用例真正执行
+      CI_SEED_MODE: full
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: 运行上线门禁
+        run: |
+          # 必须开 pipefail：否则管道最后一个命令（tee）的退出码会覆盖 ci.sh 的，
+          # 门禁失败也会被判成成功 —— 这是 CI 里最危险的一类错误。
+          set -o pipefail
+          bash scripts/ci.sh release 2>&1 | tee ci-release.log
+
+      - name: 生成门禁报告
+        if: always()
+        run: |
+          # 把摘要行单独落成一个文件，方便在流水线界面直接看到结论，
+          # 不必翻几千行日志去找（也正是为了这个才在脚本里输出稳定摘要行）。
+          {
+            echo "# 上线门禁报告"
+            echo
+            echo "- 提交：\`${{ github.sha }}\`"
+            echo "- 引用：\`${{ github.ref }}\`"
+            echo "- 时间：$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo '```'
+            grep -aE 'DOCTOR_SUMMARY|CI_SUMMARY|结论|✗|⊘' ci-release.log 2>/dev/null | tail -40 || true
+            echo '```'
+          } > ci-gate-report.md
+          cat ci-gate-report.md
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-gate-report
+          path: |
+            ci-gate-report.md
+            ci-release.log
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,66 @@
+# ==========================================================================
+# SmartHealth — 蓝天健康病理垂类多模态大模型与智慧医疗 Agent 平台
+# Python 依赖清单
+# 环境：Python 3.13 / SQLite（开发）+ 可切 PostgreSQL（院内私有化）
+# ==========================================================================
+
+# --- Web 框架 / ASGI ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# --- 数据校验 / 配置 ---
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# --- 持久化（开发 SQLite；院内生产可切 PostgreSQL / 达梦）---
+SQLAlchemy==2.0.36
+
+# --- 认证与安全（JWT + RBAC，院内私有化部署不依赖外部 IdP）---
+PyJWT==2.10.1
+
+# --- 数值计算（ABMIL 聚合、评测指标、联邦平均）---
+numpy==2.5.4
+
+# --- 图像处理（合成 WSI 金字塔、图块抽取、染色归一化）---
+Pillow==13.0.0
+
+# --- 定时任务（特征预计算巡检、评测回归、边缘心跳检测）---
+APScheduler==3.11.0
+
+# --- 外部调用（HIS/PIS 适配器、对象存储、外部算力租用）---
+httpx==0.28.1
+
+# --- 图块编码器 ONNX 真实推理（CPU 亦可）---
+onnxruntime==1.31.0
+# 结构校验 + 自研参照模型导出（注意：onnx.checker 通过 ≠ onnxruntime 能加载，
+# 所以 verify 会真的建一次会话；版本以实际验证通过者为准）
+onnx==1.23.2
+
+# --- 真实 WSI 金字塔 TIFF 读取（svs / ndpi / scn / ome-tiff）---
+tifffile==2026.10.15
+# 压缩 TIFF 编解码：真实 WSI 几乎都是 LZW / JPEG / JPEG2000 存储，
+# 缺了它只能读未压缩 TIFF，等于读不了真实切片
+imagecodecs==2026.10.10
+
+# --- 生产部署：PostgreSQL（多进程/高并发前提）---
+psycopg[binary]==3.3.6
+
+# --- Redis（分布式锁 + 事件低延迟推送；可选，缺失时自动退化为数据库锁与轮询）---
+redis==8.1.0
+
+# --- 可选：真厂商格式（svs/ndpi/mrxs/scn）的生产推荐后端，需先装系统库 openslide ---
+# openslide-python>=1.3
+
+# --------------------------------------------------------------------------
+# 说明：本仓库不包含真实模型权重文件（体积大且受许可约束）。权重通过**模型清单**
+# 治理：configs/model_registry.json 登记许可与 SHA256，models/ 存放文件（已 gitignore）。
+#
+#   python scripts/model_registry.py export-reference   # 导出真实 ONNX 自研参照模型
+#   python scripts/model_registry.py install <code> --from <权重文件>   # 院内离线安装
+#   python scripts/model_registry.py verify --all       # 校验文件/校验和/结构/维度
+#
+# 未安装任何权重时，编码器回退到内置确定性实现（指标不代表真实权重，会在
+# /api/v1/models/onnx-diagnostics 里明确标注）。接入真实权重**不需要改代码**，
+# 换文件 + 更新清单 SHA256 即可。
+# --------------------------------------------------------------------------
