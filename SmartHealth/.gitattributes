@@ -1,0 +1,34 @@
+# 行尾策略：SmartHealth 子树内的文本文件一律以 LF 存储、以 LF 检出。
+#
+# 为什么这个文件是**必需**的，而不是锦上添花：
+#   本地开发在 Windows（CRLF），CI 在 Linux（LF）。没有这条声明时，`scripts/ci.sh`
+#   会带着 CRLF 进仓库，于是 Linux 上的 bash 在第一行就崩：
+#       scripts/ci.sh: line 44: $'\r': command not found
+#       scripts/ci.sh: line 45: set: pipefail : invalid option name
+#       scripts/ci.sh: line 91: syntax error near unexpected token `$'{\r''
+#   而在 Git Bash 里跑得**完全正常** —— 这正是"本地全绿、CI 全红"最典型的成因，
+#   而且失败信息里只有一串 $'\r'，第一眼很难联想到行尾。
+#
+#   危害也不止于 shell：带 CR 的 .gitignore 模式会因不可见字符匹配失败（于是本该
+#   忽略的运行时文件被提交），带 CR 的 YAML 在部分解析器下会把 CR 当成值的一部分。
+#   统一成 LF，一次解决一整类问题。
+#
+# 作用域只有 SmartHealth/ 子树，不会影响 monorepo 里其它子项目。
+# 本文件加上之前，这个子目录里 96 个文本文件有 65 个是 CRLF、31 个是 LF —— 混合行尾
+# 本身就是个隐患（同一个文件在不同机器上 checkout 出来的字节可能不同）。
+* text=auto eol=lf
+
+# 二进制文件显式声明（`binary` 等价于 `-text -diff`），防止将来误提交时被行尾转换损坏。
+# 目前仓库里没有这些文件（模型权重靠 SHA256 治理，不入库），显式写出来是防御性的。
+*.tif   binary
+*.tiff  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gz    binary
+*.zip   binary
+*.onnx  binary
+*.db    binary
+*.pt    binary
+*.pth   binary
+*.safetensors binary

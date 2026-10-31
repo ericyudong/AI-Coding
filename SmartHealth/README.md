@@ -311,6 +311,13 @@ python scripts/selftest_frontend.py       # 前后端字段契约（54 项）
 - **onnx.checker 通过 ≠ 能加载**：Gemm 的 `transB` 语义错误只有真正建 onnxruntime 会话才报。
 - **tifffile 的 `segments()` 是按序解码的生成器**，做随机访问要用
   `dataoffsets` + `databytecounts` + `page.decode(raw, i)`。
+- **行尾必须是 LF，靠 `.gitattributes` 兜住**：本地是 Windows（CRLF）、CI 是 Linux（LF）。
+  没有 `* text=auto eol=lf` 时，带 CRLF 的 `scripts/ci.sh` 在 Linux 上第一行就崩 ——
+  `$'\r': command not found` / `syntax error near unexpected token $'{\r'` ——
+  而 Git Bash 里跑得完全正常，**本地复现不出来**。这不是理论风险：第一次真正跑
+  GitHub Actions 时 `fast` 与 `staging` 两个 job 都在 20 秒内挂掉，就是死在这上面。
+  同一类隐患还包括带 CR 的 `.gitignore`（模式因不可见字符匹配失败）与带 CR 的 YAML。
+  落地时顺手把子树里 65 个 CRLF 文件统一成了 LF（原本 65 CRLF / 31 LF，是混合的）。
 
 - **SQLite 单写者**：Worker 的进度写入复用 handler 的会话（SAVEPOINT），否则会等待自己持有的写锁形成**自死锁**
 - 启用 WAL + `busy_timeout=60s`，作业与 API 并发写库不再互相阻塞
