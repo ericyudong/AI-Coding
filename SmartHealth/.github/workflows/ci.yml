@@ -108,9 +108,23 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
 
     env:
-      # service 容器以服务名作为主机名可达
-      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci
-      SMARTHEALTH_REDIS_URL: redis://redis:6379/0
+      # ⚠️ 必须用 localhost，不能用服务名 postgres / redis。
+      #
+      #   GitHub Actions 的服务容器语义取决于 job 跑在哪：
+      #     - job **直接跑在 runner 虚拟机**上（本文件的情况，没有写 `container:`）
+      #       → 服务容器只是"把端口映射到宿主机"（见上面的 ports: ['5432:5432']），
+      #         所以只能通过 localhost:<port> 访问。此时写 `@postgres:5432` 会得到
+      #         `failed to resolve host 'postgres': Temporary failure in name resolution`；
+      #     - job **自身也在容器里**（写了 `container:`）→ 才可以用服务名当主机名。
+      #
+      #   这个坑在本机永远复现不出来，而且服务容器的健康检查是通过
+      #   `docker inspect` 在容器**内部**做的，早就 Ready 了 —— 日志里一切正常，
+      #   只有应用连不上。第一次真正在 GitHub 上跑 staging 档就是死在这里。
+      #
+      #   顺带对比：GitLab CI 的 job 默认跑在镜像容器里，所以那边用服务别名才对
+      #   （见 .gitlab-ci.yml）。两个平台的语义**不同**，不能照抄。
+      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@localhost:5432/smarthealth_ci
+      SMARTHEALTH_REDIS_URL: redis://localhost:6379/0
       SMARTHEALTH_DEPLOYMENT_ENV: product
 
     steps:
@@ -170,8 +184,9 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
 
     env:
-      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci
-      SMARTHEALTH_REDIS_URL: redis://redis:6379/0
+      # 同 staging：job 直接跑在 runner 上，服务容器只能经 localhost 访问（见 staging 里的详细说明）
+      SMARTHEALTH_DATABASE_URL: postgresql+psycopg://smarthealth:smarthealth@localhost:5432/smarthealth_ci
+      SMARTHEALTH_REDIS_URL: redis://localhost:6379/0
       SMARTHEALTH_DEPLOYMENT_ENV: product
       # 发布用种子含完整模型产物，让依赖训练/推理结果的用例真正执行
       CI_SEED_MODE: full

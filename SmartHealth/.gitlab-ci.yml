@@ -73,8 +73,17 @@ staging:
     - name: redis:7-alpine
       alias: redis
   variables:
-    # 服务以 alias 作为主机名可达；这与 GitHub Actions 的 services 语义一致，
-    # 所以两个平台的 env 值几乎相同，排查时不用切换心智。
+    # 服务以 alias 作为主机名可达 —— 这只在 **job 自身也跑在容器里** 时成立。
+    # GitLab CI 的 job 默认跑在 `image:` 指定的容器中（见文件顶部的 default.image），
+    # 所以这里用 `postgres` / `redis` 别名是对的。
+    #
+    # ⚠️ 但**不要**因此认为"两个平台的 services 语义一致"（本文件早期版本正是这么写的，
+    #    也是这个误解让 GitHub 上的 staging 档直接挂掉）：
+    #      - GitLab CI —— job 在容器里 → 用服务别名
+    #      - GitHub Actions —— job 直接跑在 runner 虚拟机上（未写 `container:`）时，
+    #        服务只是"端口映射到宿主机"，**只能用 localhost:<port>**；写服务名会得到
+    #        `failed to resolve host 'postgres': Temporary failure in name resolution`。
+    #    对照 .github/workflows/ci.yml 与 monorepo 根的 .github/workflows/smarthealth-ci.yml。
     SMARTHEALTH_DATABASE_URL: "postgresql+psycopg://smarthealth:smarthealth@postgres:5432/smarthealth_ci"
     SMARTHEALTH_REDIS_URL: "redis://redis:6379/0"
     SMARTHEALTH_DEPLOYMENT_ENV: "product"

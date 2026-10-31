@@ -318,6 +318,13 @@ python scripts/selftest_frontend.py       # 前后端字段契约（54 项）
   GitHub Actions 时 `fast` 与 `staging` 两个 job 都在 20 秒内挂掉，就是死在这上面。
   同一类隐患还包括带 CR 的 `.gitignore`（模式因不可见字符匹配失败）与带 CR 的 YAML。
   落地时顺手把子树里 65 个 CRLF 文件统一成了 LF（原本 65 CRLF / 31 LF，是混合的）。
+- **GitHub Actions 的 service 容器主机名语义**：job **直接跑在 runner 虚拟机上**时
+  （没写 `container:`），服务容器只是"端口映射到宿主机"，**只能用 `localhost:<port>`**；
+  写服务名 `postgres` / `redis` 会得到 `failed to resolve host 'postgres': Temporary
+  failure in name resolution`。且服务健康检查是 `docker inspect` 在容器**内部**做的，
+  日志里一切 Ready —— 具有极强的迷惑性。GitLab CI 相反：job 默认跑在镜像容器里，
+  服务**别名**才对。两个平台语义不同，**不能照抄**（照抄正是 staging 档第一次
+  在 GitHub 上挂掉的直接原因）。
 
 - **SQLite 单写者**：Worker 的进度写入复用 handler 的会话（SAVEPOINT），否则会等待自己持有的写锁形成**自死锁**
 - 启用 WAL + `busy_timeout=60s`，作业与 API 并发写库不再互相阻塞
