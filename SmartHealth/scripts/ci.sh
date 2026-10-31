@@ -52,7 +52,16 @@ PYTHON="${PYTHON:-python}"
 CI_SEED_MODE="${CI_SEED_MODE:-quick}"
 
 # seed 的参数数组：显式用数组而不是拼字符串，避免空参数被当成一个空字符串传给 argparse。
-SEED_ARGS=(--reset "--$CI_SEED_MODE")
+#
+# 注意 quick 才有开关（--quick），full 是**默认行为**、没有 --full 这个参数 ——
+# seed.py 的 argparse 只有 [--reset | --quick | --skip-model]。之前这里写成
+# "--$CI_SEED_MODE"，于是 release 档（CI_SEED_MODE=full）传了不存在的 --full，
+# argparse 直接 exit 2。这个 bug 在 fast/staging（quick 模式）下永远不触发，
+# 只有第一次真正跑 release 门禁（打 SmartHealth-v0.1.0 tag）时才暴露。
+SEED_ARGS=(--reset)
+if [ "$CI_SEED_MODE" = "quick" ]; then
+  SEED_ARGS+=(--quick)
+fi
 if [ "${CI_SEED_SKIP_MODEL:-0}" = "1" ]; then
   SEED_ARGS+=(--skip-model)
 fi

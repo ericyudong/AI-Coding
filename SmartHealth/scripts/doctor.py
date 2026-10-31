@@ -29,6 +29,7 @@ import argparse
 import importlib
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -181,8 +182,20 @@ def main() -> int:
         # PG 版本能力（SKIP LOCKED 需 9.5+）
         if settings.db_backend == "postgresql":
             ver = str(p.get("server_version", ""))
-            if "PostgreSQL" in ver:
-                ok("PostgreSQL 能力", f"{ver.split()[0]} {ver.split()[1][:6]}（支持 SKIP LOCKED）")
+            # `SHOW server_version` 返回的是裸版本号（如 "16.15"），不带 "PostgreSQL"
+            # 前缀 —— 旧代码按子串 `"PostgreSQL" in ver` 判断，在真实 PG 16 上
+            # 永远走 WARN 分支（「未能解析版本：16.15」），--fail-on-warn 门禁被它拦死。
+            # 用正则取主次版本号，两种形态（"16.15" / "PostgreSQL 16.15 on x86_64"）都兼容。
+            m = re.search(r"(\d+)\.(\d+)", ver)
+            if m:
+                major, minor = int(m.group(1)), int(m.group(2))
+                if (major, minor) >= (9, 5):
+                    ok("PostgreSQL 能力",
+                       f"PostgreSQL {major}.{minor}（支持 FOR UPDATE SKIP LOCKED，需 ≥9.5）")
+                else:
+                    warn("PostgreSQL 能力", f"{major}.{minor} 低于 9.5",
+                         "FOR UPDATE SKIP LOCKED 需要 PostgreSQL 9.5+；"
+                         "作业领取会退化为乐观更新（并发性能差且易撞车）")
             else:
                 warn("PostgreSQL 能力", f"未能解析版本：{ver[:60]}")
 

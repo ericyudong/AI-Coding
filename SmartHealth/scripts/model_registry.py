@@ -169,6 +169,10 @@ def main() -> int:
             print("\n" + "=" * 92)
             print(f"  校验合计：{summary['ok']}/{summary['total']} 通过"
                   + (f" · 未通过：{', '.join(summary['failed'])}" if summary["failed"] else ""))
+            if summary.get("skipped"):
+                # 未安装 ≠ 未通过：那是覆盖率问题（doctor 的「模型权重清单」负责报告），
+                # 这里只校验在用权重的完整性。
+                print(f"  跳过（未安装，不在用）：{', '.join(summary['skipped'])}")
             print("=" * 92)
             return 0 if not summary["failed"] else 1
         result = reg.verify_entry(args.code)

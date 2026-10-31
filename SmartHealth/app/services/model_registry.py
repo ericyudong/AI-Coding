@@ -472,9 +472,23 @@ def verify_entry(code: str) -> dict:
 
 
 def verify_all() -> dict:
-    results = [verify_entry(e.code) for e in all_entries()]
-    return {"total": len(results), "ok": sum(1 for r in results if r["ok"]),
-            "failed": [r["code"] for r in results if not r["ok"]], "results": results}
+    """校验所有**已安装**的权重。
+
+    语义边界（必须明确，否则门禁会自相矛盾）：
+    - 「装了哪些」是**覆盖率**问题，由 doctor 的「模型权重清单」检查负责报告
+      （它会给出 n/total 已安装的可视化并按部署环境分级提示）；
+    - 这里只对**在用的**权重做完整性校验（存在、SHA256、ONNX 结构、维度）。
+      未安装的登记项是预期状态 —— CI 的 release 档在 export-reference 之后只有
+      1 份已装权重，其余外部/自研权重本就不在 CI 环境里，不应当拦门禁。
+      （旧实现把未安装也判 FAIL，与 doctor 的判定直接矛盾：doctor 说
+      「1/9 已安装」是 OK，verify --all 却 FAIL —— 第一次跑 release 门禁时暴露。）
+    """
+    entries = all_entries()
+    skipped = [e.code for e in entries if not e.installed_path]
+    results = [verify_entry(e.code) for e in entries if e.installed_path]
+    return {"total": len(entries), "ok": sum(1 for r in results if r["ok"]),
+            "failed": [r["code"] for r in results if not r["ok"]],
+            "skipped": skipped, "results": results}
 
 
 # ================================================================= 参照模型导出
