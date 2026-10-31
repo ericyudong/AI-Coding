@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -43,7 +43,11 @@ class DataAsset(BaseModel):
     slide_count = Column(Integer, default=0)
     annotated_slide_count = Column(Integer, default=0)
     patient_count = Column(Integer, default=0)
-    total_bytes = Column(Integer, default=0)
+    # 字节量必须用 BigInteger：万张 WSI 规模下轻松超过 2^31-1（≈2.1 GB）。
+    # PostgreSQL 的 INTEGER 是 32 位，溢出直接 NumericValueOutOfRange；
+    # SQLite 的 INTEGER 是 64 位，所以这个 bug 在本地永远复现不出来 ——
+    # 正是 CI 的 staging 档第一次在真实 PG 上跑 seed 时抓到的。
+    total_bytes = Column(BigInteger, default=0)
     magnification = Column(String(64), default="20X")
     year_from = Column(Integer, default=2020)
     year_to = Column(Integer, default=2025)
@@ -95,7 +99,7 @@ class Slide(BaseModel):
     scanner = Column(String(80), default="")
 
     file_path = Column(String(512), default="")
-    file_bytes = Column(Integer, default=0)
+    file_bytes = Column(BigInteger, default=0)
     checksum = Column(String(64), index=True, default="")
     """文件内容 SHA256。用于上传去重与"这份特征到底来自哪个文件"的溯源。"""
     org_code = Column(String(64), index=True, default="")
@@ -158,8 +162,9 @@ class StorageStat(BaseModel):
     tier = Column(String(16), index=True, nullable=False)
     """hot / warm / cold"""
     slide_count = Column(Integer, default=0)
-    bytes_used = Column(Integer, default=0)
-    capacity_bytes = Column(Integer, default=0)
+    # 存储分层统计的容量可达数百 TB（cold 层种子值就有 220 TB），32 位 INTEGER 必然溢出
+    bytes_used = Column(BigInteger, default=0)
+    capacity_bytes = Column(BigInteger, default=0)
     media = Column(String(120), default="")
 
 

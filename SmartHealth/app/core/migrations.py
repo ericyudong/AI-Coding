@@ -476,6 +476,50 @@ def m0009_encoder_onnx_fields(conn, engine: Engine) -> str:
     return f"新增列 {changed or '无（已是最新）'}"
 
 
+# ---------------------------------------------------------------- 0010 字节列扩宽
+_BYTE_COLUMNS: tuple[tuple[str, str], ...] = (
+    # (表, 列)：凡是"字节数"语义的列都要升到 64 位
+    ("asset_dataset", "total_bytes"),      # 资产批次总字节，万张 WSI 轻松超 2^31
+    ("asset_slide", "file_bytes"),         # 单张金字塔 WSI 就可能 > 2 GB
+    ("asset_storage_stat", "bytes_used"),
+    ("asset_storage_stat", "capacity_bytes"),  # 分层容量，cold 层数百 TB
+    ("edge_federated_job", "upload_bytes_total"),  # 多轮联邦累计上传
+)
+
+
+def m0010_widen_byte_columns(conn, engine: Engine) -> str:
+    """字节列 INTEGER → BIGINT。
+
+    背景：PostgreSQL 的 INTEGER 是 32 位（上限 2^31-1 ≈ 2.1 GB），而存储容量类
+    数值（单张 WSI、批次总量、分层容量、联邦累计上传）在真实规模下必然超出。
+    SQLite 的 INTEGER 本来就是 64 位，所以本地（SQLite）怎么跑都不会触发 ——
+    只有在真实 PostgreSQL 上装载种子才会 NumericValueOutOfRange。
+    这是 CI staging 档（强制 PG）第一次真跑时抓到的可移植性缺陷。
+
+    PostgreSQL：ALTER COLUMN TYPE BIGINT 需要整表重写，但字节列没有索引/外键，
+    且是低频写列，重写成本可接受。
+    SQLite：没有 ALTER COLUMN，INTEGER 本身就是 64 位，无需任何操作。
+    """
+    if not is_pg(engine):
+        return "SQLite 的 INTEGER 即 64 位，无需变更"
+    changed = []
+    for table, column in _BYTE_COLUMNS:
+        if table not in set(inspect(conn).get_table_names()):
+            continue
+        if column not in columns_of(conn, table):
+            continue
+        current = {c["name"]: c["type"] for c in inspect(conn).get_columns(table)}
+        type_name = str(current[column]).upper()
+        # 幂等：已经是 BIGINT 就跳过（SQLite 迁移过来的表 / 已应用过）
+        if "BIGINT" in type_name:
+            continue
+        conn.execute(text(
+            f'ALTER TABLE {table} ALTER COLUMN {column} TYPE BIGINT'
+        ))
+        changed.append(f"{table}.{column}")
+    return f"扩宽为 BIGINT：{changed or '无（已是最新）'}"
+
+
 # ---------------------------------------------------------------- 0008 兜底补列
 def m0008_sync_missing_columns(conn, engine: Engine) -> str:
     """兜底：把「模型有但库里没有」的列补上。
@@ -534,6 +578,8 @@ MIGRATIONS: list[Migration] = [
     Migration(8, "sync_missing_columns", m0008_sync_missing_columns, "兜底补列"),
     Migration(9, "encoder_onnx_fields", m0009_encoder_onnx_fields,
               "编码器注册表 ONNX 字段（权重校验和/归一化/布局/批大小）"),
+    Migration(10, "widen_byte_columns", m0010_widen_byte_columns,
+              "字节列 INTEGER→BIGINT（PG 32 位上限 2.1GB，存储容量类数值必然溢出）"),
 ]
 
 

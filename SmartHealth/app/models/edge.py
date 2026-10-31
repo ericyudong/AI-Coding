@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -78,8 +78,8 @@ class FederatedJob(BaseModel):
     global_metric_final = Column(Float, default=0.0)
     metric_key = Column(String(32), default="auroc")
     target_metric = Column(Float, default=0.0)
-    upload_bytes_total = Column(Integer, default=0)
-    """累计上传字节数，用于证明「只出梯度不出数据」。"""
+    upload_bytes_total = Column(BigInteger, default=0)
+    """累计上传字节数（多轮联邦任务累计可达 TB 级），用于证明「只出梯度不出数据」。"""
     sample_total = Column(Integer, default=0)
     status = Column(String(24), default="pending")
     """pending / running / succeeded / failed / cancelled"""

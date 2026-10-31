@@ -325,6 +325,12 @@ python scripts/selftest_frontend.py       # 前后端字段契约（54 项）
   日志里一切 Ready —— 具有极强的迷惑性。GitLab CI 相反：job 默认跑在镜像容器里，
   服务**别名**才对。两个平台语义不同，**不能照抄**（照抄正是 staging 档第一次
   在 GitHub 上挂掉的直接原因）。
+- **字节列必须 `BigInteger`**：PostgreSQL 的 `INTEGER` 是 32 位（上限 2^31-1 ≈ 2.1 GB），
+  而存储容量类数值——单张金字塔 WSI、批次总量、分层容量（cold 层数百 TB）、联邦累计
+  上传——在真实规模下必然超出，插入时 `NumericValueOutOfRange`。SQLite 的 INTEGER
+  本来就是 64 位，**这个 bug 在本地永远复现不出来**，只有 CI 的 staging 档（强制
+  真实 PG）跑 seed 时才会暴露。已修：5 个字节列升 `BigInteger` + 迁移 v10
+  （`widen_byte_columns`，PG 上 `ALTER COLUMN TYPE BIGINT`，SQLite 无需变更）。
 
 - **SQLite 单写者**：Worker 的进度写入复用 handler 的会话（SAVEPOINT），否则会等待自己持有的写锁形成**自死锁**
 - 启用 WAL + `busy_timeout=60s`，作业与 API 并发写库不再互相阻塞
