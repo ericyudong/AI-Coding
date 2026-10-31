@@ -221,6 +221,24 @@ def main() -> int:
         check("全部作业执行成功",
               by_status.get("succeeded", 0) == len(job_ids),
               f"succeeded={by_status.get('succeeded', 0)}/{len(job_ids)}")
+        # 诊断输出：只要有非成功作业，把它的状态/尝试/错误摊出来。
+        # 「succeeded=15/16」这种信息量等于零 —— 没有错误文本，排查只能靠猜。
+        for j in jobs:
+            if j.status != "succeeded":
+                print(f"  ---- 未成功作业 id={j.id} ----")
+                print(f"    status={j.status} attempts={j.attempts} worker={j.worker_id}")
+                print(f"    error_text={j.error_text!r}")
+                if j.error_detail:
+                    print("    error_detail 尾部：")
+                    for ln in (j.error_detail or "").splitlines()[-8:]:
+                        print(f"      {ln}")
+                evs = list(db.execute(
+                    select(AsyncJobEvent.event, AsyncJobEvent.message)
+                    .where(AsyncJobEvent.job_id == j.id)
+                    .order_by(AsyncJobEvent.id)).all())
+                print(f"    事件流（{len(evs)} 条）：")
+                for ev, msg in evs[-6:]:
+                    print(f"      {ev}: {msg[:90]}")
 
         # 核心断言：每个作业恰好领取一次 → 无重复执行
         check("无重复执行（每个作业 attempts 均为 1）",
@@ -257,17 +275,23 @@ def main() -> int:
             print(f"  [skip] 当前后端为 {settings.db_backend}，"
                   f"SKIP LOCKED 专属断言仅在 staging/release 档（PostgreSQL）生效")
 
-        # 事件流完整性
-        event_counts = dict(db.execute(
-            select(AsyncJobEvent.job_id, func.count(AsyncJobEvent.id))
+        # 事件流完整性：不能只数条数。「queued/started/progress×N」这种**无终态**
+        # 的流同样 ≥3 条 —— 而它恰恰是「sweep 误杀后 owner 提前退出」的直接信号
+        # （作业被邻居进程标 failed，owner 的终态写入永远不会到来）。
+        # 所以必须断言：有 started，且有终态事件（finished / error）。
+        events_by_job: dict[int, set[str]] = {}
+        for jid, ev in db.execute(
+            select(AsyncJobEvent.job_id, AsyncJobEvent.event)
             .where(AsyncJobEvent.job_id.in_(job_ids))
-            .group_by(AsyncJobEvent.job_id)
-        ).all())
-        incomplete = [jid for jid in job_ids if int(event_counts.get(jid, 0)) < 3]
-        check("每个作业事件流完整（≥3 条：queued/started/finished）",
+        ).all():
+            events_by_job.setdefault(int(jid), set()).add(str(ev))
+        incomplete = [jid for jid in job_ids
+                      if "started" not in events_by_job.get(jid, set())
+                      or not (events_by_job.get(jid, set()) & {"finished", "error"})]
+        check("每个作业事件流完整（started + 终态事件）",
               not incomplete,
-              f"不完整的作业：{incomplete[:5]}" if incomplete else
-              f"平均 {sum(event_counts.values()) / max(len(event_counts), 1):.1f} 条/作业")
+              f"不完整（缺 started 或终态）的作业：{incomplete[:5]}" if incomplete else
+              f"平均 {sum(len(v) for v in events_by_job.values()) / max(len(events_by_job), 1):.1f} 条/作业")
 
         seq_ok = True
         for jid in job_ids[:5]:
@@ -280,9 +304,15 @@ def main() -> int:
                 break
         check("事件序号在跨进程写入下仍单调且不重复", seq_ok)
 
-        check("作业结果已落库（result_json 非空）",
-              all((j.result_json or "").strip() for j in jobs),
-              f"{sum(1 for j in jobs if (j.result_json or '').strip())}/{len(job_ids)} 有结果")
+        # 结果落库校验只对**成功**作业有意义：AsyncJob.result_json 列默认 "{}"，
+        # 对所有作业断言「非空」是恒真的空转（曾让 sweep 误杀的作业也"通过"）。
+        succeeded_jobs = [j for j in jobs if j.status == "succeeded"]
+        trivial = [j.id for j in succeeded_jobs
+                   if (j.result_json or "").strip() in ("", "{}")]
+        check("成功作业的结果已落库（result_json 非占位）",
+              not trivial,
+              f"result_json 为空/占位的成功作业：{trivial[:5]}" if trivial else
+              f"{len(succeeded_jobs)}/{len(job_ids)} 个成功作业均有结果")
 
         # ---------------------------------------------------------- 5. 不误杀兄弟进程
         print("\n[5] 校验「启动时不误杀兄弟进程的作业」")

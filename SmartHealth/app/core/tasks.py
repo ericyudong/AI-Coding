@@ -258,6 +258,11 @@ class JobContext:
 
 
 # ------------------------------------------------------------------ 引擎
+# 进程级心跳刷新周期。必须远小于 job_heartbeat_stale_sec（默认 180s），
+# 留足 6~9 倍余量：一次刷新失败（网络抖动）不该让心跳过期。
+HEARTBEAT_REFRESH_SEC = 20.0
+
+
 class TaskEngine:
     def __init__(self) -> None:
         self._handlers: dict[str, Callable[[JobContext], Any]] = {}
@@ -265,6 +270,7 @@ class TaskEngine:
         self._pool: ThreadPoolExecutor | None = None
         self._dispatcher: threading.Thread | None = None
         self._sweeper: threading.Thread | None = None
+        self._heartbeater: threading.Thread | None = None
         self._stop = threading.Event()
         self._claim_lock = threading.Lock()
         self._inflight: set[int] = set()
@@ -302,6 +308,8 @@ class TaskEngine:
         self._dispatcher.start()
         self._sweeper = threading.Thread(target=self._sweep_loop, name="sh-sweep", daemon=True)
         self._sweeper.start()
+        self._heartbeater = threading.Thread(target=self._heartbeat_loop, name="sh-heartbeat", daemon=True)
+        self._heartbeater.start()
         self.started = True
         logger.info("作业引擎启动：%d 个 Worker，已注册 %d 类作业（%s）",
                     workers, len(self._handlers), ", ".join(self.registered_types()))
@@ -581,8 +589,49 @@ class TaskEngine:
                 logger.exception("调度循环异常")
                 self._stop.wait(1.0)
 
+    def _heartbeat_loop(self) -> None:
+        """进程级心跳：只要本进程活着，就周期性刷新**本进程在跑**作业的心跳。
+
+        为什么必须有它（这是 sweep 误杀的根因修复）：
+        心跳此前只在 handler 上报进度时刷新。handler 在 CPU 饥饿下 —— 例如
+        CI 的 2 vCPU 挤 8 个并发作业，特征编码一个阶段内不吐进度 —— 两次进度
+        之间完全可能超过 180s 的失联阈值。这时作业明明活着，邻居 Worker 的
+        _sweep_loop 却按「进程失联」把它标成 failed；而 owner 的 --once 循环
+        从 DB 看到「无 running」直接退出，作业**永远收不到终态写入**。
+        （SmartHealth-v0.1.1 后的 main 流水线两次复现：15/16 成功、
+        失败作业 attempts=1、事件流有 started 无 finished —— 与该机制完全吻合。）
+
+        心跳与进度解耦后，「心跳过期」重新等价于「执行进程真的死了」，
+        sweep 的判定才成立。这是分布式作业系统的标准做法：
+        活着就报平安，而不是「干活时报平安」。
+        """
+        while not self._stop.is_set():
+            self._stop.wait(HEARTBEAT_REFRESH_SEC)
+            if self._stop.is_set():
+                break
+            with self._inflight_lock:
+                ids = list(self._inflight)
+            if not ids:
+                continue
+            try:
+                with WriterSessionLocal() as db:
+                    db.execute(
+                        update(AsyncJob)
+                        .where(AsyncJob.id.in_(ids), AsyncJob.status == "running")
+                        .values(heartbeat_at=_now())
+                    )
+                    db.commit()
+            except Exception:
+                # 心跳写失败不能让线程死掉：下一轮再试。若长时间连不上数据库，
+                # 心跳最终过期、邻居进程回收 —— 那是正确行为。
+                logger.warning("心跳批量刷新失败（%d 个在跑作业），下一轮重试",
+                               len(ids), exc_info=True)
+
     def _sweep_loop(self) -> None:
         """回收僵死作业：心跳超过阈值仍在 running 的，标记为 failed（可重试）。"""
+        from app.core.config import settings as _settings
+
+        threshold = max(60, int(_settings.job_heartbeat_stale_sec))
         while not self._stop.is_set():
             self._stop.wait(30.0)
             if self._stop.is_set():
@@ -602,7 +651,7 @@ class TaskEngine:
                             beat = datetime.fromisoformat(job.heartbeat_at)
                         except ValueError:
                             continue
-                        if (now - beat).total_seconds() > 180:
+                        if (now - beat).total_seconds() > threshold:
                             job.status = "failed"
                             job.error_text = "Worker 心跳丢失（进程可能异常退出），作业已回收"
                             job.finished_at = _now()

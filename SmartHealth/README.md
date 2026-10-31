@@ -331,6 +331,17 @@ python scripts/selftest_frontend.py       # 前后端字段契约（54 项）
   本来就是 64 位，**这个 bug 在本地永远复现不出来**，只有 CI 的 staging 档（强制
   真实 PG）跑 seed 时才会暴露。已修：5 个字节列升 `BigInteger` + 迁移 v10
   （`widen_byte_columns`，PG 上 `ALTER COLUMN TYPE BIGINT`，SQLite 无需变更）。
+- **心跳必须与进度解耦（进程级心跳线程）**：心跳如果只在 handler 上报进度时刷新，
+  那么 CPU 饥饿下（CI 的 2 vCPU 挤 8 个并发作业，特征编码一个阶段不吐进度）
+  两次进度之间可能超过失联阈值（180s）—— 作业明明活着，邻居 Worker 的 sweep
+  却按「进程失联」把它标 failed；且 owner 的 `--once` 循环从 DB 看到「无 running」
+  直接退出，作业**永远收不到终态写入**（表现为 `succeeded=15/16`、失败作业
+  `attempts=1`、事件流有 started 无 finished）。修法：引擎起独立的
+  **心跳线程**（每 20s 批量刷新本进程在跑作业的 `heartbeat_at`），「心跳过期」
+  重新等价于「进程真的死了」。这是分布式作业系统的标准做法：活着就报平安，
+  而不是「干活时报平安」。配套修掉两个恒真断言：事件流完整性要看
+  **started + 终态事件**（只数条数会被无终态的流骗过）、result_json 校验要
+  排除列默认值 `"{}"`。
 
 - **SQLite 单写者**：Worker 的进度写入复用 handler 的会话（SAVEPOINT），否则会等待自己持有的写锁形成**自死锁**
 - 启用 WAL + `busy_timeout=60s`，作业与 API 并发写库不再互相阻塞
